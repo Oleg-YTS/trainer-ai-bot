@@ -1,6 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database.models import Client
+
 
 async def get_or_create_client(session: AsyncSession, trainer_id: int,
                                 telegram_user_id: int, name: str) -> Client:

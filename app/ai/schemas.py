@@ -1,4 +1,5 @@
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 Category = Literal["nutrition", "training", "recovery", "weight_loss", "muscle_gain", "other"]

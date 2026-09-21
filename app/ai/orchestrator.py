@@ -1,10 +1,16 @@
 import json
+
 from app.ai.client import AIClient
 from app.ai.schemas import Classification, GeneratedAnswer
+
 
 class AIOrchestrator:
     def __init__(self) -> None:
         self.ai = AIClient()
+
+    @property
+    def is_configured(self) -> bool:
+        return self.ai.is_configured
 
     async def classify(self, question: str) -> Classification:
         raw = await self.ai.text(
