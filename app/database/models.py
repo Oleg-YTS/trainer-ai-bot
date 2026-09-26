@@ -39,3 +39,11 @@ class Escalation(Base):
     question: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(30), default="open")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+class Message(Base):
+    __tablename__ = "messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
+    role: Mapped[str] = mapped_column(String(20))
+    text: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

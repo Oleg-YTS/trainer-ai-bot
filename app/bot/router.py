@@ -7,7 +7,9 @@ from aiogram.types import Message, User
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.orchestrator import AIOrchestrator
+from app.clients.messages import ASSISTANT_ROLE, USER_ROLE, record_message
 from app.clients.service import register_telegram_client
+from app.database.models import Client
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -33,15 +35,22 @@ def telegram_display_name(user: User) -> str:
         return f"@{user.username}"[:200]
     return f"id{user.id}"
 
-async def register(message: Message) -> None:
+async def register(message: Message) -> Client | None:
     if message.from_user is None:
-        return
+        return None
     try:
-        await register_telegram_client(
+        return await register_telegram_client(
             message.from_user.id, telegram_display_name(message.from_user)
         )
     except (SQLAlchemyError, RuntimeError) as exc:  # a database problem must not break the bot
         logger.warning("Client registration failed: %s", exc)
+        return None
+
+async def store_message(client_id: int, role: str, text: str) -> None:
+    try:
+        await record_message(client_id, role, text)
+    except (SQLAlchemyError, RuntimeError, ValueError) as exc:  # history is not critical for a reply
+        logger.warning("Saving message failed: %s", exc)
 
 @router.message(CommandStart())
 async def start(message: Message) -> None:
@@ -53,9 +62,11 @@ async def start(message: Message) -> None:
 
 @router.message()
 async def handle_message(message: Message) -> None:
-    await register(message)
+    client = await register(message)
     if not message.text:
         return
+    if client is not None:
+        await store_message(client.id, USER_ROLE, message.text)
     orchestrator = get_orchestrator()
     if not orchestrator.is_configured:
         await message.answer(AI_UNAVAILABLE_TEXT)
@@ -67,4 +78,6 @@ async def handle_message(message: Message) -> None:
         "No structured client profile is available yet.",
         "No approved trainer knowledge was retrieved in this starter scaffold.",
     )
+    if client is not None:
+        await store_message(client.id, ASSISTANT_ROLE, answer.answer)
     await message.answer(answer.answer)

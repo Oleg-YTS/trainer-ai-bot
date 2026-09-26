@@ -1,4 +1,5 @@
 .env
+.trainer_ai_prod_db_url.txt
 .venv/
 __pycache__/
 .pytest_cache/
