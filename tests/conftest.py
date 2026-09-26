@@ -36,3 +36,10 @@ async def client_id(session):
     session.add(client)
     await session.commit()
     return client.id
+
+@pytest.fixture
+async def trainers(session):
+    session.add(Trainer(id=1, name="Owner"))
+    session.add(Trainer(id=2, name="Other"))
+    await session.commit()
+    return (1, 2)
