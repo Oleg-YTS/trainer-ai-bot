@@ -1,7 +1,10 @@
 import json
+from typing import Any
 
 from app.ai.client import AIClient
+from app.ai.prompt import build_system_prompt, build_user_prompt
 from app.ai.schemas import Classification, GeneratedAnswer
+from app.database.models import KnowledgeItem, Message
 
 
 class AIOrchestrator:
@@ -21,19 +24,9 @@ class AIOrchestrator:
         )
         return Classification.model_validate(json.loads(raw))
 
-    async def answer(self, question: str, classification: Classification,
-                     client_context: str, knowledge_context: str) -> GeneratedAnswer:
-        system = (
-            "You are an AI assistant acting as a proxy for a fitness trainer. "
-            "Use only supplied trainer knowledge and explicit client context. "
-            "Never invent trainer decisions. Escalate when evidence is insufficient. "
-            "Return JSON only."
-        )
-        user = (
-            f"Category: {classification.category}\nIntent: {classification.intent}\n\n"
-            f"Client context:\n{client_context}\n\n"
-            f"Approved trainer knowledge:\n{knowledge_context}\n\n"
-            f"Question:\n{question}"
-        )
+    async def answer(self, question: str, client_profile: dict[str, Any],
+                     knowledge_items: list[KnowledgeItem], history: list[Message]) -> GeneratedAnswer:
+        system = build_system_prompt()
+        user = build_user_prompt(question, client_profile, knowledge_items, history)
         raw = await self.ai.text(system, user)
         return GeneratedAnswer.model_validate(json.loads(raw))

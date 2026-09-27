@@ -1,6 +1,10 @@
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 
 from app.config.settings import get_settings
+
+
+class AIRequestError(RuntimeError):
+    """The AI provider request failed."""
 
 
 class AIClient:
@@ -22,9 +26,12 @@ class AIClient:
         return self._client
 
     async def text(self, system: str, user: str) -> str:
-        response = await self._connect().responses.create(
-            model=self.model,
-            instructions=system,
-            input=user,
-        )
+        try:
+            response = await self._connect().responses.create(
+                model=self.model,
+                instructions=system,
+                input=user,
+            )
+        except OpenAIError as exc:
+            raise AIRequestError("AI provider request failed") from exc
         return response.output_text

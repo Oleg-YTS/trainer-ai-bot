@@ -7,6 +7,7 @@ from aiogram.types import Message, User
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.orchestrator import AIOrchestrator
+from app.ai.service import AnswerUnavailable, build_grounded_answer
 from app.clients.messages import ASSISTANT_ROLE, USER_ROLE, record_message
 from app.clients.service import register_telegram_client
 from app.database.models import Client
@@ -33,7 +34,7 @@ def telegram_display_name(user: User) -> str:
         return user.full_name[:200]
     if user.username:
         return f"@{user.username}"[:200]
-    return f"id{user.id}"
+    return f"id{user.id}"[:200]
 
 async def register(message: Message) -> Client | None:
     if message.from_user is None:
@@ -65,19 +66,19 @@ async def handle_message(message: Message) -> None:
     client = await register(message)
     if not message.text:
         return
-    if client is not None:
-        await store_message(client.id, USER_ROLE, message.text)
+    client_id = client.id if client is not None else None
+    if client_id is not None:
+        await store_message(client_id, USER_ROLE, message.text)
     orchestrator = get_orchestrator()
     if not orchestrator.is_configured:
         await message.answer(AI_UNAVAILABLE_TEXT)
         return
-    classification = await orchestrator.classify(message.text)
-    answer = await orchestrator.answer(
-        message.text,
-        classification,
-        "No structured client profile is available yet.",
-        "No approved trainer knowledge was retrieved in this starter scaffold.",
-    )
-    if client is not None:
-        await store_message(client.id, ASSISTANT_ROLE, answer.answer)
-    await message.answer(answer.answer)
+    try:
+        answer_text = await build_grounded_answer(orchestrator, client_id, message.text)
+    except AnswerUnavailable as exc:
+        logger.warning("Grounded answer unavailable: %s", exc)
+        await message.answer(AI_UNAVAILABLE_TEXT)
+        return
+    if client_id is not None:
+        await store_message(client_id, ASSISTANT_ROLE, answer_text)
+    await message.answer(answer_text)
