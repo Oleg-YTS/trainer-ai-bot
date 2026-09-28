@@ -10,7 +10,12 @@ from app.database.models import KnowledgeItem, Message
 def make_orchestrator(monkeypatch, raw: str):
     monkeypatch.setattr(
         "app.ai.client.get_settings",
-        lambda: SimpleNamespace(openai_api_key="test-key", openai_model="test-model"),
+        lambda: SimpleNamespace(
+            ai_provider="ai_tunnel",
+            aitunnel_api_key="unit-test-key",
+            aitunnel_base_url="https://api.aitunnel.ru/v1/",
+            aitunnel_model="gpt-6-luna-pro",
+        ),
     )
     orchestrator = AIOrchestrator()
     calls: list[tuple[str, str]] = []
