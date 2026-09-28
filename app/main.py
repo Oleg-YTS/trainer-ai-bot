@@ -6,7 +6,7 @@ from aiogram import Bot
 from aiogram.types import Update
 from fastapi import FastAPI, HTTPException, Request
 
-from app.bot.router import build_dispatcher
+from app.bot.router import build_dispatcher, setup_bot_menu
 from app.config.settings import get_settings
 
 settings = get_settings()
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
             allowed_updates=dp.resolve_used_update_types(),
             drop_pending_updates=False,
         )
+        await setup_bot_menu(bot)
     yield
     await bot.session.close()
 

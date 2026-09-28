@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,4 +36,30 @@ async def register_telegram_client(telegram_user_id: int, name: str) -> Client:
     async with get_session_factory()() as session:
         trainer = await get_or_create_trainer(session, settings.trainer_id)
         return await get_or_create_client(session, trainer.id, telegram_user_id, name)
+
+
+def parse_profile(profile_json: str | None) -> dict[str, str]:
+    try:
+        profile = json.loads(profile_json or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return profile if isinstance(profile, dict) else {}
+
+
+async def read_profile(client_id: int | None) -> dict[str, str]:
+    if client_id is None:
+        return {}
+    async with get_session_factory()() as session:
+        client = await session.get(Client, client_id)
+        return parse_profile(client.profile_json if client is not None else None)
+
+
+async def update_profile(client_id: int, profile: dict[str, str]) -> dict[str, str]:
+    async with get_session_factory()() as session:
+        client = await session.get(Client, client_id)
+        if client is None:
+            raise ValueError(f"unknown client: {client_id}")
+        client.profile_json = json.dumps(profile, ensure_ascii=False)
+        await session.commit()
+        return parse_profile(client.profile_json)
 
