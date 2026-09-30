@@ -153,8 +153,8 @@ export const MobileChat: React.FC<MobileChatProps> = ({
               <div className={`flex items-start gap-2 max-w-[88%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                 {!isUser && (
                   <img
-                    src="/src/assets/images/bot_avatar_icon_1790800990843.jpg"
-                    alt="AI Trainer Bot"
+                    src="/src/assets/images/ai_librarian_avatar_icon_1790801394939.jpg"
+                    alt="AI Библиотекарь"
                     referrerPolicy="no-referrer"
                     className="w-6 h-6 rounded-full object-cover shrink-0 border border-[#2B4A3D] mt-0.5"
                   />
