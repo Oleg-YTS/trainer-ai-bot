@@ -100,13 +100,14 @@ export interface Message {
 // Database with Pre-populated Seed Data
 class Database {
   categories: Category[] = [
-    { id: 'nutrition', name: 'Питание и нутрицевтика', parent_id: null, description: 'Расчет макросов, рационы и диетология' },
-    { id: 'supplements', name: 'Спортивные добавки', parent_id: 'nutrition', description: 'Креатин, протеин, витамины и адаптогены' },
-    { id: 'macros', name: 'Расчет макронутриентов', parent_id: 'nutrition', description: 'Белки, жиры и углеводы по целям' },
     { id: 'training', name: 'Тренировочный процесс', parent_id: null, description: 'Силовой тренинг, техника и периодизация' },
-    { id: 'warmup', name: 'Разминка и техника', parent_id: 'training', description: 'Суставная разминка и профилактика травм' },
-    { id: 'hypertrophy', name: 'Гипертрофия мышц', parent_id: 'training', description: 'Набор мышечной массы и прогрессия нагрузок' },
-    { id: 'recovery', name: 'Восстановление и сон', parent_id: null, description: 'Регенерация, биохимия сна и снятие крепатуры' }
+    { id: 'nutrition', name: 'Питание и диетология', parent_id: null, description: 'Расчет макросов, рационы и нутрицевтика' },
+    { id: 'recovery', name: 'Восстановление и сон', parent_id: null, description: 'Регенерация, биохимия сна и снятие крепатуры' },
+    { id: 'weight_loss', name: 'Снижение жировой массы', parent_id: null, description: 'Грамотный дефицит, сохранение мышц и контроль аппетита' },
+    { id: 'muscle_gain', name: 'Набор мышечной массы', parent_id: null, description: 'Гипертрофия мышц, профицит и прогрессия нагрузок' },
+    { id: 'other', name: 'Общие вопросы методики', parent_id: null, description: 'Методические рекомендации и ответы тренера' },
+    { id: 'supplements', name: 'Спортивные добавки', parent_id: 'nutrition', description: 'Креатин, протеин, витамины и адаптогены' },
+    { id: 'warmup', name: 'Разминка и техника', parent_id: 'training', description: 'Суставная разминка и профилактика травм' }
   ];
 
   trainers: Trainer[] = [
@@ -157,7 +158,7 @@ class Database {
     {
       id: 1,
       trainer_id: 1,
-      category_id: 'macros',
+      category_id: 'nutrition',
       title: 'Норма белка для набора массы',
       content: 'При целенаправленном наборе мышечной массы суточная норма белка составляет 1.8–2.2 г на 1 кг массы тела. Источники: куриная грудка, индейка, яйца, творог, нежирная говядина, рыба и протеиновый изолят.',
       status: 'approved',
@@ -167,7 +168,7 @@ class Database {
     {
       id: 2,
       trainer_id: 1,
-      category_id: 'warmup',
+      category_id: 'training',
       title: 'Прогрессия нагрузок и разминка',
       content: 'Перед каждой силовой тренировкой обязательна суставная разминка 5-7 минут и 1-2 разминочных подхода с легким весом. Увеличение рабочих весов должно быть постепенным (не более +2.5-5% в неделю при сохранении правильной техники).',
       status: 'approved',

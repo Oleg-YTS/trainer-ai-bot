@@ -28,15 +28,26 @@ export const MobileChat: React.FC<MobileChatProps> = ({
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const DEFAULT_WELCOME: Message = {
+    id: 1,
+    client_id: 1,
+    role: 'assistant',
+    text: 'Здравствуйте! Я ассистент-библиотекарь тренера. Задайте вопрос по методике тренировок, расчету питания или восстановлению.',
+    created_at: new Date().toISOString()
+  };
+
   const fetchHistory = async () => {
     try {
       const res = await apiFetch('/api/clients/1');
       const data = await res.json();
-      if (data && Array.isArray(data.messages)) {
+      if (data && Array.isArray(data.messages) && data.messages.length > 0) {
         setMessages(data.messages);
+      } else {
+        setMessages([DEFAULT_WELCOME]);
       }
     } catch (err) {
-      console.error(err);
+      console.warn('Failed to load message history:', err);
+      setMessages([DEFAULT_WELCOME]);
     }
   };
 
@@ -77,19 +88,42 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: 1,
-          message_text: text
+          message_text: text,
+          message: text
         })
       });
       const data = await res.json();
       if (data.assistant_message) {
         setMessages(prev => [
           ...prev.filter(m => m.id !== tempUserMsg.id),
-          data.user_message,
+          data.user_message || tempUserMsg,
           data.assistant_message
+        ]);
+      } else if (data.text) {
+        setMessages(prev => [
+          ...prev.filter(m => m.id !== tempUserMsg.id),
+          tempUserMsg,
+          {
+            id: Date.now() + 1,
+            client_id: 1,
+            role: 'assistant',
+            text: data.text,
+            created_at: new Date().toISOString()
+          }
         ]);
       }
     } catch (err) {
       console.error(err);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          client_id: 1,
+          role: 'assistant',
+          text: 'Связь с сервером временно недоступна. Пожалуйста, повторите вопрос или задайте его в Telegram-боте.',
+          created_at: new Date().toISOString()
+        }
+      ]);
     } finally {
       setLoading(false);
     }

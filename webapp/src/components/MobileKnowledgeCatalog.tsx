@@ -34,14 +34,32 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
 
+  const DEFAULT_CATEGORIES: Category[] = [
+    { id: 'training', name: 'Тренировочный процесс', description: 'Силовой тренинг, техника упражнений и периодизация' },
+    { id: 'nutrition', name: 'Питание и диетология', description: 'Баланс БЖУ, калорийность рациона и спортивное питание' },
+    { id: 'recovery', name: 'Восстановление и сон', description: 'Гигиена сна, регенерация и снятие мышечного напряжения' },
+    { id: 'weight_loss', name: 'Снижение жировой массы', description: 'Грамотный дефицит, сохранение мышц и контроль аппетита' },
+    { id: 'muscle_gain', name: 'Набор мышечной массы', description: 'Гипертрофия мышц, профицит и прогрессия весов' },
+    { id: 'other', name: 'Общие вопросы методики', description: 'Рекомендации тренера и методические указания' },
+  ];
+
   useEffect(() => {
     Promise.all([
-      apiFetch('/api/categories').then(r => r.json()),
-      apiFetch('/api/knowledge').then(r => r.json())
+      apiFetch('/api/categories').then(r => r.json()).catch(() => null),
+      apiFetch('/api/knowledge').then(r => r.json()).catch(() => null)
     ]).then(([cats, kb]) => {
-      if (Array.isArray(cats)) setCategories(cats);
-      if (Array.isArray(kb)) setKnowledge(kb.filter(k => k.status === 'approved'));
-    }).catch(console.error);
+      if (Array.isArray(cats) && cats.length > 0) {
+        setCategories(cats);
+      } else {
+        setCategories(DEFAULT_CATEGORIES);
+      }
+      if (Array.isArray(kb)) {
+        setKnowledge(kb.filter(k => k.status === 'approved' || k.status === 'published'));
+      }
+    }).catch(err => {
+      console.warn('Failed to load categories or knowledge, using defaults:', err);
+      setCategories(DEFAULT_CATEGORIES);
+    });
   }, []);
 
   const topCategories = categories.filter(c => !c.parent_id);
@@ -51,7 +69,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
   const getCategoryArticles = (catId: string) => {
     const subIds = categories.filter(c => c.parent_id === catId).map(c => c.id);
     const allCatIds = [catId, ...subIds];
-    return knowledge.filter(k => allCatIds.includes(k.category_id));
+    return knowledge.filter(k => allCatIds.includes(k.category_id || (k as any).category));
   };
 
   const toggleCategory = (catId: string) => {
@@ -222,29 +240,37 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
 
                     {/* Category Articles */}
                     <div className="space-y-2 pt-1">
-                      {articles.map(art => (
-                        <div
-                          key={art.id}
-                          className={`p-3 rounded-lg border text-xs space-y-1.5 ${
-                            isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-                          }`}
-                        >
-                          <div className="font-medium text-xs text-inherit">{art.title}</div>
-                          <p className={`text-[11px] leading-relaxed line-clamp-3 ${
-                            isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'
-                          }`}>
-                            {art.content}
-                          </p>
-                          <button
-                            onClick={() => onAskQuestion(`Расскажи подробнее по теме: ${art.title}`)}
-                            className={`pt-1 text-[10px] font-medium flex items-center gap-1 transition ${
-                              isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'
+                      {articles.length === 0 ? (
+                        <div className={`p-3 rounded-lg border text-center text-[11px] leading-relaxed ${
+                          isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96]' : 'bg-white border-[#D8E0DB] text-[#53665C]'
+                        }`}>
+                          В этом разделе пока нет утвержденных статей тренера. Задайте вопрос в чате — ответ будет подготовлен с участием тренера.
+                        </div>
+                      ) : (
+                        articles.map(art => (
+                          <div
+                            key={art.id}
+                            className={`p-3 rounded-lg border text-xs space-y-1.5 ${
+                              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
                             }`}
                           >
-                            <MessageSquare className="w-3 h-3" /> Спросить библиотекаря
-                          </button>
-                        </div>
-                      ))}
+                            <div className="font-medium text-xs text-inherit">{art.title}</div>
+                            <p className={`text-[11px] leading-relaxed line-clamp-3 ${
+                              isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'
+                            }`}>
+                              {art.content}
+                            </p>
+                            <button
+                              onClick={() => onAskQuestion(`Расскажи подробнее по теме: ${art.title}`)}
+                              className={`pt-1 text-[10px] font-medium flex items-center gap-1 transition ${
+                                isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'
+                              }`}
+                            >
+                              <MessageSquare className="w-3 h-3" /> Спросить библиотекаря
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
