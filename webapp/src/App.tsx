@@ -46,8 +46,16 @@ export const App: React.FC = () => {
           style={{ paddingTop: 'calc(0.75rem + var(--safe-top, 0px))' }}
         >
           {/* Left: App Title */}
-          <div className="font-semibold text-sm tracking-tight text-inherit">
-            AI Библиотекарь
+          <div className="flex items-center gap-2">
+            <img
+              src="/src/assets/images/ai_librarian_avatar_icon_1790801394939.jpg"
+              alt="AI Библиотекарь"
+              referrerPolicy="no-referrer"
+              className="w-5 h-5 rounded-full object-cover border border-[#2B4A3D]"
+            />
+            <span className="font-semibold text-sm tracking-tight text-inherit">
+              AI Библиотекарь
+            </span>
           </div>
 
           {/* Right: Version and subtle theme toggle */}
@@ -160,17 +168,22 @@ export const App: React.FC = () => {
                   className="flex flex-col items-center justify-center -translate-y-2 transition group"
                 >
                   <div
-                    className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-transform group-active:scale-95 ${
+                    className={`w-11 h-11 rounded-full overflow-hidden p-0.5 shadow-lg border transition-all group-active:scale-95 flex items-center justify-center ${
                       activeTab === 'chat'
                         ? isDark
-                          ? 'bg-[#5B8A78] text-[#0A100D]'
-                          : 'bg-[#2B4A3D] text-white'
+                          ? 'border-[#7DA295] ring-2 ring-[#7DA295]/40 bg-[#121B17]'
+                          : 'border-[#2B4A3D] ring-2 ring-[#2B4A3D]/30 bg-white'
                         : isDark
-                          ? 'bg-[#18231E]/90 text-[#8E9E96]'
-                          : 'bg-[#EBF0EC]/90 text-[#53665C]'
+                          ? 'border-[#1F2E27] bg-[#18231E] opacity-80 group-hover:opacity-100'
+                          : 'border-[#D8E0DB] bg-[#EBF0EC] opacity-80 group-hover:opacity-100'
                     }`}
                   >
-                    <Bot className="w-5 h-5" />
+                    <img
+                      src="/src/assets/images/ai_librarian_avatar_icon_1790801394939.jpg"
+                      alt="AI Библиотекарь"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full rounded-full object-cover"
+                    />
                   </div>
                   <span
                     className={`text-[10px] mt-0.5 ${
