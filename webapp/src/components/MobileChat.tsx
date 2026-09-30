@@ -189,8 +189,15 @@ export const MobileChat: React.FC<MobileChatProps> = ({
             value={inputText}
             onChange={e => setInputText(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+            onFocus={(e) => {
+              const target = e.currentTarget;
+              setTimeout(() => {
+                target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }, 250);
+            }}
             placeholder="Спросите у библиотекаря..."
-            className={`flex-1 text-xs bg-transparent outline-none py-2 ${
+            className={`flex-1 text-[16px] sm:text-xs bg-transparent outline-none py-2 ${
               isDark ? 'text-[#E8ECE9] placeholder-[#5E7068]' : 'text-[#141F1A] placeholder-[#8E9E96]'
             }`}
           />

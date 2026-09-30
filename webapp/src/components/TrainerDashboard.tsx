@@ -82,9 +82,93 @@ interface TrainerDashboardProps {
 }
 
 export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = true, onBackToClient }) => {
-  const [activeTab, setActiveTab] = useState<'kb' | 'categories' | 'gaps' | 'escalations' | 'clients' | 'deploy'>('kb');
+  const [activeTab, setActiveTab] = useState<'kb' | 'categories' | 'gaps' | 'escalations' | 'clients' | 'deploy' | 'llm'>('kb');
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+  // LLM Status and Diagnostics State
+  const [llmStatus, setLlmStatus] = useState<any>(null);
+  const [loadingLlmStatus, setLoadingLlmStatus] = useState(false);
+  const [testPrompt, setTestPrompt] = useState('Каковы ключевые правила гидратации во время силовой тренировки?');
+  const [testingLlm, setTestingLlm] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+
+  // Runtime LLM Config State
+  const [selectedProvider, setSelectedProvider] = useState<'ai_tunnel' | 'gemini' | 'openai'>('ai_tunnel');
+  const [inputApiKey, setInputApiKey] = useState('');
+  const [inputModel, setInputModel] = useState('');
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configSuccess, setConfigSuccess] = useState(false);
+
+  const handleSaveRuntimeConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    setConfigSuccess(false);
+    try {
+      const payload: any = { provider: selectedProvider };
+      if (selectedProvider === 'ai_tunnel') {
+        if (inputApiKey) payload.aitunnelApiKey = inputApiKey;
+        if (inputModel) payload.aitunnelModel = inputModel;
+      } else if (selectedProvider === 'gemini') {
+        if (inputApiKey) payload.geminiApiKey = inputApiKey;
+        if (inputModel) payload.geminiModel = inputModel;
+      } else if (selectedProvider === 'openai') {
+        if (inputApiKey) payload.openaiApiKey = inputApiKey;
+        if (inputModel) payload.openaiModel = inputModel;
+      }
+      const res = await apiFetch('/api/llm/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setLlmStatus(data.status);
+        setConfigSuccess(true);
+        setInputApiKey('');
+        setTimeout(() => setConfigSuccess(false), 3000);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const fetchLlmStatus = async () => {
+    setLoadingLlmStatus(true);
+    try {
+      const res = await apiFetch('/api/llm/status');
+      if (res.ok) {
+        const data = await res.json();
+        setLlmStatus(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch LLM status:', e);
+    } finally {
+      setLoadingLlmStatus(false);
+    }
+  };
+
+  const handleTestLlmGeneration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testPrompt.trim()) return;
+    setTestingLlm(true);
+    setTestResult(null);
+    try {
+      const res = await apiFetch('/api/llm/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: testPrompt })
+      });
+      const data = await res.json();
+      setTestResult(data);
+    } catch (err: any) {
+      setTestResult({ success: false, error: err?.message || 'Сетевая ошибка' });
+    } finally {
+      setTestingLlm(false);
+    }
+  };
 
   const handleDownloadFile = async (url: string, filename: string) => {
     setDownloadingFile(filename);
@@ -206,6 +290,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     fetchContentGaps();
     fetchEscalations();
     fetchClients();
+    fetchLlmStatus();
   }, []);
 
   const handleCreateOrUpdateKb = async (e: React.FormEvent) => {
@@ -571,6 +656,23 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           }`}
         >
           <Package className="w-3.5 h-3.5" /> Скачать архивы
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('llm');
+            fetchLlmStatus();
+          }}
+          className={`pb-2.5 px-3 font-medium text-xs flex items-center gap-1.5 border-b-2 transition whitespace-nowrap ${
+            activeTab === 'llm'
+              ? isDark
+                ? 'border-[#5B8A78] text-[#7DA295]'
+                : 'border-[#2B4A3D] text-[#2B4A3D]'
+              : isDark
+                ? 'border-transparent text-[#8E9E96] hover:text-[#E8ECE9]'
+                : 'border-transparent text-[#7E9187] hover:text-[#141F1A]'
+          }`}
+        >
+          <Server className="w-3.5 h-3.5" /> Настройки LLM
         </button>
       </div>
 
@@ -1160,6 +1262,352 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 7: LLM PROVIDER & DIAGNOSTICS */}
+      {activeTab === 'llm' && (
+        <div className="space-y-4">
+          {/* Header Card */}
+          <div
+            className={`p-4 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${
+              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+            }`}
+          >
+            <div>
+              <h3 className="font-semibold text-sm flex items-center gap-2 text-inherit">
+                <Server className="w-4 h-4 text-[#5B8A78]" />
+                <span>Диагностика и Настройки LLM Провайдера</span>
+              </h3>
+              <p className={`text-xs mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                Управление моделью искусственного интеллекта, ключами доступа и проверка ответа ассистента
+              </p>
+            </div>
+
+            <button
+              onClick={fetchLlmStatus}
+              disabled={loadingLlmStatus}
+              className={`text-xs py-1.5 px-3 rounded-lg border font-medium flex items-center gap-1.5 transition self-start sm:self-auto ${
+                isDark
+                  ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:bg-[#1F2E27]'
+                  : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#141F1A] hover:bg-[#EBF0EC]'
+              }`}
+            >
+              <Loader2 className={`w-3.5 h-3.5 ${loadingLlmStatus ? 'animate-spin' : ''}`} />
+              <span>Обновить статус</span>
+            </button>
+          </div>
+
+          {/* Status Alert Banner */}
+          <div
+            className={`p-3.5 rounded-xl border flex items-start gap-3 ${
+              llmStatus?.is_ready
+                ? isDark
+                  ? 'bg-[#15271F] border-[#254637] text-[#A3E0C1]'
+                  : 'bg-[#EDF7F2] border-[#B7DEC8] text-[#1B5738]'
+                : isDark
+                  ? 'bg-[#2E2413] border-[#4D3A1B] text-[#E8BF74]'
+                  : 'bg-[#FFF8E6] border-[#F0D597] text-[#8C6212]'
+            }`}
+          >
+            <div className="mt-0.5">
+              {llmStatus?.is_ready ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+              )}
+            </div>
+            <div className="text-xs space-y-1">
+              <div className="font-semibold">
+                {llmStatus?.is_ready ? 'LLM Провайдер активен и готов к генерации' : 'Внимание: API-ключ не настроен'}
+              </div>
+              <div className="opacity-90 leading-relaxed">
+                Активный провайдер:{' '}
+                <span className="font-mono font-bold">{llmStatus?.effective_provider || 'не определен'}</span> | Модель:{' '}
+                <span className="font-mono font-bold">{llmStatus?.effective_model || 'none'}</span>
+                {llmStatus?.status_message && (
+                  <span className="block mt-0.5 opacity-80 text-[11px] font-sans">
+                    Статус: {llmStatus.status_message}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Providers Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* AITunnel Card */}
+            <div
+              className={`p-3.5 rounded-xl border space-y-2.5 ${
+                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-xs text-inherit">AITunnel (Россия/РФ)</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    llmStatus?.providers?.ai_tunnel?.has_key
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}
+                >
+                  {llmStatus?.providers?.ai_tunnel?.has_key ? 'Ключ задан' : 'Ключ отсутствует'}
+                </span>
+              </div>
+              <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                <div>URL: <code className="text-[10px] font-mono">{llmStatus?.providers?.ai_tunnel?.base_url || 'https://api.aitunnel.ru/v1/'}</code></div>
+                <div>Модель: <span className="font-medium text-inherit">{llmStatus?.providers?.ai_tunnel?.model || 'gpt-6-luna-pro'}</span></div>
+                <div className="text-[10px] opacity-75">Переменная: <code>AITUNNEL_API_KEY</code></div>
+              </div>
+            </div>
+
+            {/* Google Gemini Card */}
+            <div
+              className={`p-3.5 rounded-xl border space-y-2.5 ${
+                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-xs text-inherit">Google Gemini</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    llmStatus?.providers?.gemini?.has_key
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}
+                >
+                  {llmStatus?.providers?.gemini?.has_key ? 'Ключ задан' : 'Ключ отсутствует'}
+                </span>
+              </div>
+              <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                <div>SDK: <code className="text-[10px] font-mono">@google/genai</code></div>
+                <div>Модель: <span className="font-medium text-inherit">{llmStatus?.providers?.gemini?.model || 'gemini-3.8-flash'}</span></div>
+                <div className="text-[10px] opacity-75">Переменная: <code>GEMINI_API_KEY</code></div>
+              </div>
+            </div>
+
+            {/* OpenAI Direct Card */}
+            <div
+              className={`p-3.5 rounded-xl border space-y-2.5 ${
+                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-xs text-inherit">OpenAI Direct</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    llmStatus?.providers?.openai?.has_key
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}
+                >
+                  {llmStatus?.providers?.openai?.has_key ? 'Ключ задан' : 'Ключ отсутствует'}
+                </span>
+              </div>
+              <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                <div>URL: <code className="text-[10px] font-mono">{llmStatus?.providers?.openai?.base_url || 'https://api.openai.com/v1'}</code></div>
+                <div>Модель: <span className="font-medium text-inherit">{llmStatus?.providers?.openai?.model || 'gpt-4o-mini'}</span></div>
+                <div className="text-[10px] opacity-75">Переменная: <code>OPENAI_API_KEY</code></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Key Input / Switch Form */}
+          <div
+            className={`p-4 rounded-xl border space-y-3 ${
+              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-[#5B8A78]" />
+                <h4 className="font-semibold text-xs text-inherit">Быстрое подключение ключа в текущей сессии</h4>
+              </div>
+              {configSuccess && (
+                <span className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Настройки применены!
+                </span>
+              )}
+            </div>
+
+            <form onSubmit={handleSaveRuntimeConfig} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className={`block mb-1 text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Провайдер
+                </label>
+                <select
+                  value={selectedProvider}
+                  onChange={e => setSelectedProvider(e.target.value as any)}
+                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                      : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                  }`}
+                >
+                  <option value="ai_tunnel">AITunnel (Россия/РФ)</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="openai">OpenAI Direct</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={`block mb-1 text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  API-ключ
+                </label>
+                <input
+                  type="password"
+                  placeholder="Вставьте API-ключ..."
+                  value={inputApiKey}
+                  onChange={e => setInputApiKey(e.target.value)}
+                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                      : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  disabled={savingConfig || !inputApiKey.trim()}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 shadow-sm ${
+                    isDark
+                      ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
+                      : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+                  } ${savingConfig || !inputApiKey.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {savingConfig ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Применение...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Применить ключ</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Interactive Test Console */}
+          <div
+            className={`p-4 rounded-xl border space-y-3 ${
+              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#5B8A78]" />
+              <h4 className="font-semibold text-xs text-inherit">Тестирование ответа ассистента в реальном времени</h4>
+            </div>
+
+            <form onSubmit={handleTestLlmGeneration} className="space-y-3">
+              <div>
+                <label className={`block mb-1 text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Тестовый вопрос клиента:
+                </label>
+                <textarea
+                  rows={2}
+                  value={testPrompt}
+                  onChange={e => setTestPrompt(e.target.value)}
+                  className={`w-full border rounded-xl p-2.5 text-xs outline-none ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                      : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                  }`}
+                  placeholder="Введите вопрос для проверки LLM..."
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="submit"
+                  disabled={testingLlm || !testPrompt.trim()}
+                  className={`py-2 px-4 rounded-xl text-xs font-medium transition flex items-center gap-2 shadow-sm ${
+                    isDark
+                      ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
+                      : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+                  } ${testingLlm ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  {testingLlm ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Генерация ответа через {llmStatus?.effective_provider}...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Отправить тестовый запрос</span>
+                    </>
+                  )}
+                </button>
+
+                <div className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Правило: Нулевой уровень эмодзи, научная строгость
+                </div>
+              </div>
+            </form>
+
+            {/* Test Result View */}
+            {testResult && (
+              <div
+                className={`mt-3 p-3.5 rounded-xl border text-xs space-y-2 transition-all ${
+                  testResult.success
+                    ? isDark
+                      ? 'bg-[#15231D] border-[#253A30] text-[#E8ECE9]'
+                      : 'bg-[#F2F8F4] border-[#C8DFD2] text-[#141F1A]'
+                    : isDark
+                      ? 'bg-[#31181C] border-[#5A232B] text-[#FFA8B3]'
+                      : 'bg-[#FFF0F2] border-[#F8C1C8] text-[#931D2D]'
+                }`}
+              >
+                <div className="flex items-center justify-between font-medium text-[11px]">
+                  <span>
+                    {testResult.success ? 'Ответ сгенерирован успешно' : 'Ошибка при обращении к провайдеру'}
+                  </span>
+                  {testResult.latency_ms && (
+                    <span className="opacity-75 font-mono text-[10px]">
+                      Время ответа: {testResult.latency_ms} мс | Модель: {testResult.model}
+                    </span>
+                  )}
+                </div>
+
+                {testResult.success ? (
+                  <div className="p-2.5 rounded-lg bg-black/15 font-sans leading-relaxed whitespace-pre-wrap text-xs">
+                    {testResult.answer}
+                  </div>
+                ) : (
+                  <div className="p-2.5 rounded-lg bg-black/20 font-mono text-[11px] leading-relaxed break-all">
+                    {testResult.error}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Render Configuration Guide */}
+          <div
+            className={`p-3.5 rounded-xl border space-y-2 text-xs ${
+              isDark ? 'bg-[#18231E]/50 border-[#253A30]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
+            }`}
+          >
+            <div className="font-semibold text-inherit flex items-center gap-1.5">
+              <Settings className="w-3.5 h-3.5 text-[#5B8A78]" />
+              <span>Как задать ключи на Render.com:</span>
+            </div>
+            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+              Перейдите в панель сервиса на <b>dashboard.render.com</b> → вкладка <b>Environment</b> → добавьте:
+            </p>
+            <ul className={`list-disc list-inside space-y-1 font-mono text-[11px] pl-1 ${isDark ? 'text-[#A5B8AE]' : 'text-[#30483C]'}`}>
+              <li><code>AI_PROVIDER</code> = <code>ai_tunnel</code> (или <code>gemini</code>, <code>openai</code>)</li>
+              <li><code>AITUNNEL_API_KEY</code> = <code>ваш_ключ_от_aitunnel</code></li>
+              <li><code>AITUNNEL_BASE_URL</code> = <code>https://api.aitunnel.ru/v1/</code></li>
+              <li><code>AITUNNEL_MODEL</code> = <code>gpt-6-luna-pro</code></li>
+            </ul>
           </div>
         </div>
       )}
