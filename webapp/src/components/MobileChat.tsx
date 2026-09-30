@@ -152,12 +152,13 @@ export const MobileChat: React.FC<MobileChatProps> = ({
             >
               <div className={`flex items-start gap-2 max-w-[88%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                 {!isUser && (
-                  <img
-                    src="/src/assets/images/ai_librarian_avatar_icon_1790801394939.jpg"
-                    alt="AI Библиотекарь"
-                    referrerPolicy="no-referrer"
-                    className="w-6 h-6 rounded-full object-cover shrink-0 border border-[#2B4A3D] mt-0.5"
-                  />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border mt-0.5 ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#2B4A3D] text-[#7DA295]'
+                      : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
+                  }`}>
+                    <BookOpen className="w-3.5 h-3.5" />
+                  </div>
                 )}
                 <div
                   className={`rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
