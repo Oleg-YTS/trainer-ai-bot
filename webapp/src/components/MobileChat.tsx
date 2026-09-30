@@ -150,37 +150,47 @@ export const MobileChat: React.FC<MobileChatProps> = ({
               key={msg.id}
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
-              <div
-                className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
-                  isUser
-                    ? isDark
-                      ? 'bg-[#24352D] text-[#E8ECE9] rounded-br-none'
-                      : 'bg-[#2B4A3D] text-white rounded-br-none'
-                    : isDark
-                      ? 'bg-[#121B17] border border-[#1F2E27] text-[#E8ECE9] rounded-bl-none'
-                      : 'bg-white border border-[#D8E0DB] text-[#141F1A] rounded-bl-none'
-                }`}
-              >
-                {msg.text}
-
-                {/* Match indicator without pills */}
-                {!isUser && msg.match_score !== undefined && (
-                  <div className={`mt-2 pt-2 border-t flex items-center gap-1.5 text-[10px] ${
-                    isDark ? 'border-[#18231E]' : 'border-[#F0F4F1]'
-                  }`}>
-                    {msg.match_score >= 70 ? (
-                      <span className="flex items-center gap-1 text-[#7DA295]">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Статья из БЗ тренера · Соответствие {msg.match_score}%
-                      </span>
-                    ) : (
-                      <span className={`flex items-center gap-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'}`}>
-                        <BookOpen className="w-3 h-3" />
-                        Сформировано по принципам · Зафиксировано для статьи
-                      </span>
-                    )}
-                  </div>
+              <div className={`flex items-start gap-2 max-w-[88%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                {!isUser && (
+                  <img
+                    src="/src/assets/images/bot_avatar_icon_1790800990843.jpg"
+                    alt="AI Trainer Bot"
+                    referrerPolicy="no-referrer"
+                    className="w-6 h-6 rounded-full object-cover shrink-0 border border-[#2B4A3D] mt-0.5"
+                  />
                 )}
+                <div
+                  className={`rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
+                    isUser
+                      ? isDark
+                        ? 'bg-[#24352D] text-[#E8ECE9] rounded-br-none'
+                        : 'bg-[#2B4A3D] text-white rounded-br-none'
+                      : isDark
+                        ? 'bg-[#121B17] border border-[#1F2E27] text-[#E8ECE9] rounded-bl-none'
+                        : 'bg-white border border-[#D8E0DB] text-[#141F1A] rounded-bl-none'
+                  }`}
+                >
+                  {msg.text}
+
+                  {/* Match indicator without pills */}
+                  {!isUser && msg.match_score !== undefined && (
+                    <div className={`mt-2 pt-2 border-t flex items-center gap-1.5 text-[10px] ${
+                      isDark ? 'border-[#18231E]' : 'border-[#F0F4F1]'
+                    }`}>
+                      {msg.match_score >= 70 ? (
+                        <span className="flex items-center gap-1 text-[#7DA295]">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Статья из БЗ тренера · Соответствие {msg.match_score}%
+                        </span>
+                      ) : (
+                        <span className={`flex items-center gap-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'}`}>
+                          <BookOpen className="w-3 h-3" />
+                          Сформировано по принципам · Зафиксировано для статьи
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <span className={`text-[9px] mt-1 px-1 opacity-50 ${isUser ? 'text-right' : 'text-left'}`}>

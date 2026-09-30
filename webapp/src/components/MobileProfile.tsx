@@ -15,7 +15,8 @@ import {
   Check,
   Package,
   Server,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { apiFetch } from '../api';
 
@@ -145,6 +146,94 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             <Send className="w-3.5 h-3.5" /> Запросить персональное ведение
           </button>
         )}
+      </div>
+
+      {/* Bot Branding & Visual Assets Gallery */}
+      <div className={`p-4 rounded-xl border space-y-3 ${
+        isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-sm flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#7DA295]" />
+            Сгенерированное оформление бота
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-[#18231E] text-[#8E9E96]' : 'bg-[#EBF0EC] text-[#53665C]'}`}>
+            3 варианта
+          </span>
+        </div>
+        <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+          Готовые изображения для аватарки бота в Telegram, шапки канала и иллюстрации персонального тренера:
+        </p>
+
+        <div className="grid grid-cols-1 gap-3 pt-1">
+          {/* Item 1: Avatar Icon */}
+          <div className={`p-3 rounded-xl border flex items-center gap-3 ${isDark ? 'bg-[#18231E] border-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3]'}`}>
+            <img
+              src="/src/assets/images/bot_avatar_icon_1790800990843.jpg"
+              alt="Bot Avatar Icon"
+              referrerPolicy="no-referrer"
+              className="w-14 h-14 rounded-xl object-cover shrink-0 border border-[#2B4A3D] shadow-sm"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-xs text-inherit">Иконка / Аватарка Бот-Ассистента</div>
+              <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Формат 1:1 · Глянцевый 3D стиль</div>
+              <button
+                onClick={() => handleDownloadFile('/src/assets/images/bot_avatar_icon_1790800990843.jpg', 'bot_avatar_icon.jpg')}
+                className={`mt-2 px-2.5 py-1 rounded-lg text-[10px] font-medium transition flex items-center gap-1.5 ${
+                  isDark ? 'bg-[#22352B] text-[#7DA295] hover:bg-[#2C4538]' : 'bg-[#E2EAE5] text-[#2B4A3D] hover:bg-[#D5E1DA]'
+                }`}
+              >
+                <Download className="w-3 h-3" /> Скачать аватарку
+              </button>
+            </div>
+          </div>
+
+          {/* Item 2: Hero Banner */}
+          <div className={`p-3 rounded-xl border space-y-2 ${isDark ? 'bg-[#18231E] border-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3]'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium text-xs text-inherit">Баннер канала / Веб-шапка</div>
+                <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Формат 16:9 · Неоновая аналитика и тренажерный зал</div>
+              </div>
+              <button
+                onClick={() => handleDownloadFile('/src/assets/images/bot_hero_banner_1790801002001.jpg', 'bot_hero_banner.jpg')}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-medium transition flex items-center gap-1.5 shrink-0 ${
+                  isDark ? 'bg-[#22352B] text-[#7DA295] hover:bg-[#2C4538]' : 'bg-[#E2EAE5] text-[#2B4A3D] hover:bg-[#D5E1DA]'
+                }`}
+              >
+                <Download className="w-3 h-3" /> Скачать баннер
+              </button>
+            </div>
+            <img
+              src="/src/assets/images/bot_hero_banner_1790801002001.jpg"
+              alt="Bot Hero Banner"
+              referrerPolicy="no-referrer"
+              className="w-full h-24 rounded-lg object-cover border border-[#2B4A3D] shadow-sm"
+            />
+          </div>
+
+          {/* Item 3: Mascot Concept */}
+          <div className={`p-3 rounded-xl border flex items-center gap-3 ${isDark ? 'bg-[#18231E] border-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3]'}`}>
+            <img
+              src="/src/assets/images/trainer_mascot_1790801011821.jpg"
+              alt="AI Trainer Mascot"
+              referrerPolicy="no-referrer"
+              className="w-14 h-14 rounded-xl object-cover shrink-0 border border-[#2B4A3D] shadow-sm"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-xs text-inherit">Персонаж / Маскот Ассистента</div>
+              <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Формат 1:1 · 3D Иллюстрация тренера с планшетом</div>
+              <button
+                onClick={() => handleDownloadFile('/src/assets/images/trainer_mascot_1790801011821.jpg', 'trainer_mascot.jpg')}
+                className={`mt-2 px-2.5 py-1 rounded-lg text-[10px] font-medium transition flex items-center gap-1.5 ${
+                  isDark ? 'bg-[#22352B] text-[#7DA295] hover:bg-[#2C4538]' : 'bg-[#E2EAE5] text-[#2B4A3D] hover:bg-[#D5E1DA]'
+                }`}
+              >
+                <Download className="w-3 h-3" /> Скачать маскот
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Deployment & Download Section */}
