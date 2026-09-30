@@ -19,6 +19,7 @@ from app.clients.service import read_profile, update_profile
 from app.config.settings import get_settings
 from app.database.models import Client, Escalation, KnowledgeItem, Message
 from app.database.session import get_session_factory
+from app.knowledge.retrieval import search_knowledge
 from app.knowledge.service import CATEGORIES, PUBLISHED_STATUS
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,31 @@ class ProfileUpdateRequest(BaseModel):
     profile: dict[str, Any] | None = None
 
 
+class CreateKnowledgeRequest(BaseModel):
+    title: str
+    content: str
+    category: str
+    status: str = "approved"
+
+
+class UpdateKnowledgeRequest(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    category: str | None = None
+    status: str | None = None
+
+
+class CreateClientRequest(BaseModel):
+    name: str
+    telegram_user_id: int | None = None
+    gender: str = "male"
+
+
+class LLMTestRequest(BaseModel):
+    prompt: str | None = None
+    question: str | None = None
+
+
 async def get_db_session():
     async with get_session_factory()() as session:
         yield session
@@ -77,7 +103,6 @@ async def get_categories(session: AsyncSession = Depends(get_db_session)):
     Returns knowledge base categories with published article counts from PostgreSQL.
     """
     try:
-        # Group articles count by category
         count_stmt = (
             select(KnowledgeItem.category, func.count(KnowledgeItem.id))
             .where(KnowledgeItem.status.in_(["published", "approved"]))
@@ -100,7 +125,6 @@ async def get_categories(session: AsyncSession = Depends(get_db_session)):
             "article_count": counts.get(cat_id, 0),
         })
 
-    # Sort categories to keep predictable order
     ordered_ids = ["training", "nutrition", "recovery", "weight_loss", "muscle_gain", "other"]
     categories_list.sort(key=lambda c: ordered_ids.index(c["id"]) if c["id"] in ordered_ids else 99)
     return categories_list
@@ -120,7 +144,6 @@ async def get_knowledge(
         if status:
             statement = statement.where(KnowledgeItem.status == status)
         else:
-            # Default to public articles for clients
             statement = statement.where(KnowledgeItem.status.in_(["published", "approved"]))
 
         if category:
@@ -135,7 +158,7 @@ async def get_knowledge(
                 "id": item.id,
                 "trainer_id": item.trainer_id,
                 "category": item.category,
-                "category_id": item.category,  # Frontend compatibility alias
+                "category_id": item.category,
                 "title": item.title,
                 "content": item.content,
                 "status": item.status,
@@ -174,6 +197,100 @@ async def get_knowledge_item(item_id: int, session: AsyncSession = Depends(get_d
         raise HTTPException(status_code=500, detail="Database error")
 
 
+@router.post("/knowledge")
+async def create_knowledge_item_endpoint(payload: CreateKnowledgeRequest, session: AsyncSession = Depends(get_db_session)):
+    """
+    Creates a new knowledge article in PostgreSQL.
+    """
+    cat = payload.category if payload.category in CATEGORIES else "other"
+    try:
+        item = KnowledgeItem(
+            trainer_id=get_settings().trainer_id,
+            category=cat,
+            title=payload.title,
+            content=payload.content,
+            status=payload.status if payload.status in ["approved", "published", "draft"] else "approved"
+        )
+        session.add(item)
+        await session.commit()
+        await session.refresh(item)
+        return {
+            "ok": True,
+            "item": {
+                "id": item.id,
+                "trainer_id": item.trainer_id,
+                "category": item.category,
+                "category_id": item.category,
+                "title": item.title,
+                "content": item.content,
+                "status": item.status,
+                "author_is_trainer": True,
+                "created_at": item.created_at.isoformat() if item.created_at else "",
+            }
+        }
+    except SQLAlchemyError as exc:
+        logger.error("Failed to create knowledge item: %s", exc)
+        raise HTTPException(status_code=400, detail="Could not create knowledge article")
+
+
+@router.put("/knowledge/{item_id}")
+async def update_knowledge_item_endpoint(item_id: int, payload: UpdateKnowledgeRequest, session: AsyncSession = Depends(get_db_session)):
+    """
+    Updates an existing knowledge article in PostgreSQL.
+    """
+    try:
+        item = await session.get(KnowledgeItem, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        if payload.title is not None:
+            item.title = payload.title
+        if payload.content is not None:
+            item.content = payload.content
+        if payload.category is not None and payload.category in CATEGORIES:
+            item.category = payload.category
+        if payload.status is not None and payload.status in ["approved", "published", "draft", "archived"]:
+            item.status = payload.status
+
+        await session.commit()
+        await session.refresh(item)
+        return {
+            "ok": True,
+            "item": {
+                "id": item.id,
+                "trainer_id": item.trainer_id,
+                "category": item.category,
+                "category_id": item.category,
+                "title": item.title,
+                "content": item.content,
+                "status": item.status,
+                "author_is_trainer": True,
+                "created_at": item.created_at.isoformat() if item.created_at else "",
+            }
+        }
+    except SQLAlchemyError as exc:
+        logger.error("Failed to update knowledge item %s: %s", item_id, exc)
+        raise HTTPException(status_code=400, detail="Could not update knowledge article")
+
+
+@router.delete("/knowledge/{item_id}")
+async def delete_knowledge_item_endpoint(item_id: int, session: AsyncSession = Depends(get_db_session)):
+    """
+    Archives or deletes a knowledge article in PostgreSQL.
+    """
+    try:
+        item = await session.get(KnowledgeItem, item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        await session.delete(item)
+        await session.commit()
+        return {"ok": True, "deleted_id": item_id}
+    except SQLAlchemyError as exc:
+        logger.error("Failed to delete knowledge item %s: %s", item_id, exc)
+        raise HTTPException(status_code=400, detail="Could not delete knowledge article")
+
+
 @router.post("/chat")
 async def chat_endpoint(payload: ChatRequest):
     """
@@ -186,14 +303,12 @@ async def chat_endpoint(payload: ChatRequest):
 
     client_id = payload.client_id or 1
 
-    # 1. Record incoming user message
     try:
         user_msg = await record_message(client_id, USER_ROLE, text)
     except (SQLAlchemyError, RuntimeError) as exc:
         logger.warning("Saving user message failed: %s", exc)
         user_msg = None
 
-    # 2. Generate grounded AI response
     orchestrator = get_orchestrator()
     if not orchestrator.is_configured:
         answer_text = AI_UNAVAILABLE_TEXT
@@ -207,7 +322,6 @@ async def chat_endpoint(payload: ChatRequest):
             logger.error("Unexpected error in build_grounded_answer: %s", exc)
             answer_text = AI_UNAVAILABLE_TEXT
 
-    # 3. Record assistant answer
     try:
         asst_msg = await record_message(client_id, ASSISTANT_ROLE, answer_text)
     except (SQLAlchemyError, RuntimeError) as exc:
@@ -231,6 +345,98 @@ async def chat_endpoint(payload: ChatRequest):
             "created_at": user_msg.created_at.isoformat() if user_msg and user_msg.created_at else "",
         },
     }
+
+
+@router.get("/clients")
+async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
+    """
+    Returns list of all clients in PostgreSQL.
+    """
+    try:
+        statement = select(Client).order_by(Client.id.desc())
+        result = await session.execute(statement)
+        clients = result.scalars().all()
+
+        client_list = []
+        for c in clients:
+            try:
+                prof = read_profile(c.id) if c else {}
+            except Exception:
+                prof = {}
+            msg_count_stmt = select(func.count(Message.id)).where(Message.client_id == c.id)
+            msg_count = await session.scalar(msg_count_stmt) or 0
+
+            client_list.append({
+                "id": c.id,
+                "trainer_id": c.trainer_id,
+                "name": c.name,
+                "telegram_user_id": c.telegram_user_id,
+                "created_at": c.created_at.isoformat() if c.created_at else "",
+                "messages_count": msg_count,
+                "profile": prof,
+            })
+        return client_list
+    except SQLAlchemyError as exc:
+        logger.error("Failed to list clients: %s", exc)
+        return []
+
+
+@router.post("/clients")
+async def create_client_endpoint(payload: CreateClientRequest, session: AsyncSession = Depends(get_db_session)):
+    """
+    Creates/registers a new client in PostgreSQL.
+    """
+    try:
+        client = Client(
+            trainer_id=get_settings().trainer_id,
+            name=payload.name,
+            telegram_user_id=payload.telegram_user_id,
+            profile_json=json.dumps({"name": payload.name, "gender": payload.gender}, ensure_ascii=False)
+        )
+        session.add(client)
+        await session.commit()
+        await session.refresh(client)
+        return {
+            "ok": True,
+            "client": {
+                "id": client.id,
+                "name": client.name,
+                "telegram_user_id": client.telegram_user_id,
+                "created_at": client.created_at.isoformat() if client.created_at else "",
+            }
+        }
+    except SQLAlchemyError as exc:
+        logger.error("Failed to create client: %s", exc)
+        raise HTTPException(status_code=400, detail="Could not create client")
+
+
+@router.get("/clients/{client_id}")
+async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_db_session)):
+    """
+    Returns client profile and recent messages.
+    """
+    try:
+        client = await session.get(Client, client_id)
+        messages = await get_history(session, client_id, limit=30)
+        profile = await read_profile(client_id) if client else {}
+        return {
+            "id": client_id,
+            "name": client.name if client else "Клиент",
+            "profile": profile,
+            "messages": [
+                {
+                    "id": m.id,
+                    "client_id": m.client_id,
+                    "role": m.role,
+                    "text": m.text,
+                    "created_at": m.created_at.isoformat() if m.created_at else "",
+                }
+                for m in messages
+            ],
+        }
+    except Exception as exc:
+        logger.warning("Failed to fetch client %s: %s", client_id, exc)
+        return {"id": client_id, "name": "Клиент", "profile": {}, "messages": []}
 
 
 @router.get("/client/messages")
@@ -303,33 +509,104 @@ async def update_client_profile_endpoint(payload: ProfileUpdateRequest):
         raise HTTPException(status_code=400, detail=str(exc))
 
 
-@router.get("/clients/{client_id}")
-async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_db_session)):
+@router.get("/llm/status")
+async def get_llm_status_endpoint():
     """
-    Returns client profile and recent messages.
+    Returns LLM status and active configuration.
     """
-    try:
-        client = await session.get(Client, client_id)
-        messages = await get_history(session, client_id, limit=30)
-        profile = await read_profile(client_id) if client else {}
+    settings = get_settings()
+    orchestrator = get_orchestrator()
+
+    return {
+        "configured": orchestrator.is_configured,
+        "provider": settings.ai_provider,
+        "model": settings.aitunnel_model if settings.ai_provider == "ai_tunnel" else settings.openai_model,
+        "has_key": bool(settings.aitunnel_api_key or settings.openai_api_key),
+    }
+
+
+@router.post("/llm/test")
+async def test_llm_generation_endpoint(payload: LLMTestRequest, session: AsyncSession = Depends(get_db_session)):
+    """
+    Diagnostic endpoint to test LLM classification, retrieval, and grounding logic.
+    """
+    q = (payload.prompt or payload.question or "").strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="Prompt is required")
+
+    orchestrator = get_orchestrator()
+    if not orchestrator.is_configured:
         return {
-            "id": client_id,
-            "name": client.name if client else "Клиент",
-            "profile": profile,
-            "messages": [
-                {
-                    "id": m.id,
-                    "client_id": m.client_id,
-                    "role": m.role,
-                    "text": m.text,
-                    "created_at": m.created_at.isoformat() if m.created_at else "",
-                }
-                for m in messages
+            "success": False,
+            "error": "ИИ провайдер не настроен. Проверьте AITUNNEL_API_KEY в переменных окружения.",
+        }
+
+    try:
+        classification = await orchestrator.classify(q)
+        cat = getattr(classification, "category", "other")
+
+        knowledge = await search_knowledge(
+            session, get_settings().trainer_id, q, category=cat if cat in CATEGORIES else None, limit=5
+        )
+
+        answer_text = await build_grounded_answer(orchestrator, client_id=1, question=q)
+
+        return {
+            "success": True,
+            "question": q,
+            "classified_category": cat,
+            "matched_kb_count": len(knowledge),
+            "matched_articles": [
+                {"id": k.id, "title": k.title, "category": k.category}
+                for k in knowledge
             ],
+            "generated_answer": answer_text,
         }
     except Exception as exc:
-        logger.warning("Failed to fetch client %s: %s", client_id, exc)
-        return {"id": client_id, "name": "Клиент", "profile": {}, "messages": []}
+        logger.error("LLM test failed: %s", exc)
+        return {"success": False, "error": str(exc)}
+
+
+@router.get("/escalations")
+async def get_escalations_endpoint(session: AsyncSession = Depends(get_db_session)):
+    """
+    Returns open escalations needing trainer attention.
+    """
+    try:
+        statement = select(Escalation).order_by(Escalation.id.desc())
+        result = await session.execute(statement)
+        escalations = result.scalars().all()
+        return [
+            {
+                "id": e.id,
+                "client_id": e.client_id,
+                "reason": e.reason,
+                "question": e.question,
+                "status": e.status,
+                "created_at": e.created_at.isoformat() if e.created_at else "",
+            }
+            for e in escalations
+        ]
+    except SQLAlchemyError as exc:
+        logger.error("Failed to list escalations: %s", exc)
+        return []
+
+
+@router.post("/escalations/{escalation_id}/resolve")
+async def resolve_escalation_endpoint(escalation_id: int, session: AsyncSession = Depends(get_db_session)):
+    """
+    Marks an escalation as resolved in PostgreSQL.
+    """
+    try:
+        esc = await session.get(Escalation, escalation_id)
+        if not esc:
+            raise HTTPException(status_code=404, detail="Escalation not found")
+        esc.status = "resolved"
+        await session.commit()
+        return {"ok": True, "id": escalation_id}
+    except SQLAlchemyError as exc:
+        logger.error("Failed to resolve escalation %s: %s", escalation_id, exc)
+        raise HTTPException(status_code=400, detail="Could not resolve escalation")
 
 
 @router.get("/stats")
