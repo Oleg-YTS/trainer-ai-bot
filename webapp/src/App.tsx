@@ -4,7 +4,7 @@ import { MobileChat } from './components/MobileChat';
 import { MobileProfile } from './components/MobileProfile';
 import { TrainerDashboard } from './components/TrainerDashboard';
 import { InstallModal } from './components/InstallModal';
-import { FolderTree, BookOpen, User, Sun, Moon } from 'lucide-react';
+import { FolderTree, Bot, User, Sun, Moon } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Theme state: dark (Obsidian Green) or light (Mineral Light)
@@ -36,12 +36,12 @@ export const App: React.FC = () => {
       }}
     >
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Minimalist Header (Strictly NO banners, NO pill badges) */}
+        {/* Minimalist Header (Strictly NO banners, NO pill badges, Seamless) */}
         <header
-          className={`shrink-0 px-4 py-3 border-b flex items-center justify-between transition-colors z-20 ${
+          className={`shrink-0 px-4 py-3 flex items-center justify-between transition-colors z-20 ${
             isDark
-              ? 'bg-[#121B17]/95 border-[#1F2E27] text-[#E8ECE9]'
-              : 'bg-white/95 border-[#D8E0DB] text-[#141F1A]'
+              ? 'bg-[#121B17]/95 text-[#E8ECE9]'
+              : 'bg-white/95 text-[#141F1A]'
           }`}
           style={{ paddingTop: 'calc(0.75rem + var(--safe-top, 0px))' }}
         >
@@ -50,7 +50,7 @@ export const App: React.FC = () => {
             <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
               isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'
             }`}>
-              <BookOpen className="w-4 h-4" />
+              <Bot className="w-4 h-4" />
             </div>
             <span className="font-semibold text-sm tracking-tight text-inherit">
               AI Библиотекарь
@@ -120,34 +120,23 @@ export const App: React.FC = () => {
           )}
         </main>
 
-        {/* Floating 3-Section Navigation Bar (10% viewport height, pure glass without border) */}
+        {/* Floating 3-Section Navigation Bar (Liquid Glass Capsule) */}
         {activeTab !== 'trainer' && (
           <div
-            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 px-3 pointer-events-none"
-            style={{ paddingBottom: 'calc(0.5rem + var(--safe-bottom, 0px))' }}
+            className="fixed bottom-3 left-0 right-0 max-w-[310px] mx-auto z-40 px-2 pointer-events-none"
+            style={{ paddingBottom: 'calc(0.25rem + var(--safe-bottom, 0px))' }}
           >
-            {/* Soft upward blur gradient that creates the effect of content sliding behind the floating glass */}
-            <div
-              className={`absolute -top-8 inset-x-0 h-8 pointer-events-none ${
-                isDark
-                  ? 'bg-gradient-to-t from-[#0A100D] via-[#0A100D]/50 to-transparent backdrop-blur-sm'
-                  : 'bg-gradient-to-t from-[#F4F6F4] via-[#F4F6F4]/50 to-transparent backdrop-blur-sm'
-              }`}
-            />
-
-            {/* Floating Pure Glass Navigation Container */}
+            {/* Floating Pure Glass Capsule Navigation Container */}
             <nav
-              className={`relative pointer-events-auto rounded-2xl h-[10vh] min-h-[64px] max-h-[80px] shadow-2xl backdrop-blur-xl px-2 py-1 flex items-center transition-colors ${
-                isDark
-                  ? 'bg-[#121B17]/70 text-[#E8ECE9]'
-                  : 'bg-white/70 text-[#141F1A]'
+              className={`relative pointer-events-auto rounded-full h-14 px-3 flex items-center transition-all ${
+                isDark ? 'glass-nav-dark text-[#E8ECE9]' : 'glass-nav-light text-[#141F1A]'
               }`}
             >
               <div className="grid grid-cols-3 items-center w-full">
                 {/* 1. База (Left) */}
                 <button
                   onClick={() => setActiveTab('catalog')}
-                  className={`flex flex-col items-center justify-center transition ${
+                  className={`flex flex-col items-center justify-center transition active:scale-95 ${
                     activeTab === 'catalog'
                       ? isDark
                         ? 'text-[#7DA295] font-semibold'
@@ -161,26 +150,26 @@ export const App: React.FC = () => {
                   <span className="text-[10px]">База</span>
                 </button>
 
-                {/* 2. Библиотекарь (Center - Elevated slightly above the line) */}
+                {/* 2. Библиотекарь (Center - Elevated above center line & slightly larger) */}
                 <button
                   onClick={() => setActiveTab('chat')}
-                  className="flex flex-col items-center justify-center -translate-y-2 transition group"
+                  className="flex flex-col items-center justify-center -translate-y-3 transition group relative"
                 >
                   <div
-                    className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-transform group-active:scale-95 ${
+                    className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xl border transition-transform group-active:scale-95 ${
                       activeTab === 'chat'
                         ? isDark
-                          ? 'bg-[#5B8A78] text-[#0A100D]'
-                          : 'bg-[#2B4A3D] text-white'
+                          ? 'bg-[#5B8A78] text-[#0A100D] border-[#7DA295]/50 ring-2 ring-[#5B8A78]/30'
+                          : 'bg-[#2B4A3D] text-white border-[#3C6150]/50 ring-2 ring-[#2B4A3D]/20'
                         : isDark
-                          ? 'bg-[#18231E]/90 text-[#8E9E96]'
-                          : 'bg-[#EBF0EC]/90 text-[#53665C]'
+                          ? 'bg-[#18231E] text-[#8E9E96] border-[#22352B]'
+                          : 'bg-white text-[#53665C] border-[#D8E0DB]'
                     }`}
                   >
-                    <BookOpen className="w-5 h-5" />
+                    <Bot className="w-5 h-5" />
                   </div>
                   <span
-                    className={`text-[10px] mt-0.5 ${
+                    className={`text-[10px] mt-0.5 font-medium ${
                       activeTab === 'chat'
                         ? isDark
                           ? 'text-[#7DA295] font-semibold'
@@ -197,7 +186,7 @@ export const App: React.FC = () => {
                 {/* 3. Профиль (Right) */}
                 <button
                   onClick={() => setActiveTab('profile')}
-                  className={`flex flex-col items-center justify-center transition ${
+                  className={`flex flex-col items-center justify-center transition active:scale-95 ${
                     activeTab === 'profile'
                       ? isDark
                         ? 'text-[#7DA295] font-semibold'

@@ -69,3 +69,20 @@
   background: #D8E0DB;
   border-radius: 4px;
 }
+
+/* Liquid Frosted Glass Navigation Bar */
+.glass-nav-dark {
+  background: rgba(18, 27, 23, 0.55) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+.glass-nav-light {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 10px 30px -5px rgba(31, 38, 135, 0.12) !important;
+}

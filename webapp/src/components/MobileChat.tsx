@@ -107,40 +107,6 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Quick Prompts Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 shrink-0 no-scrollbar text-[11px]">
-        <button
-          onClick={() => handleSendMessage('Какие правила приема креатина моногидрата?')}
-          className={`px-2.5 py-1.5 rounded-lg border whitespace-nowrap transition shrink-0 ${
-            isDark
-              ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96] hover:text-[#E8ECE9]'
-              : 'bg-white border-[#D8E0DB] text-[#53665C] hover:text-[#141F1A]'
-          }`}
-        >
-          Креатин (соответствие &gt;=70%)
-        </button>
-        <button
-          onClick={() => handleSendMessage('Сколько отдыхать между тяжелыми подходами?')}
-          className={`px-2.5 py-1.5 rounded-lg border whitespace-nowrap transition shrink-0 ${
-            isDark
-              ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96] hover:text-[#E8ECE9]'
-              : 'bg-white border-[#D8E0DB] text-[#53665C] hover:text-[#141F1A]'
-          }`}
-        >
-          Отдых (аналитика &lt;70%)
-        </button>
-        <button
-          onClick={() => handleSendMessage('Появилась боль в колене при выпадах')}
-          className={`px-2.5 py-1.5 rounded-lg border whitespace-nowrap transition shrink-0 ${
-            isDark
-              ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96] hover:text-[#E8ECE9]'
-              : 'bg-white border-[#D8E0DB] text-[#53665C] hover:text-[#141F1A]'
-          }`}
-        >
-          Боль в колене (эскалация)
-        </button>
-      </div>
-
       {/* Messages Feed */}
       <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 pb-4">
         {messages.map(msg => {
@@ -150,15 +116,14 @@ export const MobileChat: React.FC<MobileChatProps> = ({
               key={msg.id}
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
-              <div className={`flex items-start gap-2 max-w-[88%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`flex items-end gap-2 max-w-[88%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                 {!isUser && (
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 border mt-0.5 ${
-                    isDark
-                      ? 'bg-[#18231E] border-[#2B4A3D] text-[#7DA295]'
-                      : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
-                  }`}>
-                    <BookOpen className="w-3.5 h-3.5" />
-                  </div>
+                  <img
+                    src="/assets/images/trainer_mascot_avatar_icon_1790802380770.jpg"
+                    alt="Маскот / Аватар Ассистента"
+                    referrerPolicy="no-referrer"
+                    className="w-6 h-6 rounded-full object-cover shrink-0 border border-[#2B4A3D] mb-0.5 shadow-sm"
+                  />
                 )}
                 <div
                   className={`rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
@@ -212,14 +177,12 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Field */}
-      <div className={`pt-2 border-t shrink-0 ${
-        isDark ? 'border-[#1F2E27]' : 'border-[#D8E0DB]'
-      }`}>
-        <div className={`flex items-center gap-2 rounded-xl border p-1 pl-3.5 transition ${
+      {/* Seamless Floating Input Capsule (NO border-t) */}
+      <div className="pt-2 shrink-0">
+        <div className={`flex items-center gap-2 rounded-full p-1 pl-4 transition shadow-sm ${
           isDark
-            ? 'bg-[#121B17] border-[#1F2E27] focus-within:border-[#5B8A78]'
-            : 'bg-white border-[#D8E0DB] focus-within:border-[#2B4A3D]'
+            ? 'bg-[#121B17] border border-[#1F2E27] focus-within:border-[#5B8A78]'
+            : 'bg-white border border-[#D8E0DB] focus-within:border-[#2B4A3D]'
         }`}>
           <input
             type="text"
@@ -234,7 +197,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
           <button
             onClick={() => handleSendMessage()}
             disabled={!inputText.trim() || loading}
-            className={`p-2 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed ${
+            className={`p-2.5 rounded-full transition disabled:opacity-30 disabled:cursor-not-allowed ${
               isDark
                 ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                 : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
