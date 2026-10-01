@@ -30,9 +30,9 @@ export const App: React.FC = () => {
   // Authenticated Telegram / Web Client identity
   const [isResolving, setIsResolving] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<CurrentUser>({
-    id: 0,
+    id: 1,
     telegram_user_id: null,
-    name: 'Загрузка...',
+    name: 'Пользователь',
     is_admin: false,
     is_vip: false
   });

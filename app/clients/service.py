@@ -59,7 +59,18 @@ async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, A
     async with get_session_factory()() as session:
         client = await session.get(Client, client_id)
         if client is None:
-            raise ValueError(f"unknown client: {client_id}")
+            settings = get_settings()
+            trainer = await get_or_create_trainer(session, settings.trainer_id)
+            client = Client(
+                trainer_id=trainer.id,
+                telegram_user_id=client_id,
+                name=profile.get("name") or f"Пользователь #{client_id}",
+                profile_json="{}"
+            )
+            session.add(client)
+            await session.commit()
+            await session.refresh(client)
+
         existing = parse_profile(client.profile_json)
         existing.update({k: v for k, v in profile.items() if v is not None})
         client.profile_json = json.dumps(existing, ensure_ascii=False)
