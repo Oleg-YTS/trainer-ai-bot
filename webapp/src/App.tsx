@@ -270,24 +270,8 @@ export const App: React.FC = () => {
             </span>
           </div>
 
-          {/* Right: Sandbox role toggle, theme & version */}
+          {/* Right: Theme toggle & Trainer Panel button if admin */}
           <div className="flex items-center gap-2">
-            {/* Testing Role Switcher */}
-            <select
-              value={currentUser.is_admin ? 'admin' : currentUser.is_vip ? 'vip' : 'subscriber'}
-              onChange={(e) => setUserRole(e.target.value as 'admin' | 'vip' | 'subscriber')}
-              className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition outline-none cursor-pointer border ${
-                isDark
-                  ? 'bg-[#182620] border-[#2B4A3D] text-[#7DA295]'
-                  : 'bg-[#F4F7F5] border-[#D0DCD5] text-[#2B4A3D]'
-              }`}
-              title="Переключение роли (для тестирования)"
-            >
-              <option value="subscriber">Простой</option>
-              <option value="vip">VIP</option>
-              <option value="admin">Админ</option>
-            </select>
-
             {currentUser.is_admin && (
               <button
                 onClick={() => setActiveTab('trainer')}
