@@ -4,6 +4,7 @@ import { MobileChat } from './components/MobileChat';
 import { MobileProfile } from './components/MobileProfile';
 import { TrainerDashboard } from './components/TrainerDashboard';
 import { InstallModal } from './components/InstallModal';
+import { OnboardingModal } from './components/OnboardingModal';
 import { FolderTree, Bot, User, Sun, Moon } from 'lucide-react';
 import { apiFetch } from './api';
 
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'catalog' | 'chat' | 'profile' | 'trainer'>('chat');
   const [chatInitialQuery, setChatInitialQuery] = useState<string>('');
   const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState<boolean>(false);
 
   // Authenticated Telegram / Web Client identity
   const [isResolving, setIsResolving] = useState<boolean>(true);
@@ -189,6 +191,15 @@ export const App: React.FC = () => {
             is_admin: Boolean(data.is_admin),
             is_vip: Boolean(data.is_vip)
           });
+
+          // Show Onboarding modal if profile gender is missing or onboarding not completed
+          try {
+            const onboardingDone = localStorage.getItem(`trainer_onboarding_done_${data.id}`);
+            const hasGender = data.profile && typeof data.profile === 'object' && data.profile.gender;
+            if (!onboardingDone || !hasGender) {
+              setShowOnboardingModal(true);
+            }
+          } catch {}
         }
       }
     } catch (err) {
@@ -471,6 +482,18 @@ export const App: React.FC = () => {
           isOpen={showInstallModal}
           onClose={() => setShowInstallModal(false)}
           isDark={isDark}
+        />
+
+        {/* First-time User Onboarding Modal (Name + Gender) */}
+        <OnboardingModal
+          isOpen={showOnboardingModal}
+          clientId={currentUser.id}
+          initialName={currentUser.name}
+          isDark={isDark}
+          onComplete={(updatedName) => {
+            setCurrentUser(prev => ({ ...prev, name: updatedName }));
+            setShowOnboardingModal(false);
+          }}
         />
       </div>
     </div>
