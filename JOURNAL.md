@@ -944,3 +944,42 @@ WebApp полностью подготовлен к работе как един
 
 ### RESULT
 Релиз успешно собран и подготовлен к deploy на боевой сервер Render.
+
+---
+
+## [Задача #4] Реализация автоматической инициализации БД, первичной регистрации и JSON-хранилища
+
+### Статус: ✅ Завершено
+
+### TASK
+Реализация архитектуры первичной регистрации пользователя со всеми полями по умолчанию, автоматическая инициализация таблиц PostgreSQL при старте и сохранение локальных JSON-файлов профиля (`data/users/{client_id}.json`).
+
+### GOAL
+1. Добавить автоматическое создание таблиц PostgreSQL при запуске бэкенда (`Base.metadata.create_all`).
+2. Обеспечить мгновенную первичную регистрацию пользователя со всеми необходимыми полями (роли, анкета) при первом же входе.
+3. Добавить локальное JSON-хранилище `data/users/user_{client_id}.json` для каждого пользователя.
+4. Устранить проблему с пустой базой и ошибками сохранения профиля.
+
+### CHANGES
+- **app/main.py**:
+  - В `lifespan` добавлен автоматический вызов `Base.metadata.create_all` при запуске приложения.
+- **app/database/models.py**:
+  - В модель `Client` добавлено поле `created_at`.
+- **app/clients/json_store.py**:
+  - Создан модуль для чтения и сохранения профилей пользователей в `data/users/user_{client_id}.json`.
+- **app/clients/service.py**:
+  - Добавлена функция `build_default_profile` со всеми полями профиля и ролей.
+  - В `get_or_create_client`, `read_profile` и `update_profile` добавлено автосоздание полного профиля в PostgreSQL и сохранение в JSON-файл.
+- **app/api/web.py**:
+  - В `/api/client/resolve` и `/api/client/profile` интегрированы вызовы `build_default_profile` и `save_profile_to_json_file`.
+- **webapp/src/App.tsx**:
+  - Дефолтный `currentUser.id` установлен в `1`.
+- **webapp/src/components/MobileProfile.tsx**:
+  - Добавлен фолбэк `targetId = clientId || 1` в `loadProfile` и `handleSaveProfile`.
+
+### VERIFICATION
+- `compile_applet`: успешно (0 ошибок).
+- `lint_applet`: успешно (0 ошибок).
+
+### RESULT
+Изменения закомичены и отправлены в `main` на GitHub/Render.

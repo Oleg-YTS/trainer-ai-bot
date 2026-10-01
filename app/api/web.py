@@ -9,13 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.service import AnswerUnavailable, build_grounded_answer
 from app.bot.router import AI_UNAVAILABLE_TEXT, get_orchestrator
+from app.clients.json_store import save_profile_to_json_file
 from app.clients.messages import (
     ASSISTANT_ROLE,
     USER_ROLE,
     get_history,
     record_message,
 )
-from app.clients.service import read_profile, update_profile
+from app.clients.service import build_default_profile, parse_profile, read_profile, update_profile
 from app.config.settings import get_settings
 from app.database.models import Client, Escalation, KnowledgeItem, Message
 from app.database.session import get_session_factory
@@ -441,15 +442,36 @@ async def resolve_client_endpoint(
     tg_username = (payload.username if payload else None) or username
 
     if not tg_id:
+        stmt = select(Client).where((Client.id == 1) | (Client.telegram_user_id == 0))
+        res = await session.execute(stmt)
+        client = res.scalar_one_or_none()
+        if client is None:
+            display_name = client_name or "Гость"
+            default_prof = build_default_profile(name=display_name, is_admin=False, is_vip=False)
+            client = Client(
+                trainer_id=settings.trainer_id,
+                name=display_name,
+                telegram_user_id=0,
+                profile_json=json.dumps(default_prof, ensure_ascii=False)
+            )
+            session.add(client)
+            await session.commit()
+            await session.refresh(client)
+            save_profile_to_json_file(client.id, default_prof)
+        
+        prof = parse_profile(client.profile_json)
+        is_admin_val = settings.is_admin_telegram_id(0) or bool(prof.get("is_admin", False))
+        is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
+
         return {
             "ok": True,
-            "id": 1,
-            "client_id": 1,
-            "telegram_user_id": None,
-            "name": client_name or "Гость",
-            "is_admin": False,
-            "is_vip": False,
-            "profile": {}
+            "id": client.id,
+            "client_id": client.id,
+            "telegram_user_id": client.telegram_user_id,
+            "name": client.name,
+            "is_admin": is_admin_val,
+            "is_vip": is_vip_val,
+            "profile": prof
         }
 
     stmt = select(Client).where(Client.telegram_user_id == tg_id)
@@ -458,16 +480,20 @@ async def resolve_client_endpoint(
 
     if client is None:
         display_name = client_name or (f"@{tg_username}" if tg_username else f"User {tg_id}")
+        is_admin_val = settings.is_admin_telegram_id(tg_id)
+        is_vip_val = is_admin_val
+        default_prof = build_default_profile(name=display_name, is_admin=is_admin_val, is_vip=is_vip_val)
         client = Client(
             trainer_id=settings.trainer_id,
             name=display_name,
             telegram_user_id=tg_id,
-            profile_json=json.dumps({"name": display_name}, ensure_ascii=False)
+            profile_json=json.dumps(default_prof, ensure_ascii=False)
         )
         session.add(client)
         await session.commit()
         await session.refresh(client)
-        prof = {"name": display_name}
+        save_profile_to_json_file(client.id, default_prof)
+        prof = default_prof
     else:
         try:
             prof = await read_profile(client.id)
@@ -687,15 +713,38 @@ async def update_client_profile_endpoint(
     """
     Updates client profile in PostgreSQL. Supports root-level fields and nested profile payloads.
     """
-    if not payload.client_id:
-        raise HTTPException(status_code=400, detail="client_id is required")
-
-    client_id = payload.client_id
+    client_id = payload.client_id or 1
     client_obj = await session.get(Client, client_id)
+    settings = get_settings()
+
     if not client_obj:
-        raise HTTPException(status_code=440, detail=f"Client {client_id} not found")
+        initial_name = payload.name or f"Пользователь #{client_id}"
+        is_admin = settings.is_admin_telegram_id(client_id) or bool(payload.is_admin)
+        is_vip = is_admin or bool(payload.is_vip)
+        
+        default_prof = build_default_profile(
+            name=initial_name,
+            gender=payload.gender or "male",
+            is_admin=is_admin,
+            is_vip=is_vip
+        )
+        client_obj = Client(
+            trainer_id=settings.trainer_id,
+            telegram_user_id=client_id,
+            name=initial_name,
+            profile_json=json.dumps(default_prof, ensure_ascii=False)
+        )
+        session.add(client_obj)
+        await session.commit()
+        await session.refresh(client_obj)
 
     existing_profile = parse_profile(client_obj.profile_json)
+    if not existing_profile:
+        existing_profile = build_default_profile(
+            name=client_obj.name,
+            is_admin=settings.is_admin_telegram_id(client_obj.telegram_user_id)
+        )
+    
     new_data = dict(existing_profile)
 
     if payload.profile:

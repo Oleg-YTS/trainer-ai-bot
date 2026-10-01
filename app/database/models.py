@@ -20,6 +20,7 @@ class Client(Base):
     telegram_user_id: Mapped[int] = mapped_column(Integer, unique=True)
     name: Mapped[str] = mapped_column(String(200))
     profile_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 class KnowledgeItem(Base):
     __tablename__ = "knowledge_items"
