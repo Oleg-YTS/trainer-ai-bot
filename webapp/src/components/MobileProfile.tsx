@@ -35,7 +35,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   onToggleTheme,
   onOpenInstallModal,
   onOpenTrainerDashboard,
-  clientId = 1,
+  clientId,
   isAdmin: userIsAdmin = false,
   isVip: userIsVip = false,
   onRefreshUser

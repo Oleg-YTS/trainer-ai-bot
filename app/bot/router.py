@@ -183,7 +183,7 @@ async def start(message: Message, state: FSMContext) -> None:
 
     if is_profile_complete(profile):
         greeting = PROFILE_GREETING.format(name=profile.get("name", ""))
-        await message.answer(f"{greeting}\n\n{TOPICS_TEXT}", reply_markup=topics_keyboard())
+        await message.answer(f"{greeting}\n\n{TOPICS_TEXT}", reply_markup=topics_keyboard(message.from_user.id if message.from_user else None))
         return
 
     await message.answer(WELCOME_TEXT)
@@ -199,7 +199,7 @@ async def show_profile(message: Message, state: FSMContext) -> None:
         await ask_name(message, state)
         return
 
-    await message.answer(profile_text(profile), reply_markup=profile_keyboard())
+    await message.answer(profile_text(profile), reply_markup=profile_keyboard(message.from_user.id if message.from_user else None))
 
 
 @router.message(Onboarding.name)

@@ -27,7 +27,7 @@ export const App: React.FC = () => {
   const [chatInitialQuery, setChatInitialQuery] = useState<string>('');
   const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
 
-  // Authenticated Telegram Client identity
+  // Authenticated Telegram / Web Client identity
   const [isResolving, setIsResolving] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<CurrentUser>({
     id: 1,
@@ -37,19 +37,50 @@ export const App: React.FC = () => {
     is_vip: false
   });
 
-  const resolveCurrentUser = async () => {
+  // Get or create unique browser device_id for web sessions
+  const getOrCreateDeviceId = (): string => {
     try {
-      setIsResolving(true);
-      // Clear any legacy role pollution from localStorage
+      let deviceId = localStorage.getItem('trainer_device_id');
+      if (!deviceId) {
+        deviceId = 'device_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+        localStorage.setItem('trainer_device_id', deviceId);
+      }
+      return deviceId;
+    } catch {
+      return 'device_' + Date.now();
+    }
+  };
+
+  const resolveCurrentUser = async () => {
+    setIsResolving(true);
+    const timeoutTimer = setTimeout(() => {
+      setIsResolving(false);
+    }, 4000);
+
+    try {
+      // Clear legacy storage keys
       try {
         localStorage.removeItem('trainer_is_admin');
         localStorage.removeItem('trainer_telegram_id');
       } catch {}
 
-      const tg = (window as any).Telegram?.WebApp;
+      const deviceId = getOrCreateDeviceId();
+
+      // Retry loop waiting for window.Telegram.WebApp if opening from direct link
+      let tg = (window as any).Telegram?.WebApp;
+      if (!tg?.initDataUnsafe?.user) {
+        for (let attempt = 0; attempt < 5; attempt++) {
+          tg = (window as any).Telegram?.WebApp;
+          if (tg?.initDataUnsafe?.user) break;
+          await new Promise(res => setTimeout(res, 100));
+        }
+      }
+
       if (tg) {
-        tg.ready();
-        tg.expand();
+        try {
+          tg.ready();
+          tg.expand();
+        } catch {}
       }
 
       // 1. Direct Telegram WebApp user object
@@ -58,7 +89,14 @@ export const App: React.FC = () => {
       let tgName: string = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(' ') || tgUser?.username || '';
       let tgUsername: string = tgUser?.username || '';
 
-      // 2. Parse Telegram initData query string if user is not in initDataUnsafe
+      // Check start_param for direct links t.me/bot/app?startapp=...
+      const startParam = tg?.initDataUnsafe?.start_param;
+      if (startParam && startParam.startsWith('user_') && !tgId) {
+        const parsedId = Number(startParam.replace('user_', ''));
+        if (parsedId) tgId = parsedId;
+      }
+
+      // 2. Parse Telegram initData query string
       if (!tgId && tg?.initData) {
         try {
           const params = new URLSearchParams(tg.initData);
@@ -109,7 +147,7 @@ export const App: React.FC = () => {
         } catch {}
       }
 
-      // 5. Local Device Fallback
+      // 5. Local Device Fallback for Telegram ID
       if (!tgId) {
         try {
           const savedTgId = localStorage.getItem('trainer_user_tg_id');
@@ -135,6 +173,7 @@ export const App: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           telegram_user_id: tgId || undefined,
+          device_id: deviceId,
           name: tgName || undefined,
           username: tgUsername || undefined
         })
@@ -155,6 +194,7 @@ export const App: React.FC = () => {
     } catch (err) {
       console.warn('Failed to resolve current user identity:', err);
     } finally {
+      clearTimeout(timeoutTimer);
       setIsResolving(false);
     }
   };
