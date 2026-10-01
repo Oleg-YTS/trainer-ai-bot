@@ -98,7 +98,8 @@ class VIPUpgradeRequest(BaseModel):
 class CreateKnowledgeRequest(BaseModel):
     title: str
     content: str
-    category: str
+    category: str | None = None
+    category_id: str | None = None
     status: str = "approved"
 
 
@@ -106,6 +107,7 @@ class UpdateKnowledgeRequest(BaseModel):
     title: str | None = None
     content: str | None = None
     category: str | None = None
+    category_id: str | None = None
     status: str | None = None
 
 
@@ -236,7 +238,8 @@ async def create_knowledge_item_endpoint(payload: CreateKnowledgeRequest, sessio
     """
     Creates a new knowledge article in PostgreSQL.
     """
-    cat = payload.category if payload.category in CATEGORIES else "other"
+    raw_cat = payload.category_id or payload.category or "other"
+    cat = raw_cat if raw_cat in CATEGORIES else "other"
     try:
         item = KnowledgeItem(
             trainer_id=get_settings().trainer_id,
@@ -281,8 +284,9 @@ async def update_knowledge_item_endpoint(item_id: int, payload: UpdateKnowledgeR
             item.title = payload.title
         if payload.content is not None:
             item.content = payload.content
-        if payload.category is not None and payload.category in CATEGORIES:
-            item.category = payload.category
+        raw_cat = payload.category_id or payload.category
+        if raw_cat and raw_cat in CATEGORIES:
+            item.category = raw_cat
         if payload.status is not None and payload.status in ["approved", "published", "draft", "archived"]:
             item.status = payload.status
 

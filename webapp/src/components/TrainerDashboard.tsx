@@ -494,6 +494,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           body: JSON.stringify({
             title: kbTitle,
             category_id: kbCategoryId,
+            category: kbCategoryId,
             content: kbContent,
             status: kbStatus
           })
@@ -505,6 +506,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           body: JSON.stringify({
             title: kbTitle,
             category_id: kbCategoryId,
+            category: kbCategoryId,
             content: kbContent,
             status: kbStatus
           })
