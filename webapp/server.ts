@@ -1154,21 +1154,45 @@ app.put('/api/escalations/:id/resolve', (req: Request, res: Response) => {
   res.json(escalation);
 });
 
+// Get Client Profile Endpoint
+app.get(['/api/client/profile', '/api/client/:id/profile'], (req: Request, res: Response) => {
+  const clientId = Number(req.params.id || req.query.client_id || 1);
+  const client = db.clients.find(c => c.id === clientId) || db.clients[0];
+  if (!client) {
+    return res.status(404).json({ error: 'Client not found' });
+  }
+
+  res.json({
+    client_id: client.id,
+    name: client.name || client.profile?.name || 'Пользователь',
+    profile: client.profile || {},
+    is_vip: Boolean(client.is_vip),
+    is_admin: Boolean(client.is_admin)
+  });
+});
+
 // Update Client Profile Endpoint
 app.post('/api/client/profile', (req: Request, res: Response) => {
-  const { client_id, name, age, height, weight, goal, restrictions, is_admin } = req.body;
+  const { client_id, name, age, height, weight, goal, activity_level, training_frequency, restrictions, diet_preferences, is_admin } = req.body;
   const client = db.clients.find(c => c.id === Number(client_id || 1));
   if (!client) return res.status(404).json({ error: 'Client not found' });
+
+  if (!client.profile) {
+    client.profile = { name: client.name, goal: 'Общая физическая подготовка' };
+  }
 
   if (name) {
     client.name = stripEmojis(name);
     client.profile.name = stripEmojis(name);
   }
-  if (age !== undefined) client.profile.age = Number(age);
-  if (height !== undefined) client.profile.height = Number(height);
-  if (weight !== undefined) client.profile.weight = Number(weight);
+  if (age !== undefined && age !== '') client.profile.age = Number(age);
+  if (height !== undefined && height !== '') client.profile.height = Number(height);
+  if (weight !== undefined && weight !== '') client.profile.weight = Number(weight);
   if (goal) client.profile.goal = stripEmojis(goal);
+  if (activity_level) client.profile.activity_level = stripEmojis(activity_level);
+  if (training_frequency) client.profile.training_frequency = stripEmojis(training_frequency);
   if (restrictions !== undefined) client.profile.restrictions = stripEmojis(restrictions);
+  if (diet_preferences !== undefined) client.profile.diet_preferences = stripEmojis(diet_preferences);
   
   if (is_admin !== undefined) {
     client.is_admin = !!is_admin;

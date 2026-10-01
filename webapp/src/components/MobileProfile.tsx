@@ -69,27 +69,33 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
   useEffect(() => {
     const loadProfile = async () => {
-      if (!clientId) return;
+      if (!clientId) {
+        setProfileLoading(false);
+        return;
+      }
       setProfileLoading(true);
       try {
-        const response = await apiFetch(`/api/client/profile?client_id=${clientId}`);
+        const response = await apiFetch(`/api/client/profile?client_id=${encodeURIComponent(clientId)}`);
         if (response.ok) {
-          const res = await response.json();
-          if (res.name) setFormName(res.name);
-          if (res.profile) {
-            if (res.profile.name) setFormName(res.profile.name);
-            if (res.profile.age !== undefined) setFormAge(String(res.profile.age));
-            if (res.profile.height !== undefined) setFormHeight(String(res.profile.height));
-            if (res.profile.weight !== undefined) setFormWeight(String(res.profile.weight));
-            if (res.profile.goal) setFormGoal(res.profile.goal);
-            if (res.profile.activity_level) setFormActivityLevel(res.profile.activity_level);
-            if (res.profile.training_frequency) setFormFrequency(res.profile.training_frequency);
-            if (res.profile.restrictions) setFormRestrictions(res.profile.restrictions);
-            if (res.profile.diet_preferences) setFormDietPreferences(res.profile.diet_preferences);
+          const text = await response.text();
+          if (text && text.trim().startsWith('{')) {
+            const res = JSON.parse(text);
+            if (res.name) setFormName(res.name);
+            if (res.profile && typeof res.profile === 'object') {
+              if (res.profile.name) setFormName(res.profile.name);
+              if (res.profile.age !== undefined && res.profile.age !== null) setFormAge(String(res.profile.age));
+              if (res.profile.height !== undefined && res.profile.height !== null) setFormHeight(String(res.profile.height));
+              if (res.profile.weight !== undefined && res.profile.weight !== null) setFormWeight(String(res.profile.weight));
+              if (res.profile.goal) setFormGoal(res.profile.goal);
+              if (res.profile.activity_level) setFormActivityLevel(res.profile.activity_level);
+              if (res.profile.training_frequency) setFormFrequency(res.profile.training_frequency);
+              if (res.profile.restrictions) setFormRestrictions(res.profile.restrictions);
+              if (res.profile.diet_preferences) setFormDietPreferences(res.profile.diet_preferences);
+            }
           }
         }
       } catch (err) {
-        console.error('Failed to load profile:', err);
+        console.warn('Notice: Could not load initial profile from server:', err);
       } finally {
         setProfileLoading(false);
       }
