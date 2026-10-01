@@ -61,6 +61,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
   const [vipRequestSent, setVipRequestSent] = useState(false);
   const [vipRequestLoading, setVipRequestLoading] = useState(false);
 
@@ -107,10 +108,11 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
     const targetId = clientId || 1;
     setProfileSaving(true);
     setSaveSuccess(false);
+    setSaveErrorMsg(null);
     try {
-      const response = await apiFetch('/api/client/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await apiFetch("/api/client/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           client_id: targetId,
           name: formName,
@@ -124,7 +126,6 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           diet_preferences: formDietPreferences
         })
       });
-
       if (response.ok) {
         setSaveSuccess(true);
         if (attachVipRequest && !isVip && !vipRequestSent) {
@@ -132,9 +133,13 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         }
         setTimeout(() => setSaveSuccess(false), 3500);
         if (onRefreshUser) onRefreshUser();
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        setSaveErrorMsg(errData.detail || `Ошибка сервера (${response.status})`);
       }
     } catch (err) {
-      console.error('Failed to save profile:', err);
+      console.error("Failed to save profile:", err);
+      setSaveErrorMsg("Не удалось связаться с сервером. Проверьте соединение.");
     } finally {
       setProfileSaving(false);
     }
@@ -568,6 +573,14 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
               </label>
             )}
 
+            {saveErrorMsg && (
+              <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+                isDark ? "bg-rose-950/40 border-rose-500/40 text-rose-200" : "bg-rose-50 border-rose-300 text-rose-900"
+              }`}>
+                <Info className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{saveErrorMsg}</span>
+              </div>
+            )}
             {/* Кнопка сохранения */}
             <div className="pt-2">
               <button

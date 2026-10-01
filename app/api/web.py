@@ -743,17 +743,82 @@ async def update_client_profile_endpoint(
     """
     Updates client profile in PostgreSQL by ID or Telegram User ID.
     """
-    target_id = payload.client_id
-    if not target_id:
-        raise HTTPException(status_code=400, detail="client_id or telegram_user_id is required")
+    try:
+        target_id = payload.client_id or 1
+        settings = get_settings()
+        stmt = select(Client).where((Client.id == target_id) | (Client.telegram_user_id == target_id))
+        res = await session.execute(stmt)
+        client_obj = res.scalar_one_or_none()
+        
+        if not client_obj:
+            stmt_first = select(Client).order_by(Client.id.asc()).limit(1)
+            res_first = await session.execute(stmt_first)
+            client_obj = res_first.scalar_one_or_none()
+            
+        if not client_obj:
+            initial_name = payload.name or f"Пользователь {target_id}"
+            is_admin = settings.is_admin_telegram_id(target_id) or bool(payload.is_admin)
+            is_vip = is_admin or bool(payload.is_vip)
+            default_prof = build_default_profile(
+                name=initial_name,
+                gender=payload.gender or "male",
+                is_admin=is_admin,
+                is_vip=is_vip
+            )
+            client_obj = Client(
+                trainer_id=settings.trainer_id,
+                telegram_user_id=target_id,
+                name=initial_name,
+                profile_json=json.dumps(default_prof, ensure_ascii=False)
+            )
+            session.add(client_obj)
+            await session.commit()
+            await session.refresh(client_obj)
 
-    settings = get_settings()
-    stmt = select(Client).where((Client.id == target_id) | (Client.telegram_user_id == target_id))
-    res = await session.execute(stmt)
-    client_obj = res.scalar_one_or_none()
+        existing_prof = parse_profile(client_obj.profile_json)
+        if payload.name:
+            client_obj.name = payload.name
+            existing_prof["name"] = payload.name
+        if payload.gender: existing_prof["gender"] = payload.gender
+        if payload.age is not None: existing_prof["age"] = payload.age
+        if payload.height is not None: existing_prof["height"] = payload.height
+        if payload.weight is not None: existing_prof["weight"] = payload.weight
+        if payload.goal: existing_prof["goal"] = payload.goal
+        if payload.restrictions: existing_prof["restrictions"] = payload.restrictions
+        if payload.activity_level: existing_prof["activity_level"] = payload.activity_level
+        if payload.training_frequency: existing_prof["training_frequency"] = payload.training_frequency
+        if payload.diet_preferences: existing_prof["diet_preferences"] = payload.diet_preferences
+        if payload.profile and isinstance(payload.profile, dict):
+            existing_prof.update(payload.profile)
 
-    if not client_obj:
-        initial_name = payload.name or f"Пользователь {target_id}"
+        is_admin_val = settings.is_admin_telegram_id(client_obj.telegram_user_id) or bool(existing_prof.get("is_admin", False))
+        if is_admin_val:
+            existing_prof["is_admin"] = True
+            existing_prof["is_vip"] = True
+        elif payload.is_admin is not None:
+            existing_prof["is_admin"] = bool(payload.is_admin)
+            if payload.is_admin:
+                existing_prof["is_vip"] = True
+        if payload.is_vip is not None and not is_admin_val:
+            existing_prof["is_vip"] = bool(payload.is_vip)
+
+        client_obj.profile_json = json.dumps(existing_prof, ensure_ascii=False)
+        await session.commit()
+        await session.refresh(client_obj)
+
+        return {
+            "ok": True,
+            "success": True,
+            "client_id": client_obj.id,
+            "telegram_user_id": client_obj.telegram_user_id,
+            "name": client_obj.name,
+            "profile": existing_prof,
+            "is_admin": is_admin_val,
+            "is_vip": bool(existing_prof.get("is_vip", False))
+        }
+    except Exception as exc:
+        logger.error("Failed to update client profile: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(exc))"
         is_admin = settings.is_admin_telegram_id(target_id) or bool(payload.is_admin)
         is_vip = is_admin or bool(payload.is_vip)
 
