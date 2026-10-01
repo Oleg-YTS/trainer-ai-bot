@@ -13,8 +13,8 @@ DEFAULT_AI_TUNNEL_MODEL = "gpt-6-luna-pro"
 class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
-    telegram_bot_token: str
-    port: int = 10000
+    telegram_bot_token: str = ""
+    port: int = int(os.getenv("PORT", "10000"))
     webhook_path: str = "/telegram/webhook"
     webhook_base_url: str | None = None
     webhook_secret_token: str | None = None
@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     telegram_admin_chat_id: str | None = "747600306"
     admin_telegram_ids: str | None = "747600306,435297513"
     trainer_telegram_id: int | None = 435297513
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     def is_admin_telegram_id(self, tg_id: int | None) -> bool:
@@ -68,4 +69,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

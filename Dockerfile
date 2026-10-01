@@ -1,4 +1,4 @@
-# Stage 1: Build React Frontend
+# Stage 1: Build React Frontend (Vite)
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app/webapp
 COPY webapp/package.json ./
@@ -10,8 +10,8 @@ RUN npm run build
 FROM python:3.12-slim
 WORKDIR /app
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
 COPY app ./app
+RUN pip install --no-cache-dir .
 COPY --from=frontend-builder /app/webapp/dist ./webapp/dist
 COPY . .
 ENV PYTHONUNBUFFERED=1

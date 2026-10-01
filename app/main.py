@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -13,25 +14,43 @@ from fastapi.staticfiles import StaticFiles
 from app.api.web import router as web_router
 from app.bot.router import build_dispatcher, setup_bot_menu
 from app.config.settings import get_settings
+from app.database.models import Base
+from app.database.session import get_engine
 
 settings = get_settings()
-bot = Bot(settings.telegram_bot_token)
+bot: Bot | None = Bot(settings.telegram_bot_token) if settings.telegram_bot_token else None
 dp = build_dispatcher()
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.webhook_url:
-        await bot.set_webhook(
-            url=settings.webhook_url,
-            secret_token=settings.webhook_secret_token,
-            allowed_updates=dp.resolve_used_update_types(),
-            drop_pending_updates=False,
-        )
-        await setup_bot_menu(bot)
+    # Auto-initialize database tables if DATABASE_URL is configured
+    if settings.database_url:
+        try:
+            engine = get_engine()
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database schema initialized successfully.")
+        except Exception as exc:
+            logger.warning("Database schema auto-creation failed: %s", exc)
+
+    # Initialize Telegram Webhook if configured
+    if bot and settings.webhook_url:
+        try:
+            await bot.set_webhook(
+                url=settings.webhook_url,
+                secret_token=settings.webhook_secret_token,
+                allowed_updates=dp.resolve_used_update_types(),
+                drop_pending_updates=False,
+            )
+            await setup_bot_menu(bot)
+            logger.info("Telegram webhook and menu configured successfully.")
+        except Exception as exc:
+            logger.warning("Failed to configure Telegram webhook: %s", exc)
     yield
-    await bot.session.close()
+    if bot:
+        await bot.session.close()
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
@@ -55,6 +74,8 @@ async def health() -> dict[str, str]:
 
 @app.post(settings.webhook_path)
 async def telegram_webhook(request: Request) -> dict[str, bool]:
+    if not bot:
+        raise HTTPException(status_code=503, detail="Bot is not initialized")
     secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
     if settings.webhook_secret_token and secret != settings.webhook_secret_token:
         raise HTTPException(status_code=403, detail="forbidden")
@@ -89,3 +110,9 @@ if webapp_dist.exists():
         if index_file.is_file():
             return FileResponse(index_file)
         raise HTTPException(status_code=404, detail="Frontend build not found")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=settings.log_level)
+    port = int(os.environ.get("PORT", str(settings.port)))
+    uvicorn.run(app, host="0.0.0.0", port=port)
