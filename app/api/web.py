@@ -533,6 +533,7 @@ async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_d
         
         return {
             "id": client_id,
+            "telegram_user_id": client.telegram_user_id if client else None,
             "name": client.name if client else "Клиент",
             "is_vip": is_vip_val,
             "is_admin": is_admin_val,

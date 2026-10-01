@@ -28,7 +28,13 @@ import {
   ExternalLink,
   Star,
   Crown,
-  UserCheck
+  UserCheck,
+  MessageSquare,
+  Search,
+  User,
+  Activity,
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { apiFetch } from '../api';
 
@@ -243,6 +249,13 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const [selectedCatFilter, setSelectedCatFilter] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
 
+  // Client Dossier & Chat modal state
+  const [selectedClientDossier, setSelectedClientDossier] = useState<Client | null>(null);
+  const [clientMessages, setClientMessages] = useState<any[]>([]);
+  const [loadingClientMessages, setLoadingClientMessages] = useState<boolean>(false);
+  const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
+  const [clientFilterStatus, setClientFilterStatus] = useState<'all' | 'vip' | 'subscriber' | 'admin'>('all');
+
   // KB Add/Edit Modal
   const [showKbModal, setShowKbModal] = useState(false);
   const [editingKb, setEditingKb] = useState<KnowledgeItem | null>(null);
@@ -368,6 +381,52 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
   const handleToggleClientVip = async (clientId: number, currentVipStatus: boolean) => {
     await handleSetClientRole(clientId, currentVipStatus ? 'subscriber' : 'vip');
+  };
+
+  const handleOpenClientDossier = async (client: Client) => {
+    setSelectedClientDossier(client);
+    setLoadingClientMessages(true);
+    setClientMessages([]);
+    try {
+      const res = await apiFetch(`/api/clients/${client.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClientMessages(data.messages || []);
+      } else {
+        const res2 = await apiFetch(`/api/client/messages?client_id=${client.id}`);
+        if (res2.ok) {
+          const msgs = await res2.json();
+          setClientMessages(msgs || []);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load client messages:', e);
+    } finally {
+      setLoadingClientMessages(false);
+    }
+  };
+
+  const handleOpenTelegramChat = (telegramUserId?: number | null, username?: string) => {
+    if (username) {
+      const clean = username.replace(/^@/, '');
+      const url = `https://t.me/${clean}`;
+      if ((window as any).Telegram?.WebApp?.openTelegramLink) {
+        (window as any).Telegram.WebApp.openTelegramLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+      return;
+    }
+    if (telegramUserId) {
+      const tgUrl = `tg://user?id=${telegramUserId}`;
+      if ((window as any).Telegram?.WebApp?.openTelegramLink) {
+        (window as any).Telegram.WebApp.openTelegramLink(`https://t.me/${telegramUserId}`);
+      } else {
+        window.location.href = tgUrl;
+      }
+      return;
+    }
+    alert('У данного клиента не привязан Telegram ID или username.');
   };
 
   useEffect(() => {
@@ -1185,148 +1244,513 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {/* TAB 5: CLIENTS */}
       {activeTab === 'clients' && (
         <div
-          className={`border rounded-xl p-4 sm:p-5 space-y-3.5 ${
+          className={`border rounded-xl p-4 sm:p-5 space-y-4 ${
             isDark
               ? 'bg-[#121B17] border-[#1F2E27]'
               : 'bg-white border-[#D8E0DB]'
           }`}
         >
-          <h3 className="font-semibold text-sm text-inherit">База подписчиков и клиентов</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {clients.map(c => (
-              <div
-                key={c.id}
-                className={`border rounded-xl p-3.5 space-y-2 text-xs transition ${
+          {/* Header & Title */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-inherit">
+            <div>
+              <h3 className="font-semibold text-sm text-inherit">Инфо-пульт: База подписчиков и клиентов</h3>
+              <p className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                Досье подопечных, история вопросов к ИИ-библиотекарю и быстрый переход в диалог Telegram
+              </p>
+            </div>
+            <span className={`text-[11px] font-mono px-2 py-0.5 rounded border self-start sm:self-auto ${
+              isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#7DA295]' : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#2B4A3D]'
+            }`}>
+              Всего в базе: {clients.length}
+            </span>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#8E9E96]" />
+              <input
+                type="text"
+                placeholder="Поиск по имени или Telegram ID..."
+                value={clientSearchQuery}
+                onChange={(e) => setClientSearchQuery(e.target.value)}
+                className={`w-full pl-9 pr-8 py-1.5 text-xs rounded-lg border outline-none transition ${
                   isDark
-                    ? 'bg-[#18231E] border-[#1F2E27]'
-                    : 'bg-[#F4F6F4] border-[#D8E0DB]'
+                    ? 'bg-[#18231E] border-[#1F2E27] text-white focus:border-[#7DA295]'
+                    : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#121B17] focus:border-[#2B4A3D]'
+                }`}
+              />
+              {clientSearchQuery && (
+                <button
+                  onClick={() => setClientSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8E9E96] hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Badges */}
+            <div className="flex items-center gap-1.5 text-[11px] overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setClientFilterStatus('all')}
+                className={`px-2.5 py-1 rounded-lg border font-medium transition shrink-0 ${
+                  clientFilterStatus === 'all'
+                    ? isDark ? 'bg-[#5B8A78] text-[#0A100D] border-[#5B8A78]' : 'bg-[#2B4A3D] text-white border-[#2B4A3D]'
+                    : isDark ? 'border-[#1F2E27] text-[#8E9E96]' : 'border-[#D8E0DB] text-[#53665C]'
                 }`}
               >
-                {/* Header: Name & Role Badge with SVG */}
-                <div className="flex justify-between items-center gap-2">
-                  <span className="font-semibold text-sm text-inherit truncate">{c.name}</span>
-                  {c.is_admin ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
-                      <Star className="w-3 h-3 fill-amber-400/30 text-amber-400" />
-                      Администратор
-                    </span>
-                  ) : c.is_vip ? (
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${
-                        isDark
-                          ? 'bg-[#182820] text-[#7DA295] border-[#253A30]'
-                          : 'bg-[#EBF0EC] text-[#2B4A3D] border-[#D8E0DB]'
-                      }`}
-                    >
-                      <Crown className="w-3 h-3 text-[#7DA295]" />
-                      VIP (Ведение)
-                    </span>
-                  ) : (
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${
-                        isDark
-                          ? 'bg-[#121B17] text-[#8E9E96] border-[#1F2E27]'
-                          : 'bg-white text-[#7E9187] border-[#D8E0DB]'
-                      }`}
-                    >
-                      <UserCheck className="w-3 h-3 text-[#8E9E96]" />
-                      Подписчик
-                    </span>
-                  )}
-                </div>
+                Все ({clients.length})
+              </button>
+              <button
+                onClick={() => setClientFilterStatus('vip')}
+                className={`px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1 transition shrink-0 ${
+                  clientFilterStatus === 'vip'
+                    ? isDark ? 'bg-[#182820] text-[#7DA295] border-[#7DA295]' : 'bg-[#EBF0EC] text-[#2B4A3D] border-[#2B4A3D]'
+                    : isDark ? 'border-[#1F2E27] text-[#8E9E96]' : 'border-[#D8E0DB] text-[#53665C]'
+                }`}
+              >
+                <Crown className="w-3 h-3 text-[#7DA295]" />
+                <span>VIP ({clients.filter(c => c.is_vip && !c.is_admin).length})</span>
+              </button>
+              <button
+                onClick={() => setClientFilterStatus('subscriber')}
+                className={`px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1 transition shrink-0 ${
+                  clientFilterStatus === 'subscriber'
+                    ? isDark ? 'bg-[#18231E] text-white border-[#5B8A78]' : 'bg-[#F4F7F5] text-[#121B17] border-[#2B4A3D]'
+                    : isDark ? 'border-[#1F2E27] text-[#8E9E96]' : 'border-[#D8E0DB] text-[#53665C]'
+                }`}
+              >
+                <UserCheck className="w-3 h-3" />
+                <span>Подписчики ({clients.filter(c => !c.is_vip && !c.is_admin).length})</span>
+              </button>
+              <button
+                onClick={() => setClientFilterStatus('admin')}
+                className={`px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1 transition shrink-0 ${
+                  clientFilterStatus === 'admin'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : isDark ? 'border-[#1F2E27] text-[#8E9E96]' : 'border-[#D8E0DB] text-[#53665C]'
+                }`}
+              >
+                <Star className="w-3 h-3 fill-amber-400/20" />
+                <span>Админы ({clients.filter(c => c.is_admin).length})</span>
+              </button>
+            </div>
+          </div>
 
-                {/* ID line: Database ID & Telegram ID */}
-                <div className="flex items-center gap-2 text-[11px] font-mono text-[#8E9E96]">
-                  <span className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-black/20">ID: #{c.id}</span>
-                  <span>•</span>
-                  <span>TG ID: {c.telegram_user_id || 'Не привязан'}</span>
-                  {c.messages_count !== undefined && (
-                    <>
+          {/* Client Cards Grid */}
+          {clients.filter(c => {
+            if (clientSearchQuery.trim()) {
+              const q = clientSearchQuery.toLowerCase().trim();
+              const matchesName = c.name?.toLowerCase().includes(q);
+              const matchesTg = String(c.telegram_user_id || '').includes(q);
+              const matchesId = String(c.id).includes(q);
+              if (!matchesName && !matchesTg && !matchesId) return false;
+            }
+            if (clientFilterStatus === 'vip') return c.is_vip && !c.is_admin;
+            if (clientFilterStatus === 'subscriber') return !c.is_vip && !c.is_admin;
+            if (clientFilterStatus === 'admin') return !!c.is_admin;
+            return true;
+          }).length === 0 ? (
+            <div className={`p-8 text-center rounded-xl border text-xs ${
+              isDark ? 'border-[#1F2E27] text-[#8E9E96]' : 'border-[#D8E0DB] text-[#53665C]'
+            }`}>
+              Пользователи по заданным критериям не найдены.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {clients
+                .filter(c => {
+                  if (clientSearchQuery.trim()) {
+                    const q = clientSearchQuery.toLowerCase().trim();
+                    const matchesName = c.name?.toLowerCase().includes(q);
+                    const matchesTg = String(c.telegram_user_id || '').includes(q);
+                    const matchesId = String(c.id).includes(q);
+                    if (!matchesName && !matchesTg && !matchesId) return false;
+                  }
+                  if (clientFilterStatus === 'vip') return c.is_vip && !c.is_admin;
+                  if (clientFilterStatus === 'subscriber') return !c.is_vip && !c.is_admin;
+                  if (clientFilterStatus === 'admin') return !!c.is_admin;
+                  return true;
+                })
+                .map(c => (
+                  <div
+                    key={c.id}
+                    className={`border rounded-xl p-3.5 space-y-2.5 text-xs transition relative ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#1F2E27]'
+                        : 'bg-[#F4F6F4] border-[#D8E0DB]'
+                    }`}
+                  >
+                    {/* Header: Name & Role Badge with SVG */}
+                    <div className="flex justify-between items-center gap-2">
+                      <span className="font-semibold text-sm text-inherit truncate">{c.name}</span>
+                      {c.is_admin ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                          <Star className="w-3 h-3 fill-amber-400/30 text-amber-400" />
+                          Администратор
+                        </span>
+                      ) : c.is_vip ? (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${
+                            isDark
+                              ? 'bg-[#182820] text-[#7DA295] border-[#253A30]'
+                              : 'bg-[#EBF0EC] text-[#2B4A3D] border-[#D8E0DB]'
+                          }`}
+                        >
+                          <Crown className="w-3 h-3 text-[#7DA295]" />
+                          VIP (Ведение)
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${
+                            isDark
+                              ? 'bg-[#121B17] text-[#8E9E96] border-[#1F2E27]'
+                              : 'bg-white text-[#7E9187] border-[#D8E0DB]'
+                          }`}
+                        >
+                          <UserCheck className="w-3 h-3 text-[#8E9E96]" />
+                          Подписчик
+                        </span>
+                      )}
+                    </div>
+
+                    {/* ID line: Database ID & Telegram ID */}
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-[#8E9E96]">
+                      <span className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-black/20">ID: #{c.id}</span>
                       <span>•</span>
-                      <span>Сообщений: {c.messages_count}</span>
-                    </>
-                  )}
+                      <span>TG ID: {c.telegram_user_id || 'Не привязан'}</span>
+                      {c.messages_count !== undefined && (
+                        <>
+                          <span>•</span>
+                          <span>Вопросов: {c.messages_count}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Brief Profile Params */}
+                    <div className="space-y-1">
+                      <p className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>
+                        Цель: <span className="text-inherit font-medium">{c.profile?.goal || 'Не указана'}</span>
+                      </p>
+                      {c.profile?.restrictions && (
+                        <p className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>Травмы/Ограничения: {c.profile.restrictions}</span>
+                        </p>
+                      )}
+                      {c.profile?.active_topic && (
+                        <p className={`text-[10px] ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`}>
+                          Активный фокус: {c.profile.active_topic}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick Action Buttons: Dossier & Telegram */}
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed border-inherit">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenClientDossier(c)}
+                        className={`py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                          isDark
+                            ? 'bg-[#121B17] hover:bg-[#1E2B24] border-[#1F2E27] text-[#7DA295]'
+                            : 'bg-white hover:bg-[#EAF0EB] border-[#D8E0DB] text-[#2B4A3D]'
+                        }`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Досье & Чат</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenTelegramChat(c.telegram_user_id, c.profile?.telegram_username)}
+                        className="py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 text-sky-400"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>В Telegram</span>
+                      </button>
+                    </div>
+
+                    {/* Role Management Buttons */}
+                    <div className="pt-2 border-t border-dashed border-inherit space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[10px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                          Сменить статус:
+                        </span>
+                        <button
+                          onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
+                          className={`py-0.5 px-2 rounded border text-[10px] font-semibold transition ${
+                            c.is_vip
+                              ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
+                              : isDark
+                                ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
+                                : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
+                          }`}
+                        >
+                          {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          onClick={() => handleSetClientRole(c.id, 'subscriber')}
+                          className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                            !c.is_vip && !c.is_admin
+                              ? isDark
+                                ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]'
+                                : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
+                              : isDark
+                                ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                                : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                          }`}
+                        >
+                          <UserCheck className="w-2.5 h-2.5" />
+                          <span>Подписчик</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleSetClientRole(c.id, 'vip')}
+                          className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                            c.is_vip && !c.is_admin
+                              ? isDark
+                                ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]'
+                                : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
+                              : isDark
+                                ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                                : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                          }`}
+                        >
+                          <Crown className="w-2.5 h-2.5" />
+                          <span>VIP</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleSetClientRole(c.id, 'admin')}
+                          className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                            c.is_admin
+                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                              : isDark
+                                ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                                : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                          }`}
+                        >
+                          <Star className="w-2.5 h-2.5 fill-amber-400/20" />
+                          <span>Админ</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* CLIENT DOSSIER & CHAT MODAL */}
+          {selectedClientDossier && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+              <div
+                className={`w-full max-w-xl max-h-[90vh] rounded-2xl border flex flex-col shadow-2xl overflow-hidden ${
+                  isDark ? 'bg-[#121B17] border-[#1F2E27] text-white' : 'bg-white border-[#D8E0DB] text-[#0A100D]'
+                }`}
+              >
+                {/* Modal Header */}
+                <div className="p-4 border-b border-inherit flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-2 rounded-xl border ${
+                      isDark ? 'bg-[#18231E] border-[#253A30] text-[#7DA295]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
+                    }`}>
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-base text-inherit">{selectedClientDossier.name}</h3>
+                        {selectedClientDossier.is_admin ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                            <Star className="w-3 h-3 fill-amber-400/30 text-amber-400" />
+                            Администратор
+                          </span>
+                        ) : selectedClientDossier.is_vip ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-[#182820] text-[#7DA295] border border-[#253A30]">
+                            <Crown className="w-3 h-3 text-[#7DA295]" />
+                            VIP
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-black/10 dark:bg-black/20 text-[#8E9E96] border border-inherit">
+                            <UserCheck className="w-3 h-3 text-[#8E9E96]" />
+                            Подписчик
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] font-mono text-[#8E9E96]">
+                        ID: #{selectedClientDossier.id} • Telegram ID: {selectedClientDossier.telegram_user_id || 'Не привязан'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedClientDossier(null)}
+                    className="p-1.5 rounded-lg border border-inherit text-[#8E9E96] hover:text-inherit transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
-                <p className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>
-                  Цель: {c.profile?.goal || 'Не указана'}
-                </p>
-                {c.profile?.active_topic && (
-                  <p className={`text-[10px] ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`}>
-                    Активный фокус: {c.profile.active_topic}
-                  </p>
-                )}
+                {/* Modal Scrollable Body */}
+                <div className="p-4 overflow-y-auto space-y-4 text-xs">
+                  {/* Physical Parameters Card */}
+                  <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                    isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
+                  }`}>
+                    <div className="flex items-center gap-1.5 font-semibold text-xs border-b border-inherit pb-1.5">
+                      <Activity className="w-3.5 h-3.5 text-[#7DA295]" />
+                      <span>Параметры и цель подопечного</span>
+                    </div>
 
-                <div className="pt-2 border-t border-dashed border-inherit space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                      Управление статусом:
-                    </span>
-                    <button
-                      onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
-                      className={`py-0.5 px-2 rounded border text-[10px] font-semibold transition ${
-                        c.is_vip
-                          ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
-                          : isDark
-                            ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
-                            : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
-                      }`}
-                    >
-                      {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
-                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div className="p-2 rounded-lg bg-black/10 dark:bg-black/20 border border-inherit">
+                        <span className="text-[#8E9E96] block text-[10px]">Вес</span>
+                        <span className="font-bold text-sm text-inherit">
+                          {selectedClientDossier.profile?.weight ? `${selectedClientDossier.profile.weight} кг` : '—'}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-black/10 dark:bg-black/20 border border-inherit">
+                        <span className="text-[#8E9E96] block text-[10px]">Рост</span>
+                        <span className="font-bold text-sm text-inherit">
+                          {selectedClientDossier.profile?.height ? `${selectedClientDossier.profile.height} см` : '—'}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-black/10 dark:bg-black/20 border border-inherit">
+                        <span className="text-[#8E9E96] block text-[10px]">Возраст</span>
+                        <span className="font-bold text-sm text-inherit">
+                          {selectedClientDossier.profile?.age ? `${selectedClientDossier.profile.age} лет` : '—'}
+                        </span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-black/10 dark:bg-black/20 border border-inherit">
+                        <span className="text-[#8E9E96] block text-[10px]">Пол</span>
+                        <span className="font-bold text-sm text-inherit">
+                          {selectedClientDossier.profile?.gender === 'female' ? 'Женский' : 'Мужской'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 pt-1">
+                      <p>
+                        <span className="text-[#8E9E96]">Цель: </span>
+                        <span className="font-semibold text-inherit">{selectedClientDossier.profile?.goal || 'Не указана'}</span>
+                      </p>
+
+                      {selectedClientDossier.profile?.restrictions && (
+                        <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-medium flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold block text-[11px]">Ограничения по здоровью / Травмы:</span>
+                            <span className="text-xs">{selectedClientDossier.profile.restrictions}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedClientDossier.profile?.diet_preferences && (
+                        <p>
+                          <span className="text-[#8E9E96]">Рацион и диета: </span>
+                          <span className="text-inherit">{selectedClientDossier.profile.diet_preferences}</span>
+                        </p>
+                      )}
+
+                      {selectedClientDossier.profile?.training_frequency && (
+                        <p>
+                          <span className="text-[#8E9E96]">Частота тренировок: </span>
+                          <span className="text-inherit">{selectedClientDossier.profile.training_frequency}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button
-                      onClick={() => handleSetClientRole(c.id, 'subscriber')}
-                      className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
-                        !c.is_vip && !c.is_admin
-                          ? isDark
-                            ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]'
-                            : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
-                          : isDark
-                            ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                            : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-                      }`}
-                    >
-                      <UserCheck className="w-2.5 h-2.5" />
-                      <span>Подписчик</span>
-                    </button>
+                  {/* AI Conversation History Log */}
+                  <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                    isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
+                  }`}>
+                    <div className="flex items-center justify-between border-b border-inherit pb-1.5">
+                      <div className="flex items-center gap-1.5 font-semibold text-xs">
+                        <MessageSquare className="w-3.5 h-3.5 text-[#7DA295]" />
+                        <span>История вопросов к ИИ-библиотекарю</span>
+                      </div>
+                      <span className="text-[10px] text-[#8E9E96]">
+                        {clientMessages.length} сообщ.
+                      </span>
+                    </div>
 
-                    <button
-                      onClick={() => handleSetClientRole(c.id, 'vip')}
-                      className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
-                        c.is_vip && !c.is_admin
-                          ? isDark
-                            ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]'
-                            : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
-                          : isDark
-                            ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                            : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-                      }`}
-                    >
-                      <Crown className="w-2.5 h-2.5" />
-                      <span>VIP</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleSetClientRole(c.id, 'admin')}
-                      className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
-                        c.is_admin
-                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                          : isDark
-                            ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                            : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-                      }`}
-                    >
-                      <Star className="w-2.5 h-2.5 fill-amber-400/20" />
-                      <span>Админ</span>
-                    </button>
+                    {loadingClientMessages ? (
+                      <div className="py-8 flex flex-col items-center justify-center gap-2 text-[#8E9E96]">
+                        <Loader2 className="w-5 h-5 animate-spin text-[#7DA295]" />
+                        <span>Загрузка истории диалога...</span>
+                      </div>
+                    ) : clientMessages.length === 0 ? (
+                      <div className="py-6 text-center text-[#8E9E96] text-xs">
+                        Клиент пока не задавал вопросов боту в чате.
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                        {clientMessages.map((m: any, idx: number) => (
+                          <div
+                            key={m.id || idx}
+                            className={`p-2.5 rounded-xl text-xs space-y-1 ${
+                              m.role === 'user'
+                                ? isDark
+                                  ? 'bg-[#121B17] border border-[#1F2E27] ml-4'
+                                  : 'bg-white border border-[#D8E0DB] ml-4'
+                                : isDark
+                                  ? 'bg-[#192721] border border-[#253A30] mr-4'
+                                  : 'bg-[#EBF0EC] border border-[#D8E0DB] mr-4'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className={`font-semibold flex items-center gap-1 ${
+                                m.role === 'user' ? 'text-inherit' : 'text-[#7DA295]'
+                              }`}>
+                                {m.role === 'user' ? (
+                                  <>
+                                    <User className="w-3 h-3 text-[#8E9E96]" />
+                                    <span>Вопрос клиента</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <BookOpen className="w-3 h-3 text-[#7DA295]" />
+                                    <span>Ответ ИИ-библиотекаря</span>
+                                  </>
+                                )}
+                              </span>
+                              {m.created_at && (
+                                <span className="text-[#8E9E96] font-mono">
+                                  {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                            <p className="leading-relaxed whitespace-pre-wrap text-inherit">
+                              {m.text}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
+                </div>
+
+                {/* Modal Footer with Primary Telegram Button */}
+                <div className="p-4 border-t border-inherit flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                  <div className="text-[11px] text-[#8E9E96] text-center sm:text-left">
+                    Откройте чат, чтобы записать голосовое или кружочек подопечному
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenTelegramChat(selectedClientDossier.telegram_user_id, selectedClientDossier.profile?.telegram_username)}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Открыть диалог в Telegram</span>
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
