@@ -82,9 +82,28 @@ interface TrainerDashboardProps {
 }
 
 export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = true, onBackToClient }) => {
-  const [activeTab, setActiveTab] = useState<'kb' | 'categories' | 'gaps' | 'escalations' | 'clients' | 'deploy' | 'llm'>('kb');
+  const [activeTab, setActiveTab] = useState<'kb' | 'categories' | 'gaps' | 'escalations' | 'clients' | 'analytics' | 'deploy' | 'llm'>('kb');
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+  // Analytics & Intent Digest State
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState<boolean>(false);
+
+  const fetchAnalytics = async () => {
+    setLoadingAnalytics(true);
+    try {
+      const res = await apiFetch('/api/analytics/summary');
+      if (res.ok) {
+        const data = await res.json();
+        setAnalyticsData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
 
   // LLM Status and Diagnostics State
   const [llmStatus, setLlmStatus] = useState<any>(null);
@@ -644,6 +663,23 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           <Users className="w-3.5 h-3.5" /> Клиенты ({clients.length})
         </button>
         <button
+          onClick={() => {
+            setActiveTab('analytics');
+            fetchAnalytics();
+          }}
+          className={`pb-2.5 px-3 font-medium text-xs flex items-center gap-1.5 border-b-2 transition whitespace-nowrap ${
+            activeTab === 'analytics'
+              ? isDark
+                ? 'border-[#5B8A78] text-[#7DA295]'
+                : 'border-[#2B4A3D] text-[#2B4A3D]'
+              : isDark
+                ? 'border-transparent text-[#8E9E96] hover:text-[#E8ECE9]'
+                : 'border-transparent text-[#7E9187] hover:text-[#141F1A]'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5" /> Аналитика & Интенты
+        </button>
+        <button
           onClick={() => setActiveTab('deploy')}
           className={`pb-2.5 px-3 font-medium text-xs flex items-center gap-1.5 border-b-2 transition whitespace-nowrap ${
             activeTab === 'deploy'
@@ -1117,8 +1153,183 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 <p className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>
                   Цель: {c.profile?.goal || 'Не указана'}
                 </p>
+                {c.profile?.active_topic && (
+                  <p className={`text-[10px] ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`}>
+                    Активный фокус: {c.profile.active_topic}
+                  </p>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: SUBSCRIPTION ANALYTICS & WEEKLY INTENT DIGEST */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-4">
+          {/* Header Card */}
+          <div
+            className={`p-4 rounded-xl border space-y-2 ${
+              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 className={`w-5 h-5 ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`} />
+                <h3 className="font-semibold text-sm text-inherit">Аналитика подписок & Еженедельный дайджест интентов</h3>
+              </div>
+              <button
+                onClick={fetchAnalytics}
+                disabled={loadingAnalytics}
+                className={`px-3 py-1 rounded-md text-xs font-medium border transition ${
+                  isDark
+                    ? 'bg-[#18231E] border-[#1F2E27] text-[#7DA295] hover:bg-[#202E28]'
+                    : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#2B4A3D] hover:bg-[#EAF0EB]'
+                }`}
+              >
+                {loadingAnalytics ? 'Обновление...' : 'Обновить данные'}
+              </button>
+            </div>
+            <p className={`text-xs leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+              Сравнительный анализ активности платных (VIP) и бесплатных (базовых) участников, а также рейтинг востребованных тем за последние 7 дней.
+            </p>
+          </div>
+
+          {/* VIP vs Basic Segment Comparison Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* VIP Card */}
+            <div
+              className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${
+                  isDark
+                    ? 'bg-[#182820] text-[#7DA295] border-[#253A30]'
+                    : 'bg-[#EBF0EC] text-[#2B4A3D] border-[#D8E0DB]'
+                }`}>
+                  VIP / Платная подписка
+                </span>
+                <span className="text-xs font-bold text-inherit">
+                  {analyticsData?.summary?.vip_clients_count || 2} клиентов
+                </span>
+              </div>
+              <div className="space-y-2 pt-1">
+                <p className={`text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Распределение интересов (Интенты):
+                </p>
+                {analyticsData?.vip_stats?.category_breakdown ? (
+                  Object.entries(analyticsData.vip_stats.category_breakdown as Record<string, number>).map(([cat, count]) => (
+                    <div key={cat} className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-inherit capitalize">{cat}</span>
+                        <span className="font-semibold">{count} запр.</span>
+                      </div>
+                      <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#18231E]' : 'bg-[#EBF0EC]'}`}>
+                        <div
+                          className={`h-full rounded-full ${isDark ? 'bg-[#5B8A78]' : 'bg-[#2B4A3D]'}`}
+                          style={{ width: `${Math.min(100, (Number(count) / 12) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted">Загрузка данных...</p>
+                )}
+              </div>
+            </div>
+
+            {/* Basic Card */}
+            <div
+              className={`p-4 rounded-xl border space-y-3 ${
+                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${
+                  isDark
+                    ? 'bg-[#121B17] text-[#8E9E96] border-[#1F2E27]'
+                    : 'bg-white text-[#7E9187] border-[#D8E0DB]'
+                }`}>
+                  Базовые / Бесплатный канал
+                </span>
+                <span className="text-xs font-bold text-inherit">
+                  {analyticsData?.summary?.basic_clients_count || 2} участников
+                </span>
+              </div>
+              <div className="space-y-2 pt-1">
+                <p className={`text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Распределение интересов (Интенты):
+                </p>
+                {analyticsData?.basic_stats?.category_breakdown ? (
+                  Object.entries(analyticsData.basic_stats.category_breakdown as Record<string, number>).map(([cat, count]) => (
+                    <div key={cat} className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-inherit capitalize">{cat}</span>
+                        <span className="font-semibold">{count} запр.</span>
+                      </div>
+                      <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#18231E]' : 'bg-[#EBF0EC]'}`}>
+                        <div
+                          className={`h-full rounded-full ${isDark ? 'bg-[#8E9E96]' : 'bg-[#53665C]'}`}
+                          style={{ width: `${Math.min(100, (Number(count) / 12) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted">Загрузка данных...</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Weekly Intent Digest Ranked Table */}
+          <div
+            className={`p-4 rounded-xl border space-y-3 ${
+              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="font-semibold text-xs text-inherit">Рейтинг интентов за 7 дней (Weekly Digest)</h4>
+              <span className={`text-[10px] font-mono ${isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'}`}>
+                По частоте запросов
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {analyticsData?.weekly_intent_digest?.map((item: any, idx: number) => (
+                <div
+                  key={item.category_id}
+                  className={`p-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
+                    isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] ${
+                      idx === 0
+                        ? 'bg-[#5B8A78] text-[#0A100D]'
+                        : isDark
+                          ? 'bg-[#121B17] text-[#8E9E96]'
+                          : 'bg-white text-[#53665C]'
+                    }`}>
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <span className="font-semibold text-inherit">{item.category_name}</span>
+                      <p className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'}`}>
+                        Всего вопросов: {item.total_requests}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="text-[#7DA295] font-semibold">VIP: {item.vip_requests}</span>
+                    <span className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>Базовые: {item.basic_requests}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

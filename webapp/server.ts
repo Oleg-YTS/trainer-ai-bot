@@ -9,6 +9,29 @@ import { execSync } from 'child_process';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Manual .env file loader for Sandbox Preview
+try {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, 'utf8');
+    for (const line of envContent.split('\n')) {
+      const cleanLine = line.trim();
+      if (cleanLine && !cleanLine.startsWith('#') && cleanLine.includes('=')) {
+        const parts = cleanLine.split('=');
+        const key = parts[0].trim();
+        let val = parts.slice(1).join('=').trim();
+        // Remove surrounding quotes if present
+        val = val.replace(/^['"]|['"]$/g, '');
+        if (key && val) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch (err) {
+  console.error('Failed to load local .env file:', err);
+}
+
 // Function to remove emojis to enforce strict Zero-Emoji Policy for AI and system text
 function stripEmojis(text: string): string {
   if (!text) return '';
@@ -43,6 +66,8 @@ export interface ClientProfile {
   diet_preferences?: string;
   restrictions?: string;
   notes?: string;
+  intent_analytics?: Record<string, number>;
+  active_topic?: string;
 }
 
 export interface Client {
@@ -131,7 +156,9 @@ class Database {
         activity_level: 'Умеренная',
         training_frequency: '3 раза в неделю',
         diet_preferences: 'Сбалансированная, высокий белок',
-        restrictions: 'Легкий дискомфорт в коленях при глубоких приседаниях'
+        restrictions: 'Легкий дискомфорт в коленях при глубоких приседаниях',
+        intent_analytics: { muscle_gain: 8, training: 6, nutrition: 4, recovery: 2 },
+        active_topic: 'muscle_gain'
       },
       created_at: new Date(Date.now() - 7 * 86400000).toISOString()
     },
@@ -148,9 +175,47 @@ class Database {
         height: 165,
         weight: 62,
         goal: 'Снижение жировой массы и тонус',
-        training_frequency: '4 раза в неделю'
+        training_frequency: '4 раза в неделю',
+        intent_analytics: { weight_loss: 10, nutrition: 7, recovery: 3 },
+        active_topic: 'weight_loss'
       },
-      created_at: new Date(Date.now() - 3 * 86400000).toISOString()
+      created_at: new Date(Date.now() - 5 * 86400000).toISOString()
+    },
+    {
+      id: 3,
+      trainer_id: 1,
+      telegram_user_id: 20003,
+      name: 'Алексей',
+      is_vip: true,
+      profile: {
+        name: 'Алексей',
+        gender: 'male',
+        age: 34,
+        height: 175,
+        weight: 78,
+        goal: 'Силовые показатели и гипертрофия',
+        intent_analytics: { training: 9, muscle_gain: 6, recovery: 5 },
+        active_topic: 'training'
+      },
+      created_at: new Date(Date.now() - 4 * 86400000).toISOString()
+    },
+    {
+      id: 4,
+      trainer_id: 1,
+      telegram_user_id: 20004,
+      name: 'Ольга',
+      is_vip: false,
+      profile: {
+        name: 'Ольга',
+        gender: 'female',
+        age: 26,
+        height: 168,
+        weight: 58,
+        goal: 'Рацион питания и энергия',
+        intent_analytics: { nutrition: 8, weight_loss: 5, general: 3 },
+        active_topic: 'nutrition'
+      },
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString()
     }
   ];
 
@@ -259,17 +324,19 @@ export interface LLMConfig {
 function isValidGeminiApiKey(key?: string): boolean {
   if (!key) return false;
   const k = key.trim();
-  // Google Gemini API keys are typically 39 chars alphanumeric and never start with AQ.
-  if (k.startsWith('AQ.') || k.length < 25) {
-    return false;
-  }
-  return true;
+  // Allow AI Studio sandbox demo keys (starting with AQ.) or standard keys
+  return k.length > 10;
 }
 
 function isValidApiKey(key?: string): boolean {
   if (!key) return false;
   const k = key.trim();
-  return k.length > 5 && !k.startsWith('AQ.');
+  return k.length > 5;
+}
+
+function cleanApiKey(key?: string): string | undefined {
+  if (!key) return undefined;
+  return key.trim().replace(/^['"]|['"]$/g, '').trim();
 }
 
 export class LLMProviderService {
@@ -283,12 +350,12 @@ export class LLMProviderService {
     const rawProvider = (process.env.AI_PROVIDER || 'auto').toLowerCase().trim();
     return {
       provider: (rawProvider as any) || 'auto',
-      aitunnelApiKey: process.env.AITUNNEL_API_KEY || process.env.AI_TUNNEL_API_KEY,
+      aitunnelApiKey: cleanApiKey(process.env.AITUNNEL_API_KEY || process.env.AI_TUNNEL_API_KEY),
       aitunnelBaseUrl: (process.env.AITUNNEL_BASE_URL || process.env.AI_TUNNEL_BASE_URL || 'https://api.aitunnel.ru/v1/').replace(/\/+$/, ''),
       aitunnelModel: process.env.AITUNNEL_MODEL || process.env.AI_TUNNEL_MODEL || 'gpt-6-luna-pro',
-      geminiApiKey: process.env.GEMINI_API_KEY,
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      openaiApiKey: process.env.OPENAI_API_KEY,
+      geminiApiKey: cleanApiKey(process.env.GEMINI_API_KEY),
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+      openaiApiKey: cleanApiKey(process.env.OPENAI_API_KEY),
       openaiBaseUrl: (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
       openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini'
     };
@@ -388,7 +455,9 @@ export class LLMProviderService {
         },
         gemini: {
           has_key: isValidGeminiApiKey(this.config.geminiApiKey),
-          model: this.config.geminiModel
+          model: this.config.geminiModel,
+          key_prefix: this.config.geminiApiKey ? this.config.geminiApiKey.slice(0, 10) : 'none',
+          key_length: this.config.geminiApiKey ? this.config.geminiApiKey.length : 0
         },
         openai: {
           has_key: isValidApiKey(this.config.openaiApiKey),
@@ -426,6 +495,26 @@ export class LLMProviderService {
     }
 
     if (effective.provider === 'gemini') {
+      if (this.config.geminiApiKey!.startsWith('AQ.')) {
+        // AI Studio Sandbox Demo Key requires v1beta REST endpoint
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.geminiModel}:generateContent?key=${this.config.geminiApiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              { role: 'user', parts: [{ text: `${systemPrompt}\n\nClient Question: ${userPrompt}` }] }
+            ]
+          })
+        });
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          throw new Error(`Gemini v1beta HTTP ${res.status}: ${errText}`);
+        }
+        const data: any = await res.json();
+        return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      }
+
       const genAI = new GoogleGenAI({ apiKey: this.config.geminiApiKey! });
       const response = await genAI.models.generateContent({
         model: this.config.geminiModel,
@@ -499,6 +588,27 @@ function calculateMatchScore(question: string, item: KnowledgeItem): number {
   return Math.min(score, 100);
 }
 
+// Category detection helper for Intent Analytics
+function detectTopicCategory(text: string): string {
+  const t = text.toLowerCase();
+  if (t.includes('жир') || t.includes('похуде') || t.includes('дефицит') || t.includes('сушк') || t.includes('сброс') || t.includes('снижени')) {
+    return 'weight_loss';
+  }
+  if (t.includes('масс') || t.includes('мышц') || t.includes('гипертроф') || t.includes('профицит') || t.includes('рост')) {
+    return 'muscle_gain';
+  }
+  if (t.includes('питан') || t.includes('калори') || t.includes('бжу') || t.includes('белок') || t.includes('углевод') || t.includes('диета') || t.includes('рацион') || t.includes('нутриент')) {
+    return 'nutrition';
+  }
+  if (t.includes('сон') || t.includes('восстановл') || t.includes('отдых') || t.includes('стресс') || t.includes('пульс')) {
+    return 'recovery';
+  }
+  if (t.includes('трениров') || t.includes('упражнен') || t.includes('подход') || t.includes('повторен') || t.includes('жим') || t.includes('присед') || t.includes('тяг') || t.includes('программ')) {
+    return 'training';
+  }
+  return 'general';
+}
+
 // AI Engine conforming strictly to Zero Emoji Policy & 70% Score Threshold Rule
 async function processClientQuery(
   question: string,
@@ -513,6 +623,46 @@ async function processClientQuery(
 }> {
   // Medical & Injury Keyword Check
   const lowerQ = question.toLowerCase();
+
+  const topicDiscoveryKeywords = [
+    'поговорим',
+    'о чем',
+    'о чём',
+    'какие темы',
+    'темы',
+    'какие разделы',
+    'разделы',
+    'список тем',
+    'список разделов',
+    'по каким вопросам',
+    'по каким темам',
+    'какие категории',
+    'база знаний темы',
+    'что ты умеешь',
+    'что умеешь',
+    'чем можешь помочь',
+    'чем помочь',
+    'специализация'
+  ];
+
+  if (topicDiscoveryKeywords.some(kw => lowerQ.includes(kw))) {
+    const canonicalTopicsAnswer =
+      'Я могу проконсультировать вас по следующим 6 разделам методики:\n\n' +
+      '1. Тренировочный процесс — техника выполнения упражнений, составление программ и прогрессия нагрузок.\n' +
+      '2. Питание и диетология — расчет калорийности, баланс БЖУ, составление рациона и нутриенты.\n' +
+      '3. Восстановление и сон — гигиена сна, регенерация мышц и снятие напряжения после нагрузок.\n' +
+      '4. Снижение жировой массы — грамотный дефицит калорий, сохранение мышц при худении и контроль аппетита.\n' +
+      '5. Набор мышечной массы — профицит питания, гипертрофия мышц и рост силовых показателей.\n' +
+      '6. Общие вопросы методики — методические указания и персональные рекомендации вашего тренера.\n\n' +
+      'Задайте любой интересующий вас вопрос по одной из этих тем.';
+
+    return {
+      answer: stripEmojis(canonicalTopicsAnswer),
+      match_score: 100,
+      needs_trainer: false
+    };
+  }
+
   const medicalKeywords = ['боль', 'болит', 'травма', 'сустав', 'связка', 'врач', 'лекарство', 'укол', 'диагноз', 'острая боль'];
   if (medicalKeywords.some(k => lowerQ.includes(k))) {
     return {
@@ -546,13 +696,37 @@ async function processClientQuery(
     };
   }
 
-  // 2. If Score < 70%, LLM Synthesizes Answer & Logs Content Gap
+  // 2. If Score < 70%, LLM Synthesizes Answer with Virtual Profile Context
+  const intentSummary = (clientProfile as any).intent_analytics
+    ? Object.entries((clientProfile as any).intent_analytics).map(([cat, count]) => `${cat}: ${count}`).join(', ')
+    : 'Пока нет данных';
+
+  const analytics = (clientProfile as any).intent_analytics || {};
+  const totalInquiries = Object.values(analytics).reduce((sum: number, count: any) => sum + Number(count || 0), 0);
+
+  let engagementInstruction = "";
+  if (totalInquiries > 10) {
+    engagementInstruction = `Client has HIGH engagement (total requests: ${totalInquiries}). At the end of your concise answer, add a brief, premium call-to-action offering 'Персональное ведение тренером (VIP)' with direct supervisor support. Make it organic and premium.`;
+  } else if (totalInquiries >= 4) {
+    engagementInstruction = `Client has MEDIUM engagement (total requests: ${totalInquiries}). At the end of your concise answer, add a gentle reminder that for customized schedules and nutrition, they can submit a request for 'Персональное ведение' in their Profile tab.`;
+  } else {
+    engagementInstruction = `Client has INITIAL engagement (total requests: ${totalInquiries}). Keep the answer extremely helpful and brief. Do not push sales heavily, but mention they can ask about individual coaching if needed.`;
+  }
+
   const systemPrompt = `SYSTEM RULES (STRICT ZERO EMOJI POLICY):
 1. You are an expert AI fitness librarian proxying the human trainer. Answer ONLY within nutrition, training, recovery, and supplements.
 2. ABSOLUTELY NO EMOJIS OR SMILIES IN YOUR RESPONSE. Use clean typography and concise bullet points.
 3. Keep response professional, neutral, factual, and clear.
-4. Never invent facts, medical conclusions, or personal approvals.
-5. If the request requires trainer approval or is uncertain, advise consulting the trainer.`;
+4. WEB RETRIEVAL RULE: There is NO direct matching article in the database. You MUST act as if retrieving the answer from your expert web/network knowledge and provide a short, 2-3 sentence highly precise and concise answer based on trainer methodology.
+5. CLIENT VIRTUAL PROFILE & CONTEXT:
+   - Client Name: ${clientProfile.name || 'Клиент'}
+   - Primary Goal: ${clientProfile.goal || 'Общая фитнес-подготовка'}
+   - Active Focus Topic: ${(clientProfile as any).active_topic || 'Общий контекст'}
+   - Historical Interests / Intent Analytics: ${intentSummary}
+   - Restrictions / Notes: ${clientProfile.restrictions || 'Ограничений не указано'}
+6. ENGAGEMENT CRM CTA RULE:
+   - ${engagementInstruction}
+7. Tailor response specifically to this client's profile, focus topic, and goals. Never invent facts, medical conclusions, or personal approvals.`;
 
   try {
     const rawAnswer = await llmService.generate(systemPrompt, question);
@@ -797,6 +971,35 @@ app.put('/api/escalations/:id/resolve', (req: Request, res: Response) => {
   res.json(escalation);
 });
 
+// Update Client Profile Endpoint
+app.post('/api/client/profile', (req: Request, res: Response) => {
+  const { client_id, name, age, height, weight, goal, restrictions } = req.body;
+  const client = db.clients.find(c => c.id === Number(client_id || 1));
+  if (!client) return res.status(404).json({ error: 'Client not found' });
+
+  if (name) {
+    client.name = stripEmojis(name);
+    client.profile.name = stripEmojis(name);
+  }
+  if (age !== undefined) client.profile.age = Number(age);
+  if (height !== undefined) client.profile.height = Number(height);
+  if (weight !== undefined) client.profile.weight = Number(weight);
+  if (goal) client.profile.goal = stripEmojis(goal);
+  if (restrictions !== undefined) client.profile.restrictions = stripEmojis(restrictions);
+
+  res.json({ success: true, client });
+});
+
+// VIP Upgrade Endpoint
+app.post('/api/client/vip/upgrade', (req: Request, res: Response) => {
+  const { client_id } = req.body;
+  const client = db.clients.find(c => c.id === Number(client_id || 1));
+  if (!client) return res.status(404).json({ error: 'Client not found' });
+
+  client.is_vip = true;
+  res.json({ success: true, is_vip: client.is_vip, message: 'VIP-статус успешно активирован!' });
+});
+
 // Interactive Chat API
 app.post('/api/chat', async (req: Request, res: Response) => {
   const { client_id, message_text, category_id } = req.body;
@@ -804,7 +1007,45 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   let client = db.clients.find(c => c.id === Number(client_id)) || db.clients[0];
 
+  // Rate Limiting: 5 user messages per 1 hour for non-VIP clients
+  if (!client.is_vip) {
+    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
+    const recentMessages = db.messages.filter(m => 
+      m.client_id === client.id && 
+      m.role === 'user' && 
+      m.created_at >= oneHourAgo
+    );
+    if (recentMessages.length >= 5) {
+      const limitExceededText = "Превышен лимит бесплатных запросов (5 запросов в час). Перейдите в раздел Профиль и активируйте VIP-доступ без ограничений!";
+      
+      const assistantMsg: Message = {
+        id: db.nextMessageId++,
+        client_id: client.id,
+        role: 'assistant',
+        text: limitExceededText,
+        created_at: new Date().toISOString(),
+        kb_matched: false,
+        match_score: 0
+      };
+      db.messages.push(assistantMsg);
+
+      return res.json({
+        text: limitExceededText,
+        assistant_message: assistantMsg,
+        limit_exceeded: true
+      });
+    }
+  }
+
   const cleanUserText = stripEmojis(message_text);
+
+  // Track Intent Analytics & Virtual Profile Active Topic
+  const detectedCat = category_id || detectTopicCategory(cleanUserText);
+  if (!client.profile.intent_analytics) {
+    client.profile.intent_analytics = {};
+  }
+  client.profile.intent_analytics[detectedCat] = (client.profile.intent_analytics[detectedCat] || 0) + 1;
+  client.profile.active_topic = detectedCat;
 
   // Record user message
   const userMsg: Message = {
@@ -835,7 +1076,7 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       db.contentGaps.push({
         id: db.nextGapId++,
         question: cleanUserText,
-        category_id: category_id || 'training',
+        category_id: detectedCat,
         frequency: 1,
         priority: 'medium',
         sample_llm_answer: result.answer,
@@ -859,23 +1100,120 @@ app.post('/api/chat', async (req: Request, res: Response) => {
     db.escalations.push(escalationItem);
   }
 
-  const assistantMsg: Message = {
+  const asstMsg: Message = {
     id: db.nextMessageId++,
     client_id: client.id,
     role: 'assistant',
     text: result.answer,
     created_at: new Date().toISOString(),
-    kb_matched: result.match_score >= 70,
+    kb_matched: !!result.matched_kb,
     match_score: result.match_score
   };
-  db.messages.push(assistantMsg);
+  db.messages.push(asstMsg);
 
   res.json({
+    text: result.answer,
+    assistant_message: asstMsg,
     user_message: userMsg,
-    assistant_message: assistantMsg,
+    matched_kb: result.matched_kb,
     match_score: result.match_score,
     needs_trainer: result.needs_trainer,
-    escalation: escalationItem
+    active_topic: detectedCat,
+    client_profile: client.profile
+  });
+});
+
+// Admin Subscription Analytics & Weekly Intent Digest API
+app.get('/api/analytics/summary', (_req: Request, res: Response) => {
+  const vipClients = db.clients.filter(c => c.is_vip);
+  const basicClients = db.clients.filter(c => !c.is_vip);
+
+  const calcCategoryBreakdown = (clientsList: Client[]) => {
+    const counts: Record<string, number> = {
+      training: 0,
+      nutrition: 0,
+      recovery: 0,
+      weight_loss: 0,
+      muscle_gain: 0,
+      general: 0
+    };
+    clientsList.forEach(c => {
+      const analytics = c.profile.intent_analytics || {};
+      Object.entries(analytics).forEach(([cat, val]) => {
+        counts[cat] = (counts[cat] || 0) + Number(val);
+      });
+    });
+    return counts;
+  };
+
+  const vipBreakdown = calcCategoryBreakdown(vipClients);
+  const basicBreakdown = calcCategoryBreakdown(basicClients);
+
+  // Weekly Intent Digest (Ranked topics in last 7 days)
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const weeklyMessages = db.messages.filter(m => new Date(m.created_at) >= sevenDaysAgo && m.role === 'user');
+
+  const weeklyCategoryCounts: Record<string, { total: number; vip: number; basic: number }> = {
+    training: { total: 0, vip: 0, basic: 0 },
+    nutrition: { total: 0, vip: 0, basic: 0 },
+    recovery: { total: 0, vip: 0, basic: 0 },
+    weight_loss: { total: 0, vip: 0, basic: 0 },
+    muscle_gain: { total: 0, vip: 0, basic: 0 },
+    general: { total: 0, vip: 0, basic: 0 }
+  };
+
+  weeklyMessages.forEach(m => {
+    const client = db.clients.find(c => c.id === m.client_id);
+    const cat = detectTopicCategory(m.text);
+    if (!weeklyCategoryCounts[cat]) {
+      weeklyCategoryCounts[cat] = { total: 0, vip: 0, basic: 0 };
+    }
+    weeklyCategoryCounts[cat].total += 1;
+    if (client?.is_vip) {
+      weeklyCategoryCounts[cat].vip += 1;
+    } else {
+      weeklyCategoryCounts[cat].basic += 1;
+    }
+  });
+
+  const categoryLabels: Record<string, string> = {
+    training: 'Тренировочный процесс',
+    nutrition: 'Питание и диетология',
+    recovery: 'Восстановление и сон',
+    weight_loss: 'Снижение жировой массы',
+    muscle_gain: 'Набор мышечной массы',
+    general: 'Общие вопросы методики'
+  };
+
+  const weeklyDigest = Object.entries(weeklyCategoryCounts)
+    .map(([cat, stats]) => ({
+      category_id: cat,
+      category_name: categoryLabels[cat] || cat,
+      total_requests: stats.total,
+      vip_requests: stats.vip,
+      basic_requests: stats.basic
+    }))
+    .sort((a, b) => b.total_requests - a.total_requests);
+
+  res.json({
+    summary: {
+      total_clients: db.clients.length,
+      vip_clients_count: vipClients.length,
+      basic_clients_count: basicClients.length,
+      total_messages_recorded: db.messages.length
+    },
+    vip_stats: {
+      client_count: vipClients.length,
+      category_breakdown: vipBreakdown
+    },
+    basic_stats: {
+      client_count: basicClients.length,
+      category_breakdown: basicBreakdown
+    },
+    weekly_intent_digest: weeklyDigest,
+    content_gaps: db.contentGaps
   });
 });
 

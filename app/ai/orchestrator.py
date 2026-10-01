@@ -26,7 +26,7 @@ class AIOrchestrator:
 
     async def answer(self, question: str, client_profile: dict[str, Any],
                      knowledge_items: list[KnowledgeItem], history: list[Message]) -> GeneratedAnswer:
-        system = build_system_prompt()
+        system = build_system_prompt(client_profile)
         user = build_user_prompt(question, client_profile, knowledge_items, history)
         raw = await self.ai.text(system, user)
         return GeneratedAnswer.model_validate(json.loads(raw))

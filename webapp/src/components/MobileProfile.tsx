@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User,
   ShieldCheck,
@@ -16,7 +16,8 @@ import {
   Server,
   Loader2,
   Sparkles,
-  FolderArchive
+  FolderArchive,
+  Crown
 } from 'lucide-react';
 import { apiFetch } from '../api';
 
@@ -36,6 +37,100 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   const [personalTrainingRequested, setPersonalTrainingRequested] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
+
+  // Profile Data States
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [isVip, setIsVip] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [vipUpgrading, setVipUpgrading] = useState(false);
+
+  // Form Fields
+  const [formName, setFormName] = useState('');
+  const [formAge, setFormAge] = useState('');
+  const [formHeight, setFormHeight] = useState('');
+  const [formWeight, setFormWeight] = useState('');
+  const [formGoal, setFormGoal] = useState('');
+  const [formRestrictions, setFormRestrictions] = useState('');
+
+  // Load Profile on mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await apiFetch('/api/clients/1');
+        if (response.ok) {
+          const res = await response.json();
+          setIsVip(!!res.is_vip);
+          if (res.profile) {
+            setFormName(res.profile.name || '');
+            setFormAge(res.profile.age !== undefined ? String(res.profile.age) : '');
+            setFormHeight(res.profile.height !== undefined ? String(res.profile.height) : '');
+            setFormWeight(res.profile.weight !== undefined ? String(res.profile.weight) : '');
+            setFormGoal(res.profile.goal || '');
+            setFormRestrictions(res.profile.restrictions || '');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setSaveSuccess(false);
+    try {
+      const response = await apiFetch('/api/client/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: 1,
+          name: formName,
+          age: formAge ? Number(formAge) : undefined,
+          height: formHeight ? Number(formHeight) : undefined,
+          weight: formWeight ? Number(formWeight) : undefined,
+          goal: formGoal,
+          restrictions: formRestrictions
+        })
+      });
+      if (response.ok) {
+        const res = await response.json();
+        if (res && res.success) {
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3000);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleUpgradeToVip = async () => {
+    setVipUpgrading(true);
+    try {
+      const response = await apiFetch('/api/client/vip/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: 1 })
+      });
+      if (response.ok) {
+        const res = await response.json();
+        if (res && res.success) {
+          setIsVip(true);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to upgrade to VIP:', err);
+    } finally {
+      setVipUpgrading(false);
+    }
+  };
 
   const handleDownloadFile = async (url: string, filename: string) => {
     setDownloadingFile(filename);
@@ -96,9 +191,12 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             <User className="w-5 h-5" />
           </div>
           <div>
-            <div className="font-semibold text-sm text-inherit">Участник Сообщества</div>
+            <div className="font-semibold text-sm text-inherit flex items-center gap-1.5">
+              <span>{formName || 'Участник Сообщества'}</span>
+              {isVip && <Crown className="w-3.5 h-3.5 text-[#D4AF37] fill-[#D4AF37] animate-pulse shrink-0" />}
+            </div>
             <div className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Доступ к базе знаний активен
+              {isVip ? 'VIP-доступ активен без ограничений' : 'Базовый доступ к базе знаний'}
             </div>
           </div>
         </div>
@@ -112,6 +210,218 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         >
           {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
+      </div>
+
+      {/* ========================================== */}
+      {/* SECTION VIP: МОНЕТИЗАЦИЯ С ИКОНКОЙ КОРОНЫ */}
+      {/* ========================================== */}
+      <div className={`p-4 rounded-xl border relative overflow-hidden ${
+        isDark 
+          ? 'bg-gradient-to-br from-[#1A2520] to-[#121B17] border-[#2E3F35]' 
+          : 'bg-gradient-to-br from-[#F5F8F6] to-[#EBF0EC] border-[#C8D6CE]'
+      }`}>
+        {/* Glow effect */}
+        <div className="absolute top-0 right-0 w-24 h-24 bg-[#5B8A78] opacity-10 blur-2xl rounded-full pointer-events-none" />
+
+        <div className="flex items-start gap-3.5 relative z-10">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+            isVip 
+              ? 'bg-gradient-to-br from-[#FFDF00] to-[#D4AF37] text-[#0A100D] shadow-md shadow-[#D4AF37]/20' 
+              : 'bg-[#E0E8E4] text-[#53665C] border border-[#C8D6CF]'
+          }`}>
+            <Crown className={`w-5 h-5 ${isVip ? 'animate-bounce' : ''}`} />
+          </div>
+
+          <div className="space-y-1.5 flex-1">
+            <div className="font-semibold text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <span>VIP-Тариф Без Лимитов</span>
+              {isVip && (
+                <span className="text-[9px] font-bold bg-[#D4AF37]/20 text-[#D4AF37] px-1.5 py-0.5 rounded-full border border-[#D4AF37]/30 shrink-0">
+                  АКТИВЕН
+                </span>
+              )}
+            </div>
+            
+            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+              {isVip 
+                ? 'Вам доступно неограниченное число обращений к ИИ-Библиотекарю. Все лимиты полностью сняты!'
+                : 'В базовом тарифе действует ограничение: не более 5 обращений в час. Активируйте VIP, чтобы общаться без лимитов.'
+              }
+            </p>
+
+            {!isVip && (
+              <button
+                onClick={handleUpgradeToVip}
+                disabled={vipUpgrading}
+                className="mt-2 w-full py-2.5 px-4 rounded-xl font-bold text-xs text-[#0A100D] transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#D4AF37] via-[#FFD700] to-[#B8860B] hover:brightness-110 shadow-md shadow-[#D4AF37]/15 select-none"
+              >
+                {vipUpgrading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Активация VIP...</span>
+                  </>
+                ) : (
+                  <>
+                    <Crown className="w-4 h-4 fill-white text-white shrink-0" />
+                    <span className="text-white font-bold text-xs">Купить VIP-доступ</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================== */}
+      {/* SECTION PROFILE: ЛИЧНЫЕ ПАРАМЕТРЫ          */}
+      {/* ========================================== */}
+      <div className={`p-4 rounded-xl border ${
+        isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+      }`}>
+        <div className="flex items-center gap-2 border-b pb-2 border-inherit mb-3">
+          <User className="w-4 h-4 text-[#7DA295]" />
+          <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Личный профиль в БД</h2>
+        </div>
+
+        {profileLoading ? (
+          <div className="flex items-center justify-center py-6 gap-2 opacity-60">
+            <Loader2 className="w-4 h-4 animate-spin text-[#7DA295]" />
+            <span>Загрузка данных анкеты...</span>
+          </div>
+        ) : (
+          <form onSubmit={handleSaveProfile} className="space-y-3.5">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Имя */}
+              <div className="col-span-2 space-y-1">
+                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Имя</label>
+                <input
+                  type="text"
+                  required
+                  value={formName}
+                  onChange={e => setFormName(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
+                    isDark 
+                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
+                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                  placeholder="Введите ваше имя"
+                />
+              </div>
+
+              {/* Возраст */}
+              <div className="space-y-1">
+                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Возраст (лет)</label>
+                <input
+                  type="text"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={formAge}
+                  onChange={e => setFormAge(e.target.value.replace(/\D/g, ''))}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
+                    isDark 
+                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
+                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                  placeholder="Например: 28"
+                />
+              </div>
+
+              {/* Рост */}
+              <div className="space-y-1">
+                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Рост (см)</label>
+                <input
+                  type="text"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={formHeight}
+                  onChange={e => setFormHeight(e.target.value.replace(/\D/g, ''))}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
+                    isDark 
+                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
+                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                  placeholder="Например: 180"
+                />
+              </div>
+
+              {/* Вес */}
+              <div className="space-y-1">
+                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Вес (кг)</label>
+                <input
+                  type="text"
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={formWeight}
+                  onChange={e => setFormWeight(e.target.value.replace(/\D/g, ''))}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
+                    isDark 
+                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
+                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                  placeholder="Например: 82"
+                />
+              </div>
+
+              {/* Цель тренировок */}
+              <div className="space-y-1 col-span-2">
+                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Цель тренировок</label>
+                <input
+                  type="text"
+                  value={formGoal}
+                  onChange={e => setFormGoal(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
+                    isDark 
+                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
+                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                  placeholder="Например: Набор мышечной массы"
+                />
+              </div>
+
+              {/* Ограничения по здоровью */}
+              <div className="space-y-1 col-span-2">
+                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Ограничения и травмы</label>
+                <textarea
+                  value={formRestrictions}
+                  onChange={e => setFormRestrictions(e.target.value)}
+                  rows={2}
+                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition resize-none ${
+                    isDark 
+                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
+                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                  placeholder="Например: Легкий дискомфорт в коленях при приседаниях"
+                />
+              </div>
+            </div>
+
+            {saveSuccess && (
+              <div className={`p-2.5 rounded-lg border flex items-center gap-2 text-[11px] font-semibold text-emerald-500 bg-emerald-500/10 border-emerald-500/20`}>
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Анкета успешно сохранена в вашей карточке БД!</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={profileSaving}
+              className={`w-full py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 ${
+                isDark
+                  ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
+                  : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+              }`}
+            >
+              {profileSaving ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>Сохранение...</span>
+                </>
+              ) : (
+                <span>Сохранить анкету в БД</span>
+              )}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* ========================================== */}

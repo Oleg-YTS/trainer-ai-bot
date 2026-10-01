@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, CheckCircle2, BookOpen, AlertCircle, RefreshCw, Zap } from 'lucide-react';
+import { Send, Bot, User, CheckCircle2, BookOpen, AlertCircle, RefreshCw, Zap, Dumbbell, Salad, Moon, Flame, TrendingUp, HelpCircle } from 'lucide-react';
 import { apiFetch } from '../api';
 
 interface Message {
@@ -131,9 +131,18 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
   const formatTime = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
+      if (!dateStr) return '';
+      let normalized = dateStr;
+      if (!normalized.endsWith('Z') && !normalized.includes('+')) {
+        normalized += 'Z';
+      }
+      const d = new Date(normalized);
       if (isNaN(d.getTime())) return '';
-      return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleTimeString('ru-RU', {
+        timeZone: 'Europe/Moscow',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     } catch {
       return '';
     }
@@ -209,6 +218,35 @@ export const MobileChat: React.FC<MobileChatProps> = ({
           </div>
         )}
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* Interactive Topic Quick Chips (SVG icons only, Zero Emoji) */}
+      <div className="pt-2 pb-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 shrink-0">
+        {[
+          { id: 'training', label: 'Тренировки', icon: Dumbbell, query: 'Расскажи подробнее про раздел: Тренировочный процесс' },
+          { id: 'nutrition', label: 'Питание', icon: Salad, query: 'Расскажи подробнее про раздел: Питание и диетология' },
+          { id: 'recovery', label: 'Восстановление', icon: Moon, query: 'Расскажи подробнее про раздел: Восстановление и сон' },
+          { id: 'weight_loss', label: 'Снижение веса', icon: Flame, query: 'Расскажи подробнее про раздел: Снижение жировой массы' },
+          { id: 'muscle_gain', label: 'Набор массы', icon: TrendingUp, query: 'Расскажи подробнее про раздел: Набор мышечной массы' },
+          { id: 'general', label: 'Методика', icon: HelpCircle, query: 'Расскажи подробнее про раздел: Общие вопросы методики' }
+        ].map(chip => {
+          const IconComp = chip.icon;
+          return (
+            <button
+              key={chip.id}
+              onClick={() => handleSendMessage(chip.query)}
+              disabled={loading}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap transition shrink-0 active:scale-95 ${
+                isDark
+                  ? 'bg-[#121B17] border border-[#1F2E27] text-[#C2D1C9] hover:border-[#5B8A78] hover:text-[#E8ECE9]'
+                  : 'bg-white border border-[#D8E0DB] text-[#2B4A3D] hover:border-[#2B4A3D]'
+              }`}
+            >
+              <IconComp className="w-3 h-3 opacity-80 shrink-0" />
+              <span>{chip.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Seamless Floating Input Capsule (NO border-t) */}
