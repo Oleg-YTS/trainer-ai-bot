@@ -42,6 +42,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
   const [isVip, setIsVip] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [vipUpgrading, setVipUpgrading] = useState(false);
 
@@ -61,6 +62,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         if (response.ok) {
           const res = await response.json();
           setIsVip(!!res.is_vip);
+          setIsAdmin(!!res.is_admin);
           if (res.profile) {
             setFormName(res.profile.name || '');
             setFormAge(res.profile.age !== undefined ? String(res.profile.age) : '');
@@ -79,6 +81,32 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
     loadProfile();
   }, []);
 
+  const handleToggleAdmin = async (newAdminState: boolean) => {
+    setIsAdmin(newAdminState);
+    if (newAdminState) {
+      setIsVip(true);
+    }
+    try {
+      const response = await apiFetch('/api/client/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: 1,
+          is_admin: newAdminState
+        })
+      });
+      if (response.ok) {
+        const res = await response.json();
+        if (res?.client) {
+          setIsVip(!!res.client.is_vip);
+          setIsAdmin(!!res.client.is_admin);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle admin role:', err);
+    }
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileSaving(true);
@@ -94,13 +122,18 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           height: formHeight ? Number(formHeight) : undefined,
           weight: formWeight ? Number(formWeight) : undefined,
           goal: formGoal,
-          restrictions: formRestrictions
+          restrictions: formRestrictions,
+          is_admin: isAdmin
         })
       });
       if (response.ok) {
         const res = await response.json();
         if (res && res.success) {
           setSaveSuccess(true);
+          if (res.client) {
+            setIsVip(!!res.client.is_vip);
+            setIsAdmin(!!res.client.is_admin);
+          }
           setTimeout(() => setSaveSuccess(false), 3000);
         }
       }
@@ -269,6 +302,56 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
               </button>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ========================================== */}
+      {/* SECTION ROLE: ВЫБОР РОЛИ В СИСТЕМЕ         */}
+      {/* ========================================== */}
+      <div className={`p-4 rounded-xl border ${
+        isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+      }`}>
+        <div className="flex items-center gap-2 border-b pb-2 border-inherit mb-3">
+          <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
+          <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Роль в системе</h2>
+        </div>
+        
+        <p className={`text-[11px] leading-relaxed mb-3 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+          Выберите вашу роль для тестирования. Администраторам VIP-статус и доступ к Панели Управления предоставляются бесплатно.
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleToggleAdmin(false)}
+            className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              !isAdmin
+                ? isDark
+                  ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295] shadow-sm shadow-[#5B8A78]/10'
+                  : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
+                : isDark
+                  ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                  : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Пользователь</span>
+          </button>
+
+          <button
+            onClick={() => handleToggleAdmin(true)}
+            className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              isAdmin
+                ? isDark
+                  ? 'bg-gradient-to-br from-[#FFDF00]/10 to-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37] shadow-sm shadow-[#D4AF37]/10'
+                  : 'bg-[#FFDF00]/10 border-[#D4AF37] text-[#B8860B]'
+                : isDark
+                  ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                  : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+            }`}
+          >
+            <Crown className="w-3.5 h-3.5" />
+            <span>Администратор</span>
+          </button>
         </div>
       </div>
 
@@ -492,7 +575,8 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       {/* ========================================== */}
       {/* SECTION 2: ДЛЯ АДМИНА (For Admin / Trainer)*/}
       {/* ========================================== */}
-      <div className="space-y-3 pt-2">
+      {isAdmin && (
+        <div className="space-y-3 pt-2">
         <div className="flex items-center gap-2 px-1">
           <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
           <h2 className="font-semibold text-sm uppercase tracking-wider text-inherit">
@@ -821,6 +905,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

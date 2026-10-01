@@ -77,6 +77,7 @@ export interface Client {
   name: string;
   profile: ClientProfile;
   is_vip: boolean; // True for personal training clients
+  is_admin?: boolean; // True for administrators/trainers
   created_at: string;
 }
 
@@ -146,6 +147,7 @@ class Database {
       telegram_user_id: 20001,
       name: 'Иван',
       is_vip: true,
+      is_admin: true,
       profile: {
         name: 'Иван',
         gender: 'male',
@@ -973,7 +975,7 @@ app.put('/api/escalations/:id/resolve', (req: Request, res: Response) => {
 
 // Update Client Profile Endpoint
 app.post('/api/client/profile', (req: Request, res: Response) => {
-  const { client_id, name, age, height, weight, goal, restrictions } = req.body;
+  const { client_id, name, age, height, weight, goal, restrictions, is_admin } = req.body;
   const client = db.clients.find(c => c.id === Number(client_id || 1));
   if (!client) return res.status(404).json({ error: 'Client not found' });
 
@@ -986,6 +988,13 @@ app.post('/api/client/profile', (req: Request, res: Response) => {
   if (weight !== undefined) client.profile.weight = Number(weight);
   if (goal) client.profile.goal = stripEmojis(goal);
   if (restrictions !== undefined) client.profile.restrictions = stripEmojis(restrictions);
+  
+  if (is_admin !== undefined) {
+    client.is_admin = !!is_admin;
+    if (client.is_admin) {
+      client.is_vip = true; // Admins are always VIP by default
+    }
+  }
 
   res.json({ success: true, client });
 });
