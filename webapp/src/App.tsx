@@ -283,21 +283,29 @@ export const App: React.FC = () => {
 
           {/* Right: Sandbox role toggle, theme & version */}
           <div className="flex items-center gap-2">
-            {currentUser.is_admin ? (
+            {/* Testing Role Switcher */}
+            <select
+              value={currentUser.is_admin ? 'admin' : currentUser.is_vip ? 'vip' : 'subscriber'}
+              onChange={(e) => setUserRole(e.target.value as 'admin' | 'vip' | 'subscriber')}
+              className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition outline-none cursor-pointer border ${
+                isDark
+                  ? 'bg-[#182620] border-[#2B4A3D] text-[#7DA295]'
+                  : 'bg-[#F4F7F5] border-[#D0DCD5] text-[#2B4A3D]'
+              }`}
+              title="Переключение роли (для тестирования)"
+            >
+              <option value="subscriber">Простой</option>
+              <option value="vip">VIP</option>
+              <option value="admin">Админ</option>
+            </select>
+
+            {currentUser.is_admin && (
               <button
                 onClick={() => setActiveTab('trainer')}
                 className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1"
                 title="Перейти в панель тренера"
               >
                 ★ Панель
-              </button>
-            ) : (
-              <button
-                onClick={() => setUserRole('admin')}
-                className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition"
-                title="Включить режим тренера для тестирования"
-              >
-                + Права админа
               </button>
             )}
 
