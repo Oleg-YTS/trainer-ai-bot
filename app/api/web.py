@@ -398,6 +398,37 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
         result = await session.execute(statement)
         clients = result.scalars().all()
 
+        if not clients:
+            trainer = await session.get(Trainer, 1)
+            if not trainer:
+                session.add(Trainer(id=1, telegram_user_id=435297513, name="Главный Тренер"))
+                await session.commit()
+            
+            admin_configs = [
+                (747600306, "Администратор"),
+                (435297513, "Главный Тренер")
+            ]
+            for admin_tg_id, default_name in admin_configs:
+                prof = build_default_profile(name=default_name, is_admin=True, is_vip=True)
+                session.add(Client(
+                    trainer_id=1,
+                    name=default_name,
+                    telegram_user_id=admin_tg_id,
+                    profile_json=json.dumps(prof, ensure_ascii=False)
+                ))
+            
+            test_prof = build_default_profile(name="Иван Смирнов", gender="male", is_admin=False, is_vip=True)
+            session.add(Client(
+                trainer_id=1,
+                name="Иван Смирнов",
+                telegram_user_id=987654321,
+                profile_json=json.dumps(test_prof, ensure_ascii=False)
+            ))
+            await session.commit()
+
+            result = await session.execute(statement)
+            clients = result.scalars().all()
+
         settings = get_settings()
         client_list = []
         for c in clients:
