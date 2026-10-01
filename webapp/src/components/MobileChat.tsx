@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, CheckCircle2, BookOpen, AlertCircle, RefreshCw, Zap, Dumbbell, Salad, Moon, Flame, TrendingUp, HelpCircle } from 'lucide-react';
+import { Send, Bot, User, CheckCircle2, BookOpen, AlertCircle, RefreshCw, Zap, Dumbbell, Salad, Moon, Flame, TrendingUp, HelpCircle, Trash2, X, AlertTriangle, Loader2 } from 'lucide-react';
 import { apiFetch } from '../api';
 
 interface Message {
@@ -17,28 +17,37 @@ interface MobileChatProps {
   initialQuery?: string;
   onClearInitialQuery?: () => void;
   clientId?: number;
+  isResolving?: boolean;
 }
 
 export const MobileChat: React.FC<MobileChatProps> = ({
   isDark,
   initialQuery,
   onClearInitialQuery,
-  clientId = 1
+  clientId,
+  isResolving = false
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const activeClientId = clientId || 1;
 
   const DEFAULT_WELCOME: Message = {
     id: 1,
-    client_id: clientId,
+    client_id: activeClientId,
     role: 'assistant',
     text: 'Здравствуйте! Я ассистент-библиотекарь тренера. Задайте вопрос по методике тренировок, расчету питания или восстановлению.',
     created_at: new Date().toISOString()
   };
 
   const fetchHistory = async () => {
+    if (isResolving || !clientId) {
+      return;
+    }
     try {
       const res = await apiFetch(`/api/clients/${clientId}`);
       const data = await res.json();
@@ -54,8 +63,10 @@ export const MobileChat: React.FC<MobileChatProps> = ({
   };
 
   useEffect(() => {
-    fetchHistory();
-  }, [clientId]);
+    if (!isResolving && clientId) {
+      fetchHistory();
+    }
+  }, [clientId, isResolving]);
 
   useEffect(() => {
     if (initialQuery) {
@@ -77,7 +88,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
     const tempUserMsg: Message = {
       id: Date.now(),
-      client_id: clientId,
+      client_id: activeClientId,
       role: 'user',
       text,
       created_at: new Date().toISOString()
@@ -89,7 +100,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: clientId,
+          client_id: activeClientId,
           message_text: text,
           message: text
         })
@@ -107,7 +118,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
           tempUserMsg,
           {
             id: Date.now() + 1,
-            client_id: clientId,
+            client_id: activeClientId,
             role: 'assistant',
             text: data.text,
             created_at: new Date().toISOString()
@@ -120,7 +131,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         ...prev,
         {
           id: Date.now() + 1,
-          client_id: clientId,
+          client_id: activeClientId,
           role: 'assistant',
           text: 'Связь с сервером временно недоступна. Пожалуйста, повторите вопрос или задайте его в Telegram-боте.',
           created_at: new Date().toISOString()
@@ -128,6 +139,24 @@ export const MobileChat: React.FC<MobileChatProps> = ({
       ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!clientId || clearing) return;
+    setClearing(true);
+    try {
+      await apiFetch(`/api/client/${clientId}/messages/clear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId })
+      });
+      setMessages([DEFAULT_WELCOME]);
+      setShowClearModal(false);
+    } catch (err) {
+      console.error('Failed to clear chat:', err);
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -150,8 +179,39 @@ export const MobileChat: React.FC<MobileChatProps> = ({
     }
   };
 
+  if (isResolving) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-16 space-y-3 opacity-70">
+        <Loader2 className="w-6 h-6 animate-spin text-[#7DA295]" />
+        <span className="text-xs">Подключение к диалогу...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
+      {/* Top Chat Subheader with Clear History trigger */}
+      <div className="flex items-center justify-between pb-2 px-1 text-[11px] shrink-0">
+        <div className="flex items-center gap-1.5 opacity-60">
+          <Bot className="w-3.5 h-3.5 text-[#7DA295]" />
+          <span>Диалог с AI-библиотекарем</span>
+        </div>
+        {messages.length > 1 && (
+          <button
+            onClick={() => setShowClearModal(true)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition text-[10px] ${
+              isDark
+                ? 'text-[#8E9E96] hover:text-red-400 hover:bg-red-500/10'
+                : 'text-[#7E9187] hover:text-red-600 hover:bg-red-50'
+            }`}
+            title="Очистить историю диалога"
+          >
+            <Trash2 className="w-3 h-3" />
+            <span>Очистить чат</span>
+          </button>
+        )}
+      </div>
+
       {/* Messages Feed */}
       <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 pb-4">
         {messages.map(msg => {
@@ -288,6 +348,55 @@ export const MobileChat: React.FC<MobileChatProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Telegram-styled Confirmation Modal for Chat Clear */}
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl transform transition-all ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]' : 'bg-white border-[#D8E0DB] text-[#141F1A]'
+          }`}>
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">Очистить историю чата?</h3>
+                <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Все сообщения текущего диалога будут безвозвратно удалены. Чат начнется с чистого листа.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowClearModal(false)}
+                disabled={clearing}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold transition ${
+                  isDark
+                    ? 'border-[#1F2E27] bg-[#18231E] text-[#C2D1C9] hover:bg-[#202E27]'
+                    : 'border-[#D8E0DB] bg-[#F4F7F5] text-[#2B4A3D] hover:bg-[#EBF0EC]'
+                }`}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleClearHistory}
+                disabled={clearing}
+                className="py-2 px-3 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+              >
+                {clearing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                <span>Очистить</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

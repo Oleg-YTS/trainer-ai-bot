@@ -28,6 +28,7 @@ export const App: React.FC = () => {
   const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
 
   // Authenticated Telegram Client identity
+  const [isResolving, setIsResolving] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<CurrentUser>({
     id: 1,
     telegram_user_id: null,
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
 
   const resolveCurrentUser = async () => {
     try {
+      setIsResolving(true);
       // Clear any legacy role pollution from localStorage
       try {
         localStorage.removeItem('trainer_is_admin');
@@ -131,6 +133,8 @@ export const App: React.FC = () => {
       }
     } catch (err) {
       console.warn('Failed to resolve current user identity:', err);
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -218,6 +222,7 @@ export const App: React.FC = () => {
                 initialQuery={chatInitialQuery}
                 onClearInitialQuery={() => setChatInitialQuery('')}
                 clientId={currentUser.id}
+                isResolving={isResolving}
               />
             </div>
           )}

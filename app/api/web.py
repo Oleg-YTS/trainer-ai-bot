@@ -582,6 +582,71 @@ async def get_client_messages(
         return []
 
 
+class ClearMessagesPayload(BaseModel):
+    client_id: Optional[int] = 1
+
+
+@router.post("/client/{client_id}/messages/clear")
+@router.post("/client/messages/clear")
+async def clear_client_messages_endpoint(
+    client_id: Optional[int] = None,
+    payload: Optional[ClearMessagesPayload] = None,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Clears message history for a specific client in PostgreSQL.
+    """
+    target_id = client_id or (payload.client_id if payload else None) or 1
+    try:
+        from sqlalchemy import delete
+        await session.execute(delete(Message).where(Message.client_id == target_id))
+        await session.commit()
+        return {"ok": True, "message": "История сообщений успешно очищена"}
+    except Exception as exc:
+        logger.error("Failed to clear messages for client %s: %s", target_id, exc)
+        return {"ok": False, "error": str(exc)}
+
+
+class VipRequestPayload(BaseModel):
+    client_id: int
+    note: Optional[str] = None
+    profile: Optional[dict] = None
+
+
+@router.post("/client/vip/request")
+async def request_vip_endpoint(
+    payload: VipRequestPayload,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    Creates an escalation ticket for trainer requesting VIP personal coaching.
+    """
+    try:
+        client = await session.get(Client, payload.client_id)
+        client_name = client.name if client else f"Клиент #{payload.client_id}"
+
+        if payload.profile and client:
+            try:
+                await update_profile(payload.client_id, payload.profile)
+            except Exception:
+                pass
+
+        note_str = payload.note or f"Заявка на персональное ведение (VIP) от {client_name}"
+        esc = Escalation(
+            client_id=payload.client_id,
+            client_name=client_name,
+            reason="Заявка на VIP (Ведение)",
+            question=note_str,
+            status="open"
+        )
+        session.add(esc)
+        await session.commit()
+        return {"ok": True, "message": "Заявка на персональное ведение успешно отправлена тренеру"}
+    except Exception as exc:
+        logger.error("Failed to submit VIP request for client %s: %s", payload.client_id, exc)
+        return {"ok": False, "error": str(exc)}
+
+
 @router.get("/client/profile")
 async def get_client_profile_endpoint(
     client_id: int = Query(default=1),
@@ -595,7 +660,7 @@ async def get_client_profile_endpoint(
         client = await session.get(Client, client_id)
         
         settings = get_settings()
-        is_admin_val = (settings.is_admin_telegram_id(client.telegram_user_id) if client else False) or bool(profile.get("is_admin", False))
+        is_admin_val = settings.is_admin_telegram_id(client.telegram_user_id) if client else False
         is_vip_val = is_admin_val or bool(profile.get("is_vip", False))
         
         return {

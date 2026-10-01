@@ -2,24 +2,19 @@ import React, { useState, useEffect } from 'react';
 import {
   User,
   ShieldCheck,
-  Sun,
-  Moon,
-  Smartphone,
-  LayoutDashboard,
   CheckCircle2,
-  Send,
-  FileText,
-  Download,
-  Copy,
-  Check,
-  Package,
-  Server,
-  Loader2,
-  Sparkles,
-  FolderArchive,
   Crown,
+  LayoutDashboard,
+  Smartphone,
+  Loader2,
+  Send,
   Star,
-  UserCheck
+  UserCheck,
+  Activity,
+  Heart,
+  Target,
+  Sparkles,
+  Info
 } from 'lucide-react';
 import { apiFetch } from '../api';
 
@@ -32,7 +27,7 @@ interface MobileProfileProps {
   isAdmin?: boolean;
   isVip?: boolean;
   onRefreshUser?: () => void;
-  onUpdateAdminState?: (isAdmin: boolean) => void;
+  onUpdateAdminState?: (adminState: boolean) => void;
 }
 
 export const MobileProfile: React.FC<MobileProfileProps> = ({
@@ -43,45 +38,54 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   clientId = 1,
   isAdmin: userIsAdmin = false,
   isVip: userIsVip = false,
-  onRefreshUser,
-  onUpdateAdminState
+  onRefreshUser
 }) => {
-  const [personalTrainingRequested, setPersonalTrainingRequested] = useState(false);
-  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
-
-  // Profile Data States
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [isVip, setIsVip] = useState(userIsVip);
   const [isAdmin, setIsAdmin] = useState(userIsAdmin);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [vipUpgrading, setVipUpgrading] = useState(false);
+  const [isVip, setIsVip] = useState(userIsVip);
 
-  // Form Fields
+  // Profile Form States
   const [formName, setFormName] = useState('');
   const [formAge, setFormAge] = useState('');
   const [formHeight, setFormHeight] = useState('');
   const [formWeight, setFormWeight] = useState('');
-  const [formGoal, setFormGoal] = useState('');
+  const [formGoal, setFormGoal] = useState('Набор мышечной массы');
+  const [formActivityLevel, setFormActivityLevel] = useState('Умеренная');
+  const [formFrequency, setFormFrequency] = useState('3-4 раза в неделю');
   const [formRestrictions, setFormRestrictions] = useState('');
+  const [formDietPreferences, setFormDietPreferences] = useState('');
+  const [attachVipRequest, setAttachVipRequest] = useState(false);
 
-  // Load Profile on mount or clientId change
+  // UI state
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [vipRequestSent, setVipRequestSent] = useState(false);
+  const [vipRequestLoading, setVipRequestLoading] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(userIsAdmin);
+    setIsVip(userIsVip);
+  }, [userIsAdmin, userIsVip]);
+
   useEffect(() => {
     const loadProfile = async () => {
+      if (!clientId) return;
+      setProfileLoading(true);
       try {
-        const response = await apiFetch(`/api/clients/${clientId}`);
+        const response = await apiFetch(`/api/client/profile?client_id=${clientId}`);
         if (response.ok) {
           const res = await response.json();
-          setIsVip(!!res.is_vip || userIsVip);
-          setIsAdmin(!!res.is_admin || userIsAdmin);
+          if (res.name) setFormName(res.name);
           if (res.profile) {
-            setFormName(res.profile.name || res.name || '');
-            setFormAge(res.profile.age !== undefined ? String(res.profile.age) : '');
-            setFormHeight(res.profile.height !== undefined ? String(res.profile.height) : '');
-            setFormWeight(res.profile.weight !== undefined ? String(res.profile.weight) : '');
-            setFormGoal(res.profile.goal || '');
-            setFormRestrictions(res.profile.restrictions || '');
+            if (res.profile.name) setFormName(res.profile.name);
+            if (res.profile.age !== undefined) setFormAge(String(res.profile.age));
+            if (res.profile.height !== undefined) setFormHeight(String(res.profile.height));
+            if (res.profile.weight !== undefined) setFormWeight(String(res.profile.weight));
+            if (res.profile.goal) setFormGoal(res.profile.goal);
+            if (res.profile.activity_level) setFormActivityLevel(res.profile.activity_level);
+            if (res.profile.training_frequency) setFormFrequency(res.profile.training_frequency);
+            if (res.profile.restrictions) setFormRestrictions(res.profile.restrictions);
+            if (res.profile.diet_preferences) setFormDietPreferences(res.profile.diet_preferences);
           }
         }
       } catch (err) {
@@ -91,44 +95,11 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       }
     };
     loadProfile();
-  }, [clientId, userIsAdmin, userIsVip]);
-
-  const handleToggleAdmin = async (newAdminState: boolean) => {
-    if (!userIsAdmin) {
-      return;
-    }
-    setIsAdmin(newAdminState);
-    if (newAdminState) {
-      setIsVip(true);
-    }
-    if (onUpdateAdminState) {
-      onUpdateAdminState(newAdminState);
-    }
-    try {
-      const response = await apiFetch('/api/client/status/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: clientId,
-          is_admin: newAdminState,
-          role: newAdminState ? 'admin' : 'subscriber'
-        })
-      });
-      if (response.ok) {
-        const res = await response.json();
-        if (res?.client) {
-          setIsVip(!!res.client.is_vip);
-          setIsAdmin(!!res.client.is_admin);
-        }
-        if (onRefreshUser) onRefreshUser();
-      }
-    } catch (err) {
-      console.error('Failed to toggle admin role:', err);
-    }
-  };
+  }, [clientId]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!clientId) return;
     setProfileSaving(true);
     setSaveSuccess(false);
     try {
@@ -142,21 +113,20 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           height: formHeight ? Number(formHeight) : undefined,
           weight: formWeight ? Number(formWeight) : undefined,
           goal: formGoal,
+          activity_level: formActivityLevel,
+          training_frequency: formFrequency,
           restrictions: formRestrictions,
-          is_admin: isAdmin
+          diet_preferences: formDietPreferences
         })
       });
+
       if (response.ok) {
-        const res = await response.json();
-        if (res && res.success) {
-          setSaveSuccess(true);
-          if (res.client) {
-            setIsVip(!!res.client.is_vip);
-            setIsAdmin(!!res.client.is_admin);
-          }
-          if (onRefreshUser) onRefreshUser();
-          setTimeout(() => setSaveSuccess(false), 3000);
+        setSaveSuccess(true);
+        if (attachVipRequest && !isVip && !vipRequestSent) {
+          await handleSendVipRequest();
         }
+        setTimeout(() => setSaveSuccess(false), 3500);
+        if (onRefreshUser) onRefreshUser();
       }
     } catch (err) {
       console.error('Failed to save profile:', err);
@@ -165,836 +135,434 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
     }
   };
 
-  const handleUpgradeToVip = async () => {
-    setVipUpgrading(true);
+  const handleSendVipRequest = async () => {
+    if (!clientId || vipRequestLoading) return;
+    setVipRequestLoading(true);
     try {
-      const response = await apiFetch('/api/client/vip/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: clientId })
-      });
-      if (response.ok) {
-        const res = await response.json();
-        if (res && res.success) {
-          setIsVip(true);
-        }
-        if (onRefreshUser) onRefreshUser();
-      }
-    } catch (err) {
-      console.error('Failed to upgrade to VIP:', err);
-    } finally {
-      setVipUpgrading(false);
-    }
-  };
-
-  const handleDownloadFile = async (url: string, filename: string) => {
-    setDownloadingFile(filename);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.error('Download error:', err);
-      window.open(url, '_blank');
-    } finally {
-      setDownloadingFile(null);
-    }
-  };
-
-  const handleCopyLink = (path: string) => {
-    const fullUrl = `${window.location.origin}${path}`;
-    navigator.clipboard.writeText(fullUrl);
-    setCopiedLink(path);
-    setTimeout(() => setCopiedLink(null), 2000);
-  };
-
-  const handleRequestPersonalTraining = async () => {
-    try {
-      await apiFetch('/api/chat', {
+      await apiFetch('/api/client/vip/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: clientId,
-          message_text: 'Запрос на персональное ведение тренером (отправлено через профиль)'
+          note: `Заявка на VIP ведение от ${formName || 'пользователя'}. Цель: ${formGoal}.`,
+          profile: {
+            name: formName,
+            age: formAge ? Number(formAge) : undefined,
+            height: formHeight ? Number(formHeight) : undefined,
+            weight: formWeight ? Number(formWeight) : undefined,
+            goal: formGoal,
+            activity_level: formActivityLevel,
+            training_frequency: formFrequency,
+            restrictions: formRestrictions,
+            diet_preferences: formDietPreferences
+          }
         })
       });
-      setPersonalTrainingRequested(true);
-    } catch (e) {
-      console.error(e);
-      setPersonalTrainingRequested(true);
+      setVipRequestSent(true);
+    } catch (err) {
+      console.error('Failed to send VIP request:', err);
+    } finally {
+      setVipRequestLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6 pb-28 text-xs">
-      {/* Top Header & Theme Switcher */}
-      <div className={`p-4 rounded-xl border flex items-center justify-between ${
+    <div className="space-y-4 pb-20">
+      {/* ========================================== */}
+      {/* SECTION 0: ДЛЯ АДМИНА (Только для тренера) */}
+      {/* ========================================== */}
+      {userIsAdmin && (
+        <div className={`p-4 rounded-2xl border ${
+          isDark
+            ? 'bg-amber-500/10 border-amber-500/30 text-[#E8ECE9]'
+            : 'bg-amber-50 border-amber-200 text-[#141F1A]'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <Star className="w-5 h-5 fill-amber-400/30" />
+              </div>
+              <div>
+                <div className="font-semibold text-xs text-amber-500 uppercase tracking-wider">
+                  Режим Администратора (Тренер)
+                </div>
+                <div className="text-xs font-medium">Кабинет управления БЗ и подопечными</div>
+              </div>
+            </div>
+            <button
+              onClick={onOpenTrainerDashboard}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-[#0A100D] text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Панель тренера</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* БЛОК 1: СТАТУС И ЗАПРОС ВЕДЕНИЯ (VIP)     */}
+      {/* ========================================== */}
+      <div className={`p-4 rounded-2xl border transition shadow-sm ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-            isDark ? 'bg-[#18231E] text-[#7DA295]' : 'bg-[#EBF0EC] text-[#2B4A3D]'
-          }`}>
-            <User className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-semibold text-sm text-inherit flex items-center gap-1.5">
-              <span>{formName || 'Участник Сообщества'}</span>
-              {isVip && <Crown className="w-3.5 h-3.5 text-[#D4AF37] fill-[#D4AF37] animate-pulse shrink-0" />}
-            </div>
-            <div className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              {isVip ? 'VIP-доступ активен без ограничений' : 'Базовый доступ к базе знаний'}
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={onToggleTheme}
-          className={`p-2 rounded-xl border transition flex items-center gap-1.5 ${
-            isDark ? 'bg-[#18231E] border-[#22352B] text-[#7DA295]' : 'bg-[#F4F7F5] border-[#E0E8E3] text-[#2B4A3D]'
-          }`}
-          title="Сменить тему"
-        >
-          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* ========================================== */}
-      {/* SECTION VIP: МОНЕТИЗАЦИЯ С ИКОНКОЙ КОРОНЫ */}
-      {/* ========================================== */}
-      <div className={`p-4 rounded-xl border relative overflow-hidden ${
-        isDark 
-          ? 'bg-gradient-to-br from-[#1A2520] to-[#121B17] border-[#2E3F35]' 
-          : 'bg-gradient-to-br from-[#F5F8F6] to-[#EBF0EC] border-[#C8D6CE]'
-      }`}>
-        {/* Glow effect */}
-        <div className="absolute top-0 right-0 w-24 h-24 bg-[#5B8A78] opacity-10 blur-2xl rounded-full pointer-events-none" />
-
-        <div className="flex items-start gap-3.5 relative z-10">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-            isVip 
-              ? 'bg-gradient-to-br from-[#FFDF00] to-[#D4AF37] text-[#0A100D] shadow-md shadow-[#D4AF37]/20' 
-              : 'bg-[#E0E8E4] text-[#53665C] border border-[#C8D6CF]'
-          }`}>
-            <Crown className={`w-5 h-5 ${isVip ? 'animate-bounce' : ''}`} />
+        <div className="flex items-center justify-between border-b pb-3 border-inherit mb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
+            <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Уровень доступа</h2>
           </div>
 
-          <div className="space-y-1.5 flex-1">
-            <div className="font-semibold text-xs uppercase tracking-wider flex items-center gap-1.5">
-              <span>VIP-Тариф Без Лимитов</span>
-              {isVip && (
-                <span className="text-[9px] font-bold bg-[#D4AF37]/20 text-[#D4AF37] px-1.5 py-0.5 rounded-full border border-[#D4AF37]/30 shrink-0">
-                  АКТИВЕН
-                </span>
-              )}
-            </div>
-            
-            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              {isVip 
-                ? 'Вам доступно неограниченное число обращений к ИИ-Библиотекарю. Все лимиты полностью сняты!'
-                : 'В базовом тарифе действует ограничение: не более 5 обращений в час. Активируйте VIP, чтобы общаться без лимитов.'
-              }
-            </p>
-
-            {!isVip && (
-              <button
-                onClick={async () => {
-                  setVipUpgrading(true);
-                  try {
-                    await apiFetch('/api/chat', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        client_id: clientId,
-                        message_text: "Системный запрос: Клиент запрашивает активацию VIP-доступа у тренера.",
-                        category_id: "general"
-                      })
-                    });
-                    setPersonalTrainingRequested(true);
-                  } catch (e) {
-                    console.error(e);
-                  } finally {
-                    setVipUpgrading(false);
-                  }
-                }}
-                disabled={vipUpgrading || personalTrainingRequested}
-                className={`mt-2 w-full py-2.5 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 select-none ${
-                  personalTrainingRequested
-                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                    : 'bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-[#0A100D] hover:brightness-110 shadow-md shadow-[#D4AF37]/15'
-                }`}
-              >
-                {vipUpgrading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Отправка запроса...</span>
-                  </>
-                ) : personalTrainingRequested ? (
-                  <span>Заявка отправлена тренеру ✅</span>
-                ) : (
-                  <>
-                    <Crown className="w-4 h-4 shrink-0" />
-                    <span>Запросить VIP у тренера</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================== */}
-      {/* SECTION ROLE: ТЕКУЩИЙ СТАТУС В СИСТЕМЕ     */}
-      {/* ========================================== */}
-      <div className={`p-4 rounded-xl border ${
-        isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-      }`}>
-        <div className="flex items-center gap-2 border-b pb-2 border-inherit mb-3">
-          <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
-          <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Уровень доступа</h2>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-            Ваш текущий статус:
-          </span>
-          {isAdmin ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+          {userIsAdmin ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
               <Star className="w-3.5 h-3.5 fill-amber-400/30 text-amber-400" />
               Администратор (Тренер)
             </span>
           ) : isVip ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#182820] text-[#7DA295] border border-[#253A30]">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#182820] text-[#7DA295] border border-[#253A30]">
               <Crown className="w-3.5 h-3.5 text-[#7DA295]" />
-              VIP (Ведение)
+              VIP (Персональное ведение)
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#121B17] text-[#8E9E96] border border-[#1F2E27]">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#18231E] text-[#8E9E96] border border-[#1F2E27]">
               <UserCheck className="w-3.5 h-3.5 text-[#8E9E96]" />
               Подписчик канала
             </span>
           )}
         </div>
 
-        {userIsAdmin && (
-          <div className="mt-3 pt-3 border-t border-dashed border-inherit space-y-2">
-            <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Переключить режим тестирования (доступно администратору):
-            </span>
-            <div className="grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleToggleAdmin(false)}
-                className={`py-1.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 transition ${
-                  !isAdmin && !isVip
-                    ? isDark ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]' : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
-                    : 'opacity-60 hover:opacity-100 border-inherit'
-                }`}
-              >
-                <UserCheck className="w-3 h-3" />
-                <span>Подписчик</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  setIsAdmin(false);
-                  setIsVip(true);
-                  await apiFetch('/api/client/status/update', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ client_id: clientId, role: 'vip' })
-                  });
-                  if (onRefreshUser) onRefreshUser();
-                }}
-                className={`py-1.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 transition ${
-                  !isAdmin && isVip
-                    ? isDark ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]' : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
-                    : 'opacity-60 hover:opacity-100 border-inherit'
-                }`}
-              >
-                <Crown className="w-3 h-3 text-[#7DA295]" />
-                <span>VIP</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleToggleAdmin(true)}
-                className={`py-1.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 transition ${
-                  isAdmin
-                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                    : 'opacity-60 hover:opacity-100 border-inherit'
-                }`}
-              >
-                <Star className="w-3 h-3 fill-amber-400/20 text-amber-400" />
-                <span>Админ</span>
-              </button>
+        {/* Status description & VIP benefits card */}
+        {isVip || userIsAdmin ? (
+          <div className={`p-3 rounded-xl border text-xs leading-relaxed space-y-1 ${
+            isDark ? 'bg-[#182820] border-[#253A30] text-[#C2D1C9]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
+          }`}>
+            <div className="font-semibold flex items-center gap-1.5 text-[#7DA295]">
+              <Crown className="w-4 h-4" />
+              <span>Персональное ведение активно</span>
             </div>
+            <p className="text-[11px] opacity-80">
+              Вам доступен полный индивидуальный трекинг, персональные корректировки тренировок и прямое согласование рациона с тренером.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className={`p-3.5 rounded-xl border text-xs leading-relaxed space-y-2 ${
+              isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#C2D1C9]' : 'bg-[#F4F7F5] border-[#E2E8E4] text-[#2B4A3D]'
+            }`}>
+              <div className="font-semibold flex items-center gap-1.5 text-[#7DA295]">
+                <Sparkles className="w-4 h-4" />
+                <span>Что дает персональное ведение (VIP)?</span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] opacity-90 pl-1">
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7DA295] shrink-0 mt-0.5" />
+                  <span>Индивидуальный план тренировок под ваши цели и оборудование</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7DA295] shrink-0 mt-0.5" />
+                  <span>Персональный расчет КБЖУ и контроль динамики веса</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7DA295] shrink-0 mt-0.5" />
+                  <span>Еженедельный разбор отчетов и прямой контакт с тренером</span>
+                </li>
+              </ul>
+            </div>
+
+            {vipRequestSent ? (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Заявка отправлена тренеру. Тренер свяжется с вами для уточнения деталей.</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSendVipRequest}
+                disabled={vipRequestLoading}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.99] shadow-sm ${
+                  isDark
+                    ? 'bg-[#5B8A78] hover:bg-[#7DA295] text-[#0A100D]'
+                    : 'bg-[#2B4A3D] hover:bg-[#3C6150] text-white'
+                }`}
+              >
+                {vipRequestLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Crown className="w-4 h-4" />
+                )}
+                <span>Запросить персональное ведение</span>
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {/* ========================================== */}
-      {/* SECTION PROFILE: ЛИЧНЫЕ ПАРАМЕТРЫ          */}
+      {/* БЛОК 2: АНКЕТА ПОДОПЕЧНОГО (Стандарт БД)    */}
       {/* ========================================== */}
-      <div className={`p-4 rounded-xl border ${
+      <div className={`p-4 rounded-2xl border transition shadow-sm ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
-        <div className="flex items-center gap-2 border-b pb-2 border-inherit mb-3">
-          <User className="w-4 h-4 text-[#7DA295]" />
-          <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Личный профиль в БД</h2>
+        <div className="flex items-center justify-between border-b pb-3 border-inherit mb-3">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-[#7DA295]" />
+            <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Анкета подопечного</h2>
+          </div>
+          <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            Стандарт базы тренера
+          </span>
         </div>
 
         {profileLoading ? (
-          <div className="flex items-center justify-center py-6 gap-2 opacity-60">
+          <div className="flex items-center justify-center py-8 gap-2 opacity-60">
             <Loader2 className="w-4 h-4 animate-spin text-[#7DA295]" />
-            <span>Загрузка данных анкеты...</span>
+            <span className="text-xs">Загрузка параметров анкеты...</span>
           </div>
         ) : (
           <form onSubmit={handleSaveProfile} className="space-y-3.5">
-            <div className="grid grid-cols-2 gap-3">
-              {/* Имя */}
-              <div className="col-span-2 space-y-1">
-                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Имя</label>
-                <input
-                  type="text"
-                  required
-                  value={formName}
-                  onChange={e => setFormName(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
-                    isDark 
-                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
-                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
-                  }`}
-                  placeholder="Введите ваше имя"
-                />
-              </div>
+            {/* Имя */}
+            <div>
+              <label className={`block text-[11px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                Имя или никнейм
+              </label>
+              <input
+                type="text"
+                value={formName}
+                onChange={e => setFormName(e.target.value)}
+                placeholder="Как к вам обращаться"
+                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                  isDark
+                    ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                    : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
+                }`}
+              />
+            </div>
 
-              {/* Возраст */}
-              <div className="space-y-1">
-                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Возраст (лет)</label>
+            {/* Возраст / Рост / Вес */}
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className={`block text-[10px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Возраст (лет)
+                </label>
                 <input
-                  type="text"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
+                  type="number"
                   value={formAge}
-                  onChange={e => setFormAge(e.target.value.replace(/\D/g, ''))}
-                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
-                    isDark 
-                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
-                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  onChange={e => setFormAge(e.target.value)}
+                  placeholder="28"
+                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                      : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
                   }`}
-                  placeholder="Например: 28"
                 />
               </div>
 
-              {/* Рост */}
-              <div className="space-y-1">
-                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Рост (см)</label>
+              <div>
+                <label className={`block text-[10px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Рост (см)
+                </label>
                 <input
-                  type="text"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
+                  type="number"
                   value={formHeight}
-                  onChange={e => setFormHeight(e.target.value.replace(/\D/g, ''))}
-                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
-                    isDark 
-                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
-                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  onChange={e => setFormHeight(e.target.value)}
+                  placeholder="178"
+                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                      : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
                   }`}
-                  placeholder="Например: 180"
                 />
               </div>
 
-              {/* Вес */}
-              <div className="space-y-1">
-                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Вес (кг)</label>
+              <div>
+                <label className={`block text-[10px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Текущий вес (кг)
+                </label>
                 <input
-                  type="text"
-                  pattern="[0-9]*"
-                  inputMode="numeric"
+                  type="number"
+                  step="0.1"
                   value={formWeight}
-                  onChange={e => setFormWeight(e.target.value.replace(/\D/g, ''))}
-                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
-                    isDark 
-                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
-                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
+                  onChange={e => setFormWeight(e.target.value)}
+                  placeholder="76.5"
+                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                      : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
                   }`}
-                  placeholder="Например: 82"
-                />
-              </div>
-
-              {/* Цель тренировок */}
-              <div className="space-y-1 col-span-2">
-                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Цель тренировок</label>
-                <input
-                  type="text"
-                  value={formGoal}
-                  onChange={e => setFormGoal(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition ${
-                    isDark 
-                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
-                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
-                  }`}
-                  placeholder="Например: Набор мышечной массы"
-                />
-              </div>
-
-              {/* Ограничения по здоровью */}
-              <div className="space-y-1 col-span-2">
-                <label className={`text-[10px] uppercase font-bold tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Ограничения и травмы</label>
-                <textarea
-                  value={formRestrictions}
-                  onChange={e => setFormRestrictions(e.target.value)}
-                  rows={2}
-                  className={`w-full px-3 py-2 rounded-lg border outline-none text-xs transition resize-none ${
-                    isDark 
-                      ? 'bg-[#18231E] border-[#22352B] focus:border-[#5B8A78] text-[#E8ECE9]' 
-                      : 'bg-[#F4F7F5] border-[#E0E8E3] focus:border-[#2B4A3D] text-[#141F1A]'
-                  }`}
-                  placeholder="Например: Легкий дискомфорт в коленях при приседаниях"
                 />
               </div>
             </div>
 
-            {saveSuccess && (
-              <div className={`p-2.5 rounded-lg border flex items-center gap-2 text-[11px] font-semibold text-emerald-500 bg-emerald-500/10 border-emerald-500/20`}>
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Анкета успешно сохранена в вашей карточке БД!</span>
+            {/* Главная цель */}
+            <div>
+              <label className={`block text-[11px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                Основная цель тренировок
+              </label>
+              <select
+                value={formGoal}
+                onChange={e => setFormGoal(e.target.value)}
+                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                  isDark
+                    ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                    : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
+                }`}
+              >
+                <option value="Набор мышечной массы">Набор мышечной массы (Гипертрофия)</option>
+                <option value="Снижение жировой массы">Снижение жировой массы (Похудение / Рельеф)</option>
+                <option value="Сила и функционал">Развитие силы и выносливости</option>
+                <option value="Рекомпозиция">Рекомпозиция (Тонус и сохранение формы)</option>
+                <option value="ОФП и здоровье">Общая физическая подготовка и здоровье</option>
+              </select>
+            </div>
+
+            {/* Активность и частота тренировок */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className={`block text-[10px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Уровень активности
+                </label>
+                <select
+                  value={formActivityLevel}
+                  onChange={e => setFormActivityLevel(e.target.value)}
+                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                      : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                >
+                  <option value="Низкая (сидячий)">Сидячий образ жизни</option>
+                  <option value="Умеренная">Умеренная (10k шагов)</option>
+                  <option value="Высокая">Высокая (активная работа)</option>
+                </select>
               </div>
+
+              <div>
+                <label className={`block text-[10px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Частота занятий
+                </label>
+                <select
+                  value={formFrequency}
+                  onChange={e => setFormFrequency(e.target.value)}
+                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                    isDark
+                      ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                      : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
+                  }`}
+                >
+                  <option value="1-2 раза в неделю">1-2 раза в неделю</option>
+                  <option value="3-4 раза в неделю">3-4 раза в неделю</option>
+                  <option value="5+ раз в неделю">5+ раз в неделю</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Ограничения по здоровью */}
+            <div>
+              <label className={`block text-[11px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                Ограничения по здоровью / травмы
+              </label>
+              <input
+                type="text"
+                value={formRestrictions}
+                onChange={e => setFormRestrictions(e.target.value)}
+                placeholder="Например: протрузия L5-S1, боль в коленях при глубоком приседе"
+                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                  isDark
+                    ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                    : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
+                }`}
+              />
+            </div>
+
+            {/* Пожелания по питанию */}
+            <div>
+              <label className={`block text-[11px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                Особенности питания / аллергии
+              </label>
+              <input
+                type="text"
+                value={formDietPreferences}
+                onChange={e => setFormDietPreferences(e.target.value)}
+                placeholder="Например: не ем молочные продукты, аллергия на орехи"
+                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                  isDark
+                    ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
+                    : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
+                }`}
+              />
+            </div>
+
+            {/* Чекбокс прикрепления к заявке на VIP */}
+            {!isVip && !userIsAdmin && (
+              <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${
+                isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={attachVipRequest}
+                  onChange={e => setAttachVipRequest(e.target.checked)}
+                  className="mt-0.5 rounded border-[#5B8A78] text-[#5B8A78] focus:ring-0"
+                />
+                <span className={`text-[11px] leading-tight ${isDark ? 'text-[#C2D1C9]' : 'text-[#2B4A3D]'}`}>
+                  Отправить эти данные тренеру вместе с заявкой на персональное ведение (VIP)
+                </span>
+              </label>
             )}
 
-            <button
-              type="submit"
-              disabled={profileSaving}
-              className={`w-full py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 ${
-                isDark
-                  ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
-                  : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
-              }`}
-            >
-              {profileSaving ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                  <span>Сохранение...</span>
-                </>
-              ) : (
-                <span>Сохранить анкету в БД</span>
-              )}
-            </button>
+            {/* Кнопка сохранения */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={profileSaving}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.99] shadow-sm ${
+                  isDark
+                    ? 'bg-[#5B8A78] hover:bg-[#7DA295] text-[#0A100D]'
+                    : 'bg-[#2B4A3D] hover:bg-[#3C6150] text-white'
+                }`}
+              >
+                {profileSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : saveSuccess ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )}
+                <span>
+                  {profileSaving
+                    ? 'Сохранение данных...'
+                    : saveSuccess
+                      ? 'Анкета успешно сохранена в БД!'
+                      : 'Сохранить анкету в БД'}
+                </span>
+              </button>
+            </div>
           </form>
         )}
       </div>
 
-      {/* ========================================== */}
-      {/* SECTION 1: ДЛЯ ПОЛЬЗОВАТЕЛЕЙ (For Users)  */}
-      {/* ========================================== */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <User className="w-4 h-4 text-[#7DA295]" />
-          <h2 className="font-semibold text-sm uppercase tracking-wider text-inherit">
-            Для пользователей
-          </h2>
-        </div>
-
-        <div className={`rounded-xl border divide-y overflow-hidden ${
-          isDark ? 'bg-[#121B17] border-[#1F2E27] divide-[#18231E]' : 'bg-white border-[#D8E0DB] divide-[#F0F4F1]'
-        }`}>
-          {/* 1. Персональное ведение */}
-          <div className="p-4 space-y-3">
-            <div className="font-semibold text-sm">Персональное ведение</div>
-            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Индивидуальная программа тренировок, расчет макронутриентов, разбор отчетов и прямой приоритетный контакт с тренером.
-            </p>
-
-            {personalTrainingRequested ? (
-              <div className={`p-3 rounded-lg border flex items-center gap-2 text-[11px] ${
-                isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#7DA295]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
-              }`}>
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>Заявка отправлена тренеру. С вами свяжутся в Telegram в ближайшее время.</span>
-              </div>
-            ) : (
-              <button
-                onClick={handleRequestPersonalTraining}
-                className={`w-full py-2.5 rounded-xl font-medium text-xs transition flex items-center justify-center gap-2 ${
-                  isDark
-                    ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
-                    : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
-                }`}
-              >
-                <Send className="w-3.5 h-3.5" /> Запросить персональное ведение
-              </button>
-            )}
-          </div>
-
-          {/* 2. Добавить на экран */}
-          <button
-            onClick={onOpenInstallModal}
-            className="w-full p-4 flex items-center justify-between text-left hover:opacity-80 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                isDark ? 'bg-[#18231E] text-[#5B8A78]' : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}>
-                <Smartphone className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-medium text-inherit">Добавить на экран</div>
-                <div className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Установить как приложение на смартфон (PWA)
-                </div>
-              </div>
-            </div>
-            <span className="text-[11px] font-medium opacity-60">Открыть</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================== */}
-      {/* SECTION 2: ДЛЯ АДМИНА (For Admin / Trainer)*/}
-      {/* ========================================== */}
-      {isAdmin && (
-        <div className="space-y-3 pt-2">
-        <div className="flex items-center gap-2 px-1">
-          <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
-          <h2 className="font-semibold text-sm uppercase tracking-wider text-inherit">
-            Для админа
-          </h2>
-        </div>
-
-        <div className={`rounded-xl border divide-y overflow-hidden ${
-          isDark ? 'bg-[#121B17] border-[#1F2E27] divide-[#18231E]' : 'bg-white border-[#D8E0DB] divide-[#F0F4F1]'
-        }`}>
-          {/* 1. Панель управления */}
-          <button
-            onClick={onOpenTrainerDashboard}
-            className="w-full p-4 flex items-center justify-between text-left hover:opacity-80 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                isDark ? 'bg-[#18231E] text-[#5B8A78]' : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}>
-                <LayoutDashboard className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-medium text-inherit">Панель управления</div>
-                <div className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Редактирование БЗ, утверждение статей и эскалации
-                </div>
-              </div>
-            </div>
-            <span className="text-[11px] font-medium opacity-60">Перейти</span>
-          </button>
-
-          {/* 2. Добавить на экран */}
-          <button
-            onClick={onOpenInstallModal}
-            className="w-full p-4 flex items-center justify-between text-left hover:opacity-80 transition"
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${
-                isDark ? 'bg-[#18231E] text-[#5B8A78]' : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}>
-                <Smartphone className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="font-medium text-inherit">Добавить на экран</div>
-                <div className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Быстрый ярлык админа для рабочего стола
-                </div>
-              </div>
-            </div>
-            <span className="text-[11px] font-medium opacity-60">Открыть</span>
-          </button>
-
-          {/* 3. Концепция & Хранилище Знаний */}
-          <div className="p-4 space-y-2">
-            <div className="font-medium text-inherit flex items-center justify-between">
-              <span>Концепция & Архитектура Хранилища</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-[#18231E] text-[#8E9E96]' : 'bg-[#EBF0EC] text-[#53665C]'}`}>
-                TXT Документы
-              </span>
-            </div>
-            <p className={`text-[11px] leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Детальные спецификации правил, работы с форматами Word/PDF/TXT, классификации и нарезки:
-            </p>
-            <div className="grid grid-cols-1 gap-2 pt-1">
-              <a
-                href="/KNOWLEDGE_STORAGE_CONCEPT.txt"
-                download
-                className={`p-2.5 rounded-lg border flex items-center justify-between transition ${
-                  isDark ? 'bg-[#18231E] border-[#22352B] hover:bg-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3] hover:bg-[#EBF0EC]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#7DA295]" />
-                  <div>
-                    <div className="font-medium text-xs">Концепция Хранилища и Форматов</div>
-                    <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Логика файлов .docx, .pdf, .txt, OCR и правил БЗ</div>
-                  </div>
-                </div>
-                <Download className="w-3.5 h-3.5 opacity-70" />
-              </a>
-
-              <a
-                href="/ADMIN_CONCEPT.txt"
-                download
-                className={`p-2.5 rounded-lg border flex items-center justify-between transition ${
-                  isDark ? 'bg-[#18231E] border-[#22352B] hover:bg-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3] hover:bg-[#EBF0EC]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#7DA295]" />
-                  <div>
-                    <div className="font-medium text-xs">Общая Концепция & AI-Библиотекарь</div>
-                    <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Правила проекта, 70% порог и анти-эмодзи гайд</div>
-                  </div>
-                </div>
-                <Download className="w-3.5 h-3.5 opacity-70" />
-              </a>
-
-              <a
-                href="/AUTO_DEPLOY_INSTRUCTIONS.txt"
-                download
-                className={`p-2.5 rounded-lg border flex items-center justify-between transition ${
-                  isDark ? 'bg-[#18231E] border-[#22352B] hover:bg-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3] hover:bg-[#EBF0EC]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#7DA295]" />
-                  <div>
-                    <div className="font-medium text-xs">Инструкция по Авто-Деплою (CI/CD)</div>
-                    <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Пошаговая настройка GitHub Actions и VPS</div>
-                  </div>
-                </div>
-                <Download className="w-3.5 h-3.5 opacity-70" />
-              </a>
-
-              <a
-                href="/RENDER_DEPLOY_GUIDE.txt"
-                download
-                className={`p-2.5 rounded-lg border flex items-center justify-between transition ${
-                  isDark ? 'bg-[#18231E] border-[#22352B] hover:bg-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3] hover:bg-[#EBF0EC]'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#7DA295]" />
-                  <div>
-                    <div className="font-medium text-xs">Деплой и Авто-обновление на Render.com</div>
-                    <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Инструкция деплоя в 1 клик на Render.com</div>
-                  </div>
-                </div>
-                <Download className="w-3.5 h-3.5 opacity-70" />
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. Блок исходников (Source Files & Visual Branding Assets) */}
-        <div className={`p-4 rounded-xl border space-y-4 ${
-          isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-        }`}>
-          <div className="flex items-center justify-between border-b pb-3 border-inherit">
-            <div className="font-semibold text-sm flex items-center gap-2">
-              <FolderArchive className="w-4 h-4 text-[#7DA295]" />
-              <span>Блок исходников</span>
-            </div>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${isDark ? 'bg-[#18231E] text-[#8E9E96]' : 'bg-[#EBF0EC] text-[#53665C]'}`}>
-              Архивы и графика
-            </span>
-          </div>
-
-          {/* 4a. Client Build (dist.zip) */}
-          <div className={`p-3 rounded-lg border space-y-2.5 ${
-            isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#D8E0DB]'
+      {/* Быстрое добавление на домашний экран */}
+      <div className={`p-3.5 rounded-2xl border flex items-center justify-between transition ${
+        isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 rounded-xl ${
+            isDark ? 'bg-[#18231E] text-[#5B8A78]' : 'bg-[#EBF0EC] text-[#2B4A3D]'
           }`}>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-medium text-xs flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5 text-[#5B8A78]" />
-                  <span>Клиентская сборка (dist.zip)</span>
-                </div>
-                <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Готовые скомпилированные файлы (HTML, JS, CSS, PWA).
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={() => handleDownloadFile('/dist.zip', 'dist.zip')}
-                disabled={downloadingFile === 'dist.zip'}
-                className={`flex-1 py-1.5 px-3 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1.5 ${
-                  isDark
-                    ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
-                    : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
-                }`}
-              >
-                {downloadingFile === 'dist.zip' ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Скачивание...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Скачать dist.zip</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => handleCopyLink('/dist.zip')}
-                className={`py-1.5 px-2.5 rounded-lg border text-xs transition flex items-center justify-center gap-1 ${
-                  isDark
-                    ? 'bg-[#121B17] border-[#253A30] hover:bg-[#1A2621] text-[#E8ECE9]'
-                    : 'bg-white border-[#C8D6CF] hover:bg-[#F4F6F4] text-[#141F1A]'
-                }`}
-                title="Скопировать прямую ссылку"
-              >
-                {copiedLink === '/dist.zip' ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-[10px]">Скопировано</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span className="text-[10px]">Ссылка</span>
-                  </>
-                )}
-              </button>
-            </div>
+            <Smartphone className="w-4 h-4" />
           </div>
-
-          {/* 4b. Full Project Source Code (project-full.zip) */}
-          <div className={`p-3 rounded-lg border space-y-2.5 ${
-            isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#D8E0DB]'
-          }`}>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <div className="font-medium text-xs flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5 text-[#5B8A78]" />
-                  <span>Полный исходный код (project-full.zip)</span>
-                </div>
-                <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Исходники + Node.js Express сервер (server.ts, package.json).
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                onClick={() => handleDownloadFile('/project-full.zip', 'project-full.zip')}
-                disabled={downloadingFile === 'project-full.zip'}
-                className={`flex-1 py-1.5 px-3 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1.5 ${
-                  isDark
-                    ? 'bg-[#1F2E27] text-[#E8ECE9] hover:bg-[#283C33] border border-[#253A30]'
-                    : 'bg-white text-[#141F1A] hover:bg-[#F4F6F4] border border-[#C8D6CF]'
-                }`}
-              >
-                {downloadingFile === 'project-full.zip' ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Скачивание...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Скачать project-full.zip</span>
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => handleCopyLink('/project-full.zip')}
-                className={`py-1.5 px-2.5 rounded-lg border text-xs transition flex items-center justify-center gap-1 ${
-                  isDark
-                    ? 'bg-[#121B17] border-[#253A30] hover:bg-[#1A2621] text-[#E8ECE9]'
-                    : 'bg-white border-[#C8D6CF] hover:bg-[#F4F6F4] text-[#141F1A]'
-                }`}
-                title="Скопировать прямую ссылку"
-              >
-                {copiedLink === '/project-full.zip' ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-[10px]">Скопировано</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span className="text-[10px]">Ссылка</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* 4c. Graphics & Branding Assets */}
-          <div className="space-y-3 pt-2 border-t border-inherit">
-            <div className="font-medium text-xs flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#7DA295]" />
-              <span>Графические исходники и брендинг</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2.5">
-              {/* Mascot Avatar Image */}
-              <div className={`p-2.5 rounded-lg border flex items-center gap-3 ${isDark ? 'bg-[#18231E] border-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3]'}`}>
-                <img
-                  src="/assets/images/trainer_mascot_avatar_icon_1790802380770.jpg"
-                  alt="Mascot Avatar Icon"
-                  referrerPolicy="no-referrer"
-                  className="w-12 h-12 rounded-lg object-cover shrink-0 border border-[#2B4A3D]"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-xs text-inherit">Маскот / Аватарка</div>
-                  <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Формат 1:1 (JPG)</div>
-                  <button
-                    onClick={() => handleDownloadFile('/assets/images/trainer_mascot_avatar_icon_1790802380770.jpg', 'trainer_mascot_avatar.jpg')}
-                    className={`mt-1.5 px-2 py-0.5 rounded text-[10px] font-medium transition flex items-center gap-1 ${
-                      isDark ? 'bg-[#22352B] text-[#7DA295] hover:bg-[#2C4538]' : 'bg-[#E2EAE5] text-[#2B4A3D] hover:bg-[#D5E1DA]'
-                    }`}
-                  >
-                    <Download className="w-2.5 h-2.5" /> Скачать
-                  </button>
-                </div>
-              </div>
-
-              {/* Library Banner Image */}
-              <div className={`p-2.5 rounded-lg border space-y-2 ${isDark ? 'bg-[#18231E] border-[#22352B]' : 'bg-[#F4F7F5] border-[#E0E8E3]'}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-xs text-inherit">Баннер Библиотеки</div>
-                    <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>Формат 16:9 (JPG)</div>
-                  </div>
-                  <button
-                    onClick={() => handleDownloadFile('/assets/images/modern_premium_library_banner_1790801962361.jpg', 'modern_premium_library_banner.jpg')}
-                    className={`px-2 py-0.5 rounded text-[10px] font-medium transition flex items-center gap-1 shrink-0 ${
-                      isDark ? 'bg-[#22352B] text-[#7DA295] hover:bg-[#2C4538]' : 'bg-[#E2EAE5] text-[#2B4A3D] hover:bg-[#D5E1DA]'
-                    }`}
-                  >
-                    <Download className="w-2.5 h-2.5" /> Скачать
-                  </button>
-                </div>
-                <img
-                  src="/assets/images/modern_premium_library_banner_1790801962361.jpg"
-                  alt="Library Banner"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-20 rounded-md object-cover border border-[#2B4A3D]"
-                />
-              </div>
+          <div>
+            <div className="font-medium text-xs text-inherit">Установить как приложение</div>
+            <div className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+              Быстрый доступ с экрана смартфона (PWA)
             </div>
           </div>
         </div>
+        <button
+          onClick={onOpenInstallModal}
+          className="px-3 py-1.5 rounded-lg border text-xs font-medium border-inherit hover:opacity-80 transition"
+        >
+          Установить
+        </button>
       </div>
-      )}
     </div>
   );
 };
-
-export default MobileProfile;

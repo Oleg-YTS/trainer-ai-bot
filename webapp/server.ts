@@ -1233,6 +1233,41 @@ app.post(['/api/client/vip/toggle', '/api/client/status/update'], (req: Request,
   });
 });
 
+// VIP Request by Client Endpoint
+app.post('/api/client/vip/request', (req: Request, res: Response) => {
+  const { client_id, note, profile } = req.body;
+  const clientId = Number(client_id || 1);
+  const client = db.clients.find(c => c.id === clientId);
+  const clientName = client?.name || (profile?.name ? String(profile.name) : `Клиент #${clientId}`);
+
+  if (profile && client) {
+    client.profile = { ...client.profile, ...profile };
+    if (profile.name) client.name = profile.name;
+  }
+
+  db.escalations.push({
+    id: db.nextEscalationId++,
+    client_id: clientId,
+    client_name: clientName,
+    reason: 'Заявка на VIP (Ведение)',
+    question: note || `Запрос на персональное ведение (VIP) от ${clientName}`,
+    status: 'open',
+    created_at: new Date().toISOString()
+  });
+
+  res.json({
+    ok: true,
+    message: 'Заявка на персональное ведение успешно отправлена тренеру'
+  });
+});
+
+// Clear Client Messages Endpoint
+app.post(['/api/client/:id/messages/clear', '/api/client/messages/clear', '/api/chat/clear'], (req: Request, res: Response) => {
+  const clientId = Number(req.params.id || req.body.client_id || 1);
+  db.messages = db.messages.filter(m => m.client_id !== clientId);
+  res.json({ ok: true, message: 'История сообщений успешно очищена' });
+});
+
 // Interactive Chat API
 app.post('/api/chat', async (req: Request, res: Response) => {
   const { client_id, message_text, category_id } = req.body;
