@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.service import AnswerUnavailable, build_grounded_answer
 from app.bot.router import AI_UNAVAILABLE_TEXT, get_orchestrator
-from app.clients.json_store import save_profile_to_json_file
+from app.clients.json_store import save_profile_to_json_file, load_profile_from_json_file, load_all_json_users
 from app.clients.messages import (
     ASSISTANT_ROLE,
     USER_ROLE,
@@ -391,54 +391,25 @@ async def chat_endpoint(payload: ChatRequest):
 @router.get("/clients")
 async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
     """
-    Returns list of all clients in PostgreSQL with is_vip and is_admin.
+    Returns list of all clients in PostgreSQL and webapp/users/ JSON files.
     """
     try:
         statement = select(Client).order_by(Client.id.desc())
         result = await session.execute(statement)
         clients = result.scalars().all()
 
-        if not clients:
-            trainer = await session.get(Trainer, 1)
-            if not trainer:
-                session.add(Trainer(id=1, telegram_user_id=435297513, name="Главный Тренер"))
-                await session.commit()
-            
-            admin_configs = [
-                (747600306, "Администратор"),
-                (435297513, "Главный Тренер")
-            ]
-            for admin_tg_id, default_name in admin_configs:
-                prof = build_default_profile(name=default_name, is_admin=True, is_vip=True)
-                session.add(Client(
-                    trainer_id=1,
-                    name=default_name,
-                    telegram_user_id=admin_tg_id,
-                    profile_json=json.dumps(prof, ensure_ascii=False)
-                ))
-            
-            test_prof = build_default_profile(name="Иван Смирнов", gender="male", is_admin=False, is_vip=True)
-            session.add(Client(
-                trainer_id=1,
-                name="Иван Смирнов",
-                telegram_user_id=987654321,
-                profile_json=json.dumps(test_prof, ensure_ascii=False)
-            ))
-            await session.commit()
-
-            result = await session.execute(statement)
-            clients = result.scalars().all()
-
         settings = get_settings()
         client_list = []
+        seen_tg_ids = set()
+
         for c in clients:
             prof = parse_profile(c.profile_json)
             msg_count_stmt = select(func.count(Message.id)).where(Message.client_id == c.id)
             msg_count = await session.scalar(msg_count_stmt) or 0
-
             is_admin_val = settings.is_admin_telegram_id(c.telegram_user_id) or bool(prof.get("is_admin", False))
             is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
-
+            if c.telegram_user_id:
+                seen_tg_ids.add(c.telegram_user_id)
             client_list.append({
                 "id": c.id,
                 "trainer_id": c.trainer_id,
@@ -451,6 +422,51 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
                 "is_vip": is_vip_val,
                 "is_admin": is_admin_val,
             })
+
+        # Also load any JSON users from webapp/users/
+        json_users = load_all_json_users()
+        for ju in json_users:
+            tg_id = ju.get("telegram_user_id")
+            if tg_id and tg_id in seen_tg_ids:
+                continue
+            if tg_id:
+                seen_tg_ids.add(tg_id)
+            prof = ju.get("profile") or ju
+            is_admin_val = settings.is_admin_telegram_id(tg_id) or bool(prof.get("is_admin", False))
+            is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
+            client_list.append({
+                "id": ju.get("client_id", 999),
+                "trainer_id": 1,
+                "name": ju.get("name") or prof.get("name") or "Пользователь из JSON",
+                "telegram_user_id": tg_id,
+                "telegram_username": prof.get("telegram_username") or prof.get("username"),
+                "created_at": ju.get("updated_at", ""),
+                "messages_count": 0,
+                "profile": prof,
+                "is_vip": is_vip_val,
+                "is_admin": is_admin_val,
+            })
+
+        return client_list
+    except Exception as exc:
+        logger.error("Failed to list clients: %s", exc)
+        json_users = load_all_json_users()
+        client_list = []
+        for ju in json_users:
+            prof = ju.get("profile") or ju
+            client_list.append({
+                "id": ju.get("client_id", 1),
+                "trainer_id": 1,
+                "name": ju.get("name") or prof.get("name") or "Пользователь",
+                "telegram_user_id": ju.get("telegram_user_id"),
+                "telegram_username": prof.get("telegram_username"),
+                "created_at": "",
+                "messages_count": 0,
+                "profile": prof,
+                "is_vip": bool(ju.get("is_vip") or prof.get("is_vip")),
+                "is_admin": bool(ju.get("is_admin") or prof.get("is_admin")),
+            })
+        return client_list)
         return client_list
     except Exception as exc:
         logger.error("Failed to list clients: %s", exc)
@@ -805,6 +821,18 @@ async def update_client_profile_endpoint(
         client_obj.profile_json = json.dumps(existing_prof, ensure_ascii=False)
         await session.commit()
         await session.refresh(client_obj)
+
+        try:
+            save_profile_to_json_file(client_obj.id, {
+                "client_id": client_obj.id,
+                "telegram_user_id": client_obj.telegram_user_id,
+                "name": client_obj.name,
+                "profile": existing_prof,
+                "is_admin": is_admin_val,
+                "is_vip": bool(existing_prof.get("is_vip", False))
+            }, client_obj.telegram_user_id)
+        except Exception as e:
+            logger.warning("Failed to save JSON profile to webapp/users: %s", e)
 
         return {
             "ok": True,

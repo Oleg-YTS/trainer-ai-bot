@@ -1,0 +1,21 @@
+{
+  "client_id": 747600306,
+  "telegram_user_id": 747600306,
+  "name": "Администратор",
+  "profile": {
+    "name": "Администратор",
+    "gender": "male",
+    "age": 30,
+    "height": 180,
+    "weight": 75,
+    "goal": "Поддержание формы",
+    "activity_level": "Высокая",
+    "training_frequency": "5 раз в неделю",
+    "restrictions": "Нет",
+    "diet_preferences": "ПП",
+    "is_admin": true,
+    "is_vip": true
+  },
+  "is_admin": true,
+  "is_vip": true
+}

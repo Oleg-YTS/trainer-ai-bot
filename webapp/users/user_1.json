@@ -1,0 +1,21 @@
+{
+  "client_id": 1,
+  "telegram_user_id": 987654321,
+  "name": "Иван Смирнов",
+  "profile": {
+    "name": "Иван Смирнов",
+    "gender": "male",
+    "age": 28,
+    "height": 180,
+    "weight": 78,
+    "goal": "Набор мышечной массы",
+    "activity_level": "Умеренная",
+    "training_frequency": "3-4 раза в неделю",
+    "restrictions": "Нет",
+    "diet_preferences": "Без ограничений",
+    "is_admin": false,
+    "is_vip": true
+  },
+  "is_admin": false,
+  "is_vip": true
+}
