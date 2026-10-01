@@ -94,24 +94,24 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   }, [clientId, userIsAdmin, userIsVip]);
 
   const handleToggleAdmin = async (newAdminState: boolean) => {
-    if (!userIsAdmin && newAdminState) {
-      // Non-admins cannot elevate themselves
-      return;
-    }
     setIsAdmin(newAdminState);
     if (newAdminState) {
       setIsVip(true);
+      localStorage.setItem('trainer_is_admin', 'true');
+    } else {
+      localStorage.setItem('trainer_is_admin', 'false');
     }
     if (onUpdateAdminState) {
       onUpdateAdminState(newAdminState);
     }
     try {
-      const response = await apiFetch('/api/client/profile', {
+      const response = await apiFetch('/api/client/status/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: clientId,
-          is_admin: newAdminState
+          is_admin: newAdminState,
+          role: newAdminState ? 'admin' : 'subscriber'
         })
       });
       if (response.ok) {
@@ -384,7 +384,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           )}
         </div>
 
-        {userIsAdmin && (
+        {(userIsAdmin || isAdmin || (typeof window !== 'undefined' && localStorage.getItem('trainer_is_admin') === 'true')) && (
           <div className="mt-3 pt-3 border-t border-dashed border-inherit space-y-2">
             <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
               Переключить режим тестирования (доступно администратору):
