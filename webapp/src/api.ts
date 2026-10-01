@@ -1,12 +1,11 @@
 // Centralized API Helper for connecting the Web App interface to any backend (e.g. Render.com)
 
-const API_BASE_URL = (((import.meta as any).env?.VITE_API_BASE_URL as string) || '').replace(/\/$/, '');
+const DEFAULT_BACKEND_URL = 'https://trainer-ai-bot.onrender.com';
+const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
+const API_BASE_URL = (rawEnvUrl ? rawEnvUrl : DEFAULT_BACKEND_URL).replace(/\/$/, '');
 
 export function getApiUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  if (!API_BASE_URL) {
-    return cleanEndpoint;
-  }
   return `${API_BASE_URL}${cleanEndpoint}`;
 }
 
@@ -34,11 +33,16 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}): Pro
 
   try {
     const res = await fetch(url, fetchOptions);
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('text/html') && url !== relativeUrl) {
+      console.warn(`[apiFetch] Endpoint "${url}" returned HTML instead of JSON. Trying local fallback...`);
+      const fallbackRes = await fetch(relativeUrl, fetchOptions);
+      return fallbackRes;
+    }
     return res;
   } catch (err) {
     console.warn(`[apiFetch] Primary fetch to "${url}" failed:`, err);
 
-    // If primary URL was external, fallback to relative URL on local server
     if (url !== relativeUrl) {
       try {
         console.warn(`[apiFetch] Retrying fetch on local relative endpoint "${relativeUrl}"...`);
@@ -49,13 +53,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}): Pro
       }
     }
 
-    // Return a safe dummy Response object to prevent uncaught "Failed to fetch" crashes in callers
     return new Response(JSON.stringify({ error: 'Network error', message: 'Failed to connect to server' }), {
-      status: 503,
-      statusText: 'Service Unavailable',
-      headers: { 'Content-Type': 'application/json' },
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'application/json' },
     });
   }
 }
-
-
