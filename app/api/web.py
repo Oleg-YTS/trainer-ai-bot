@@ -746,12 +746,62 @@ async def get_llm_status_endpoint():
     """
     settings = get_settings()
     orchestrator = get_orchestrator()
+    is_ready = bool(settings.aitunnel_api_key and settings.aitunnel_model)
 
     return {
         "configured": orchestrator.is_configured,
-        "provider": settings.ai_provider,
-        "model": settings.aitunnel_model if settings.ai_provider == "ai_tunnel" else settings.openai_model,
-        "has_key": bool(settings.aitunnel_api_key or settings.openai_api_key),
+        "is_ready": is_ready,
+        "provider": "ai_tunnel",
+        "effective_provider": "AI Tunnel",
+        "effective_model": settings.aitunnel_model,
+        "model": settings.aitunnel_model,
+        "has_key": bool(settings.aitunnel_api_key),
+        "status_message": f"AI Tunnel активен (Модель: {settings.aitunnel_model})" if is_ready else "AITUNNEL_API_KEY не обнаружен"
+    }
+
+
+class LLMConfigPayload(BaseModel):
+    provider: Optional[str] = "ai_tunnel"
+    aitunnelApiKey: Optional[str] = None
+    aitunnelModel: Optional[str] = None
+    aitunnel_api_key: Optional[str] = None
+    aitunnel_model: Optional[str] = None
+
+
+@router.post("/llm/config")
+async def update_llm_config_endpoint(payload: LLMConfigPayload):
+    """
+    Updates runtime AI Tunnel configuration and model.
+    """
+    settings = get_settings()
+    key = payload.aitunnelApiKey or payload.aitunnel_api_key
+    model = payload.aitunnelModel or payload.aitunnel_model
+    if key:
+        settings.aitunnel_api_key = key.strip()
+    if model:
+        settings.aitunnel_model = model.strip()
+
+    try:
+        orch = get_orchestrator()
+        if hasattr(orch, "client"):
+            if key:
+                orch.client._api_key = key.strip()
+                orch.client._client = None
+            if model:
+                orch.client.model = model.strip()
+    except Exception:
+        pass
+
+    is_ready = bool(settings.aitunnel_api_key and settings.aitunnel_model)
+    return {
+        "success": True,
+        "status": {
+            "is_ready": is_ready,
+            "effective_provider": "AI Tunnel",
+            "effective_model": settings.aitunnel_model,
+            "has_key": bool(settings.aitunnel_api_key),
+            "status_message": f"AI Tunnel активен (Модель: {settings.aitunnel_model})" if is_ready else "AITUNNEL_API_KEY не обнаружен",
+        },
     }
 
 

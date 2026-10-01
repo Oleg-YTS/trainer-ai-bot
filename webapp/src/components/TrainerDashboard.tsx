@@ -126,9 +126,9 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const [testResult, setTestResult] = useState<any>(null);
 
   // Runtime LLM Config State
-  const [selectedProvider, setSelectedProvider] = useState<'ai_tunnel' | 'gemini' | 'openai'>('ai_tunnel');
+  const [selectedModel, setSelectedModel] = useState('gpt-6-luna-pro');
+  const [customModel, setCustomModel] = useState('');
   const [inputApiKey, setInputApiKey] = useState('');
-  const [inputModel, setInputModel] = useState('');
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSuccess, setConfigSuccess] = useState(false);
 
@@ -137,16 +137,13 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     setSavingConfig(true);
     setConfigSuccess(false);
     try {
-      const payload: any = { provider: selectedProvider };
-      if (selectedProvider === 'ai_tunnel') {
-        if (inputApiKey) payload.aitunnelApiKey = inputApiKey;
-        if (inputModel) payload.aitunnelModel = inputModel;
-      } else if (selectedProvider === 'gemini') {
-        if (inputApiKey) payload.geminiApiKey = inputApiKey;
-        if (inputModel) payload.geminiModel = inputModel;
-      } else if (selectedProvider === 'openai') {
-        if (inputApiKey) payload.openaiApiKey = inputApiKey;
-        if (inputModel) payload.openaiModel = inputModel;
+      const activeModel = selectedModel === 'custom' ? (customModel.trim() || 'gpt-6-luna-pro') : selectedModel;
+      const payload: any = {
+        provider: 'ai_tunnel',
+        aitunnelModel: activeModel
+      };
+      if (inputApiKey.trim()) {
+        payload.aitunnelApiKey = inputApiKey.trim();
       }
       const res = await apiFetch('/api/llm/config', {
         method: 'POST',
@@ -2153,10 +2150,10 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             <div>
               <h3 className="font-semibold text-sm flex items-center gap-2 text-inherit">
                 <Server className="w-4 h-4 text-[#5B8A78]" />
-                <span>Диагностика и Настройки LLM Провайдера</span>
+                <span>AI Tunnel — Единый ИИ-Провайдер</span>
               </h3>
               <p className={`text-xs mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                Управление моделью искусственного интеллекта, ключами доступа и проверка ответа ассистента
+                Бот работает через единый шлюз AI Tunnel (api.aitunnel.ru). Выберите рабочую модель нейросети и проверьте генерацию.
               </p>
             </div>
 
@@ -2195,173 +2192,125 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             </div>
             <div className="text-xs space-y-1">
               <div className="font-semibold">
-                {llmStatus?.is_ready ? 'LLM Провайдер активен и готов к генерации' : 'Внимание: API-ключ не настроен'}
+                {llmStatus?.is_ready ? 'AI Tunnel подключен и готов к работе' : 'Внимание: AITUNNEL_API_KEY не обнаружен'}
               </div>
               <div className="opacity-90 leading-relaxed">
-                Активный провайдер:{' '}
-                <span className="font-mono font-bold">{llmStatus?.effective_provider || 'не определен'}</span> | Модель:{' '}
-                <span className="font-mono font-bold">{llmStatus?.effective_model || 'none'}</span>
+                Шлюз: <code className="font-mono text-[11px]">https://api.aitunnel.ru/v1/</code> | Активная модель:{' '}
+                <span className="font-mono font-bold text-[#5B8A78] dark:text-[#7DA295]">
+                  {llmStatus?.effective_model || 'gpt-6-luna-pro'}
+                </span>
                 {llmStatus?.status_message && (
                   <span className="block mt-0.5 opacity-80 text-[11px] font-sans">
-                    Статус: {llmStatus.status_message}
+                    {llmStatus.status_message}
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Providers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* AITunnel Card */}
-            <div
-              className={`p-3.5 rounded-xl border space-y-2.5 ${
-                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-xs text-inherit">AITunnel (Россия/РФ)</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    llmStatus?.providers?.ai_tunnel?.has_key
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  }`}
-                >
-                  {llmStatus?.providers?.ai_tunnel?.has_key ? 'Ключ задан' : 'Ключ отсутствует'}
-                </span>
-              </div>
-              <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                <div>URL: <code className="text-[10px] font-mono">{llmStatus?.providers?.ai_tunnel?.base_url || 'https://api.aitunnel.ru/v1/'}</code></div>
-                <div>Модель: <span className="font-medium text-inherit">{llmStatus?.providers?.ai_tunnel?.model || 'gpt-6-luna-pro'}</span></div>
-                <div className="text-[10px] opacity-75">Переменная: <code>AITUNNEL_API_KEY</code></div>
-              </div>
-            </div>
-
-            {/* Google Gemini Card */}
-            <div
-              className={`p-3.5 rounded-xl border space-y-2.5 ${
-                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-xs text-inherit">Google Gemini</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    llmStatus?.providers?.gemini?.has_key
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  }`}
-                >
-                  {llmStatus?.providers?.gemini?.has_key ? 'Ключ задан' : 'Ключ отсутствует'}
-                </span>
-              </div>
-              <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                <div>SDK: <code className="text-[10px] font-mono">@google/genai</code></div>
-                <div>Модель: <span className="font-medium text-inherit">{llmStatus?.providers?.gemini?.model || 'gemini-3.8-flash'}</span></div>
-                <div className="text-[10px] opacity-75">Переменная: <code>GEMINI_API_KEY</code></div>
-              </div>
-            </div>
-
-            {/* OpenAI Direct Card */}
-            <div
-              className={`p-3.5 rounded-xl border space-y-2.5 ${
-                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-xs text-inherit">OpenAI Direct</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    llmStatus?.providers?.openai?.has_key
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  }`}
-                >
-                  {llmStatus?.providers?.openai?.has_key ? 'Ключ задан' : 'Ключ отсутствует'}
-                </span>
-              </div>
-              <div className={`text-[11px] space-y-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                <div>URL: <code className="text-[10px] font-mono">{llmStatus?.providers?.openai?.base_url || 'https://api.openai.com/v1'}</code></div>
-                <div>Модель: <span className="font-medium text-inherit">{llmStatus?.providers?.openai?.model || 'gpt-4o-mini'}</span></div>
-                <div className="text-[10px] opacity-75">Переменная: <code>OPENAI_API_KEY</code></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Key Input / Switch Form */}
+          {/* AI Tunnel Configuration Form */}
           <div
-            className={`p-4 rounded-xl border space-y-3 ${
+            className={`p-4 rounded-xl border space-y-3.5 ${
               isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
             }`}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b pb-2.5 border-inherit">
               <div className="flex items-center gap-2">
                 <Settings className="w-4 h-4 text-[#5B8A78]" />
-                <h4 className="font-semibold text-xs text-inherit">Быстрое подключение ключа в текущей сессии</h4>
+                <h4 className="font-semibold text-xs text-inherit">Выбор модели и ключ AI Tunnel</h4>
               </div>
               {configSuccess && (
                 <span className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Настройки применены!
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Модель успешно сохранена!
                 </span>
               )}
             </div>
 
-            <form onSubmit={handleSaveRuntimeConfig} className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div>
-                <label className={`block mb-1 text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Провайдер
-                </label>
-                <select
-                  value={selectedProvider}
-                  onChange={e => setSelectedProvider(e.target.value as any)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
-                    isDark
-                      ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
-                      : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
-                  }`}
-                >
-                  <option value="ai_tunnel">AITunnel (Россия/РФ)</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="openai">OpenAI Direct</option>
-                </select>
+            <form onSubmit={handleSaveRuntimeConfig} className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Model Selector */}
+                <div>
+                  <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Модель нейросети (AI Tunnel)
+                  </label>
+                  <select
+                    value={selectedModel}
+                    onChange={e => setSelectedModel(e.target.value)}
+                    className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                        : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                    }`}
+                  >
+                    <option value="gpt-6-luna-pro">gpt-6-luna-pro (По умолчанию — быстрый и точный)</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini (OpenAI GPT-4o Mini)</option>
+                    <option value="gpt-4o">gpt-4o (OpenAI GPT-4o)</option>
+                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet (Claude 3.5 Sonnet)</option>
+                    <option value="deepseek-chat">deepseek-chat (DeepSeek V3)</option>
+                    <option value="gemini-1.5-pro">gemini-1.5-pro (Google Gemini 1.5 Pro)</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash (Google Gemini 2.0 Flash)</option>
+                    <option value="custom">Другая модель (ввести вручную...)</option>
+                  </select>
+                </div>
+
+                {/* API Key (Optional update) */}
+                <div>
+                  <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    AITUNNEL_API_KEY (необязательно, если задан в .env)
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Вставьте новый ключ для обновления..."
+                    value={inputApiKey}
+                    onChange={e => setInputApiKey(e.target.value)}
+                    className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                        : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                    }`}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className={`block mb-1 text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  API-ключ
-                </label>
-                <input
-                  type="password"
-                  placeholder="Вставьте API-ключ..."
-                  value={inputApiKey}
-                  onChange={e => setInputApiKey(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
-                    isDark
-                      ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
-                      : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
-                  }`}
-                />
-              </div>
+              {/* Custom Model Input if selected */}
+              {selectedModel === 'custom' && (
+                <div>
+                  <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Название модели в AI Tunnel:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Например: claude-3-opus, llama-3.3-70b-instruct..."
+                    value={customModel}
+                    onChange={e => setCustomModel(e.target.value)}
+                    className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                        : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                    }`}
+                  />
+                </div>
+              )}
 
-              <div className="flex items-end">
+              <div className="pt-1">
                 <button
                   type="submit"
-                  disabled={savingConfig || !inputApiKey.trim()}
-                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5 shadow-sm ${
+                  disabled={savingConfig}
+                  className={`w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 shadow-sm ${
                     isDark
                       ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                       : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
-                  } ${savingConfig || !inputApiKey.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${savingConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {savingConfig ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Применение...</span>
+                      <span>Применение настроек...</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>Применить ключ</span>
+                      <span>Сохранить модель AI Tunnel</span>
                     </>
                   )}
                 </button>

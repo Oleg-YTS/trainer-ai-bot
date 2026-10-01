@@ -363,22 +363,10 @@ const db = new Database();
 // Conforms strictly to Rule #9: Keep the LLM provider behind an abstraction
 // ============================================================================
 export interface LLMConfig {
-  provider: 'ai_tunnel' | 'gemini' | 'openai' | 'auto';
+  provider: 'ai_tunnel';
   aitunnelApiKey?: string;
   aitunnelBaseUrl: string;
   aitunnelModel: string;
-  geminiApiKey?: string;
-  geminiModel: string;
-  openaiApiKey?: string;
-  openaiBaseUrl: string;
-  openaiModel: string;
-}
-
-function isValidGeminiApiKey(key?: string): boolean {
-  if (!key) return false;
-  const k = key.trim();
-  // Allow AI Studio sandbox demo keys (starting with AQ.) or standard keys
-  return k.length > 10;
 }
 
 function isValidApiKey(key?: string): boolean {
@@ -400,17 +388,11 @@ export class LLMProviderService {
   }
 
   public loadConfig(): LLMConfig {
-    const rawProvider = (process.env.AI_PROVIDER || 'auto').toLowerCase().trim();
     return {
-      provider: (rawProvider as any) || 'auto',
+      provider: 'ai_tunnel',
       aitunnelApiKey: cleanApiKey(process.env.AITUNNEL_API_KEY || process.env.AI_TUNNEL_API_KEY),
-      aitunnelBaseUrl: (process.env.AITUNNEL_BASE_URL || process.env.AI_TUNNEL_BASE_URL || 'https://api.aitunnel.ru/v1/').replace(/\/+$/, ''),
-      aitunnelModel: process.env.AITUNNEL_MODEL || process.env.AI_TUNNEL_MODEL || 'gpt-6-luna-pro',
-      geminiApiKey: cleanApiKey(process.env.GEMINI_API_KEY),
-      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
-      openaiApiKey: cleanApiKey(process.env.OPENAI_API_KEY),
-      openaiBaseUrl: (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, ''),
-      openaiModel: process.env.OPENAI_MODEL || 'gpt-4o-mini'
+      aitunnelBaseUrl: (process.env.AITUNNEL_BASE_URL || process.env.AI_TUNNEL_BASE_URL || 'https://api.aitunnel.ru/v1').replace(/\/+$/, ''),
+      aitunnelModel: process.env.AITUNNEL_MODEL || process.env.AI_TUNNEL_MODEL || 'gpt-6-luna-pro'
     };
   }
 
@@ -418,167 +400,52 @@ export class LLMProviderService {
     this.config = { ...this.config, ...updates };
   }
 
-  public getEffectiveProvider(): { provider: string; model: string; isReady: boolean; reason?: string } {
-    const p = this.config.provider;
-    const hasAitunnel = isValidApiKey(this.config.aitunnelApiKey);
-    const hasGemini = isValidGeminiApiKey(this.config.geminiApiKey);
-    const hasOpenai = isValidApiKey(this.config.openaiApiKey);
-
-    // 1. Explicit provider requested and has valid key
-    if (p === 'ai_tunnel' && hasAitunnel) {
+  public getEffectiveProvider(): { provider: 'ai_tunnel'; model: string; isReady: boolean; reason?: string } {
+    const hasKey = isValidApiKey(this.config.aitunnelApiKey);
+    if (hasKey) {
       return {
         provider: 'ai_tunnel',
         model: this.config.aitunnelModel,
         isReady: true,
-        reason: 'AITunnel API key configured'
-      };
-    }
-
-    if (p === 'gemini' && hasGemini) {
-      return {
-        provider: 'gemini',
-        model: this.config.geminiModel,
-        isReady: true,
-        reason: 'Google Gemini API key configured'
-      };
-    }
-
-    if (p === 'openai' && hasOpenai) {
-      return {
-        provider: 'openai',
-        model: this.config.openaiModel,
-        isReady: true,
-        reason: 'OpenAI API key configured'
-      };
-    }
-
-    // 2. Auto mode or Fallback chain if primary key is not set
-    if (hasAitunnel) {
-      return {
-        provider: 'ai_tunnel',
-        model: this.config.aitunnelModel,
-        isReady: true,
-        reason: 'AITunnel активен'
-      };
-    }
-
-    if (hasGemini) {
-      return {
-        provider: 'gemini',
-        model: this.config.geminiModel,
-        isReady: true,
-        reason: p === 'ai_tunnel'
-          ? 'AITUNNEL_API_KEY не задан, активен резервный Google Gemini (gemini-3.8-flash)'
-          : 'Google Gemini активен'
-      };
-    }
-
-    if (hasOpenai) {
-      return {
-        provider: 'openai',
-        model: this.config.openaiModel,
-        isReady: true,
-        reason: p === 'ai_tunnel'
-          ? 'AITUNNEL_API_KEY не задан, активен резервный OpenAI'
-          : 'OpenAI активен'
+        reason: `AI Tunnel активен (Модель: ${this.config.aitunnelModel})`
       };
     }
 
     return {
-      provider: p || 'none',
-      model: 'none',
+      provider: 'ai_tunnel',
+      model: this.config.aitunnelModel,
       isReady: false,
-      reason: 'Ни один валидный API-ключ не настроен в окружении (AITUNNEL_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY)'
+      reason: 'AITUNNEL_API_KEY не обнаружен в переменных окружения. Укажите ключ в настройках или в .env'
     };
   }
 
   public getStatus() {
     const effective = this.getEffectiveProvider();
     return {
-      configured_provider: this.config.provider,
-      effective_provider: effective.provider,
-      effective_model: effective.model,
+      configured_provider: 'ai_tunnel',
+      effective_provider: 'AI Tunnel',
+      effective_model: this.config.aitunnelModel,
+      base_url: this.config.aitunnelBaseUrl,
       is_ready: effective.isReady,
       status_message: effective.reason,
-      providers: {
-        ai_tunnel: {
-          has_key: isValidApiKey(this.config.aitunnelApiKey),
-          base_url: this.config.aitunnelBaseUrl,
-          model: this.config.aitunnelModel
-        },
-        gemini: {
-          has_key: isValidGeminiApiKey(this.config.geminiApiKey),
-          model: this.config.geminiModel,
-          key_prefix: this.config.geminiApiKey ? this.config.geminiApiKey.slice(0, 10) : 'none',
-          key_length: this.config.geminiApiKey ? this.config.geminiApiKey.length : 0
-        },
-        openai: {
-          has_key: isValidApiKey(this.config.openaiApiKey),
-          base_url: this.config.openaiBaseUrl,
-          model: this.config.openaiModel
-        }
-      }
+      has_key: isValidApiKey(this.config.aitunnelApiKey),
+      model: this.config.aitunnelModel
     };
   }
 
   public async generate(systemPrompt: string, userPrompt: string): Promise<string> {
     const effective = this.getEffectiveProvider();
     if (!effective.isReady) {
-      throw new Error(`LLM provider [${effective.provider}] is not ready: ${effective.reason}`);
+      throw new Error(`AI Tunnel не готов: ${effective.reason}`);
     }
 
-    if (effective.provider === 'ai_tunnel') {
-      return this.callOpenAICompatible(
-        this.config.aitunnelBaseUrl,
-        this.config.aitunnelApiKey!,
-        this.config.aitunnelModel,
-        systemPrompt,
-        userPrompt
-      );
-    }
-
-    if (effective.provider === 'openai') {
-      return this.callOpenAICompatible(
-        this.config.openaiBaseUrl,
-        this.config.openaiApiKey!,
-        this.config.openaiModel,
-        systemPrompt,
-        userPrompt
-      );
-    }
-
-    if (effective.provider === 'gemini') {
-      if (this.config.geminiApiKey!.startsWith('AQ.')) {
-        // AI Studio Sandbox Demo Key requires v1beta REST endpoint
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.geminiModel}:generateContent?key=${this.config.geminiApiKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              { role: 'user', parts: [{ text: `${systemPrompt}\n\nClient Question: ${userPrompt}` }] }
-            ]
-          })
-        });
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          throw new Error(`Gemini v1beta HTTP ${res.status}: ${errText}`);
-        }
-        const data: any = await res.json();
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      }
-
-      const genAI = new GoogleGenAI({ apiKey: this.config.geminiApiKey! });
-      const response = await genAI.models.generateContent({
-        model: this.config.geminiModel,
-        contents: [
-          { role: 'user', parts: [{ text: `${systemPrompt}\n\nClient Question: ${userPrompt}` }] }
-        ]
-      });
-      return response.text || '';
-    }
-
-    throw new Error(`Unsupported provider: ${effective.provider}`);
+    return this.callOpenAICompatible(
+      this.config.aitunnelBaseUrl,
+      this.config.aitunnelApiKey!,
+      this.config.aitunnelModel,
+      systemPrompt,
+      userPrompt
+    );
   }
 
   private async callOpenAICompatible(
@@ -609,13 +476,13 @@ export class LLMProviderService {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
-      throw new Error(`HTTP ${res.status} from ${url}: ${errBody.slice(0, 300)}`);
+      throw new Error(`HTTP ${res.status} от AI Tunnel (${url}): ${errBody.slice(0, 300)}`);
     }
 
     const data: any = await res.json();
     const answer = data?.choices?.[0]?.message?.content;
     if (typeof answer !== 'string') {
-      throw new Error(`Unexpected response structure from ${url}`);
+      throw new Error(`Некорректный ответ от AI Tunnel (${url}): ${JSON.stringify(data)}`);
     }
     return answer;
   }
