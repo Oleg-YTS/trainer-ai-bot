@@ -327,20 +327,34 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   };
 
   const fetchClients = async () => {
+    let apiClients: any[] = [];
     try {
       const res = await apiFetch('/api/clients');
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setClients(data);
-        return;
+      if (Array.isArray(data)) {
+        apiClients = data;
       }
     } catch (e) {
       console.error(e);
     }
-    // Fallback to local users
     const local = getLocalUsers();
-    setClients(local);
+    const map = new Map();
+    for (const c of local) {
+      map.set(c.id, c);
+      if (c.telegram_user_id) map.set(c.telegram_user_id, c);
+    }
+    for (const c of apiClients) {
+      map.set(c.id, c);
+      if (c.telegram_user_id) map.set(c.telegram_user_id, c);
+    }
+    setClients(Array.from(map.values()));
   };
+
+  useEffect(() => {
+    if (activeTab === 'clients') {
+      fetchClients();
+    }
+  }, [activeTab]);
 
   const handleSetClientRole = async (clientId: number, role: 'admin' | 'vip' | 'subscriber') => {
     // Optimistic UI update
