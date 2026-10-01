@@ -17,7 +17,9 @@ import {
   Loader2,
   Sparkles,
   FolderArchive,
-  Crown
+  Crown,
+  Star,
+  UserCheck
 } from 'lucide-react';
 import { apiFetch } from '../api';
 
@@ -26,13 +28,21 @@ interface MobileProfileProps {
   onToggleTheme: () => void;
   onOpenInstallModal: () => void;
   onOpenTrainerDashboard: () => void;
+  clientId?: number;
+  isAdmin?: boolean;
+  isVip?: boolean;
+  onRefreshUser?: () => void;
 }
 
 export const MobileProfile: React.FC<MobileProfileProps> = ({
   isDark,
   onToggleTheme,
   onOpenInstallModal,
-  onOpenTrainerDashboard
+  onOpenTrainerDashboard,
+  clientId = 1,
+  isAdmin: userIsAdmin = false,
+  isVip: userIsVip = false,
+  onRefreshUser
 }) => {
   const [personalTrainingRequested, setPersonalTrainingRequested] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
@@ -41,8 +51,8 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   // Profile Data States
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
-  const [isVip, setIsVip] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isVip, setIsVip] = useState(userIsVip);
+  const [isAdmin, setIsAdmin] = useState(userIsAdmin);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [vipUpgrading, setVipUpgrading] = useState(false);
 
@@ -54,17 +64,17 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   const [formGoal, setFormGoal] = useState('');
   const [formRestrictions, setFormRestrictions] = useState('');
 
-  // Load Profile on mount
+  // Load Profile on mount or clientId change
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const response = await apiFetch('/api/clients/1');
+        const response = await apiFetch(`/api/clients/${clientId}`);
         if (response.ok) {
           const res = await response.json();
-          setIsVip(!!res.is_vip);
-          setIsAdmin(!!res.is_admin);
+          setIsVip(!!res.is_vip || userIsVip);
+          setIsAdmin(!!res.is_admin || userIsAdmin);
           if (res.profile) {
-            setFormName(res.profile.name || '');
+            setFormName(res.profile.name || res.name || '');
             setFormAge(res.profile.age !== undefined ? String(res.profile.age) : '');
             setFormHeight(res.profile.height !== undefined ? String(res.profile.height) : '');
             setFormWeight(res.profile.weight !== undefined ? String(res.profile.weight) : '');
@@ -79,9 +89,13 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       }
     };
     loadProfile();
-  }, []);
+  }, [clientId, userIsAdmin, userIsVip]);
 
   const handleToggleAdmin = async (newAdminState: boolean) => {
+    if (!userIsAdmin && newAdminState) {
+      // Non-admins cannot elevate themselves
+      return;
+    }
     setIsAdmin(newAdminState);
     if (newAdminState) {
       setIsVip(true);
@@ -91,7 +105,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: 1,
+          client_id: clientId,
           is_admin: newAdminState
         })
       });
@@ -101,6 +115,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           setIsVip(!!res.client.is_vip);
           setIsAdmin(!!res.client.is_admin);
         }
+        if (onRefreshUser) onRefreshUser();
       }
     } catch (err) {
       console.error('Failed to toggle admin role:', err);
@@ -116,7 +131,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: 1,
+          client_id: clientId,
           name: formName,
           age: formAge ? Number(formAge) : undefined,
           height: formHeight ? Number(formHeight) : undefined,
@@ -134,6 +149,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             setIsVip(!!res.client.is_vip);
             setIsAdmin(!!res.client.is_admin);
           }
+          if (onRefreshUser) onRefreshUser();
           setTimeout(() => setSaveSuccess(false), 3000);
         }
       }
@@ -291,7 +307,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        client_id: 1,
+                        client_id: clientId,
                         message_text: "Системный запрос: Клиент запрашивает активацию VIP-доступа у тренера.",
                         category_id: "general"
                       })
@@ -330,52 +346,36 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       </div>
 
       {/* ========================================== */}
-      {/* SECTION ROLE: ВЫБОР РОЛИ В СИСТЕМЕ         */}
+      {/* SECTION ROLE: ТЕКУЩИЙ СТАТУС В СИСТЕМЕ     */}
       {/* ========================================== */}
       <div className={`p-4 rounded-xl border ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
         <div className="flex items-center gap-2 border-b pb-2 border-inherit mb-3">
           <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
-          <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Роль в системе</h2>
+          <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Уровень доступа</h2>
         </div>
-        
-        <p className={`text-[11px] leading-relaxed mb-3 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-          Выберите вашу роль для тестирования. Администраторам VIP-статус и доступ к Панели Управления предоставляются бесплатно.
-        </p>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => handleToggleAdmin(false)}
-            className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              !isAdmin
-                ? isDark
-                  ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295] shadow-sm shadow-[#5B8A78]/10'
-                  : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
-                : isDark
-                  ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                  : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Пользователь</span>
-          </button>
-
-          <button
-            onClick={() => handleToggleAdmin(true)}
-            className={`py-2 px-3 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-              isAdmin
-                ? isDark
-                  ? 'bg-gradient-to-br from-[#FFDF00]/10 to-[#D4AF37]/20 border-[#D4AF37] text-[#D4AF37] shadow-sm shadow-[#D4AF37]/10'
-                  : 'bg-[#FFDF00]/10 border-[#D4AF37] text-[#B8860B]'
-                : isDark
-                  ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                  : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-            }`}
-          >
-            <Crown className="w-3.5 h-3.5" />
-            <span>Администратор</span>
-          </button>
+        <div className="flex items-center justify-between">
+          <span className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            Ваш текущий статус:
+          </span>
+          {isAdmin ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              <Star className="w-3.5 h-3.5 fill-amber-400/30 text-amber-400" />
+              Администратор (Тренер)
+            </span>
+          ) : isVip ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-[#182820] text-[#7DA295] border border-[#253A30]">
+              <Crown className="w-3.5 h-3.5 text-[#7DA295]" />
+              VIP (Ведение)
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#121B17] text-[#8E9E96] border border-[#1F2E27]">
+              <UserCheck className="w-3.5 h-3.5 text-[#8E9E96]" />
+              Подписчик канала
+            </span>
+          )}
         </div>
       </div>
 

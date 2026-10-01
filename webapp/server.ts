@@ -1003,6 +1003,65 @@ app.get('/api/clients/:id', (req: Request, res: Response) => {
   res.json({ ...client, messages: clientMessages, escalations: clientEscalations });
 });
 
+// Resolve Client by Telegram User ID Endpoint
+app.all('/api/client/resolve', (req: Request, res: Response) => {
+  const tg_id = Number(req.body?.telegram_user_id || req.query?.telegram_user_id);
+  const name = req.body?.name || req.query?.name || (tg_id ? `User ${tg_id}` : 'Иван');
+
+  const adminIds = (
+    process.env.TELEGRAM_ADMIN_CHAT_ID ||
+    process.env.ADMIN_TELEGRAM_IDS ||
+    process.env.ADMIN_IDS ||
+    process.env.ADMIN_ID ||
+    process.env.TRAINER_TELEGRAM_ID ||
+    '10001,20001'
+  ).split(',').map(s => s.trim()).filter(Boolean);
+
+  if (!tg_id) {
+    return res.json({
+      ok: true,
+      id: db.clients[0].id,
+      client_id: db.clients[0].id,
+      telegram_user_id: db.clients[0].telegram_user_id,
+      name: db.clients[0].name,
+      is_admin: db.clients[0].is_admin,
+      is_vip: db.clients[0].is_vip,
+      profile: db.clients[0].profile
+    });
+  }
+
+  let client = db.clients.find(c => c.telegram_user_id === tg_id);
+  const isAdmin = adminIds.includes(String(tg_id));
+
+  if (!client) {
+    client = {
+      id: db.nextClientId++,
+      trainer_id: 1,
+      telegram_user_id: tg_id,
+      name: String(name),
+      is_vip: isAdmin,
+      is_admin: isAdmin,
+      profile: {
+        name: String(name),
+        goal: 'Общая физическая подготовка'
+      },
+      created_at: new Date().toISOString()
+    };
+    db.clients.push(client);
+  }
+
+  res.json({
+    ok: true,
+    id: client.id,
+    client_id: client.id,
+    telegram_user_id: client.telegram_user_id,
+    name: client.name,
+    is_admin: client.is_admin,
+    is_vip: client.is_vip,
+    profile: client.profile
+  });
+});
+
 // Escalations API
 app.get('/api/escalations', (_req: Request, res: Response) => {
   res.json(db.escalations);

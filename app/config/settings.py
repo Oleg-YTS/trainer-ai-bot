@@ -26,7 +26,26 @@ class Settings(BaseSettings):
     openai_model: str | None = None
     database_url: str | None = None
     trainer_id: int = 1
+    telegram_admin_chat_id: str | None = None
+    admin_telegram_ids: str | None = None
+    trainer_telegram_id: int | None = None
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    def is_admin_telegram_id(self, tg_id: int | None) -> bool:
+        if not tg_id:
+            return False
+        admin_list: list[str] = []
+        if self.telegram_admin_chat_id:
+            admin_list.extend([x.strip() for x in str(self.telegram_admin_chat_id).split(",") if x.strip()])
+        if self.admin_telegram_ids:
+            admin_list.extend([x.strip() for x in str(self.admin_telegram_ids).split(",") if x.strip()])
+        if self.trainer_telegram_id:
+            admin_list.append(str(self.trainer_telegram_id))
+        
+        # If no explicit admin ID configured, allow fallback to trainer_id 1
+        if not admin_list:
+            return False
+        return str(tg_id) in admin_list
 
     @field_validator("ai_provider")
     @classmethod

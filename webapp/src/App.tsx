@@ -5,6 +5,15 @@ import { MobileProfile } from './components/MobileProfile';
 import { TrainerDashboard } from './components/TrainerDashboard';
 import { InstallModal } from './components/InstallModal';
 import { FolderTree, Bot, User, Sun, Moon } from 'lucide-react';
+import { apiFetch } from './api';
+
+interface CurrentUser {
+  id: number;
+  telegram_user_id: number | null;
+  name: string;
+  is_admin: boolean;
+  is_vip: boolean;
+}
 
 export const App: React.FC = () => {
   // Theme state: dark (Obsidian Green) or light (Mineral Light)
@@ -17,6 +26,58 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'catalog' | 'chat' | 'profile' | 'trainer'>('chat');
   const [chatInitialQuery, setChatInitialQuery] = useState<string>('');
   const [showInstallModal, setShowInstallModal] = useState<boolean>(false);
+
+  // Authenticated Telegram Client identity
+  const [currentUser, setCurrentUser] = useState<CurrentUser>({
+    id: 1,
+    telegram_user_id: null,
+    name: 'Пользователь',
+    is_admin: false,
+    is_vip: false
+  });
+
+  const resolveCurrentUser = async () => {
+    try {
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg) {
+        tg.ready();
+        tg.expand();
+      }
+      const tgUser = tg?.initDataUnsafe?.user;
+      const tgId = tgUser?.id;
+      const tgName = [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(' ') || tgUser?.username || '';
+      const tgUsername = tgUser?.username || '';
+
+      const res = await apiFetch('/api/client/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegram_user_id: tgId || undefined,
+          name: tgName || undefined,
+          username: tgUsername || undefined
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.id) {
+          setCurrentUser({
+            id: data.id,
+            telegram_user_id: data.telegram_user_id || tgId || null,
+            name: data.name || tgName || 'Пользователь',
+            is_admin: !!data.is_admin,
+            is_vip: !!data.is_vip
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to resolve current user identity:', err);
+    }
+  };
+
+  useEffect(() => {
+    resolveCurrentUser();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('trainer_theme', isDark ? 'dark' : 'light');
@@ -97,6 +158,7 @@ export const App: React.FC = () => {
                 isDark={isDark}
                 initialQuery={chatInitialQuery}
                 onClearInitialQuery={() => setChatInitialQuery('')}
+                clientId={currentUser.id}
               />
             </div>
           )}
@@ -106,16 +168,39 @@ export const App: React.FC = () => {
               isDark={isDark}
               onToggleTheme={toggleTheme}
               onOpenInstallModal={() => setShowInstallModal(true)}
-              onOpenTrainerDashboard={() => setActiveTab('trainer')}
+              onOpenTrainerDashboard={() => {
+                if (currentUser.is_admin) {
+                  setActiveTab('trainer');
+                }
+              }}
+              clientId={currentUser.id}
+              isAdmin={currentUser.is_admin}
+              isVip={currentUser.is_vip}
+              onRefreshUser={resolveCurrentUser}
             />
           )}
 
           {activeTab === 'trainer' && (
             <div className="pb-24">
-              <TrainerDashboard
-                isDark={isDark}
-                onBackToClient={() => setActiveTab('profile')}
-              />
+              {currentUser.is_admin ? (
+                <TrainerDashboard
+                  isDark={isDark}
+                  onBackToClient={() => setActiveTab('profile')}
+                />
+              ) : (
+                <div className="p-6 text-center space-y-3">
+                  <p className="text-sm font-semibold">Доступ ограничен</p>
+                  <p className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Панель управления доступна только тренеру-администратору.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('profile')}
+                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#5B8A78] text-[#0A100D]"
+                  >
+                    Вернуться в профиль
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </main>

@@ -25,7 +25,10 @@ import {
   Copy,
   Server,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Star,
+  Crown,
+  UserCheck
 } from 'lucide-react';
 import { apiFetch } from '../api';
 
@@ -71,9 +74,12 @@ interface Escalation {
 interface Client {
   id: number;
   name: string;
+  telegram_user_id?: number | null;
   is_vip: boolean;
+  is_admin?: boolean;
   profile: any;
   created_at: string;
+  messages_count?: number;
 }
 
 interface TrainerDashboardProps {
@@ -1163,28 +1169,58 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             {clients.map(c => (
               <div
                 key={c.id}
-                className={`border rounded-xl p-3.5 space-y-1.5 text-xs ${
+                className={`border rounded-xl p-3.5 space-y-2 text-xs transition ${
                   isDark
                     ? 'bg-[#18231E] border-[#1F2E27]'
                     : 'bg-[#F4F6F4] border-[#D8E0DB]'
                 }`}
               >
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold text-sm text-inherit">{c.name}</span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                      c.is_vip
-                        ? isDark
+                {/* Header: Name & Role Badge with SVG */}
+                <div className="flex justify-between items-center gap-2">
+                  <span className="font-semibold text-sm text-inherit truncate">{c.name}</span>
+                  {c.is_admin ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                      <Star className="w-3 h-3 fill-amber-400/30 text-amber-400" />
+                      Администратор
+                    </span>
+                  ) : c.is_vip ? (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${
+                        isDark
                           ? 'bg-[#182820] text-[#7DA295] border-[#253A30]'
                           : 'bg-[#EBF0EC] text-[#2B4A3D] border-[#D8E0DB]'
-                        : isDark
+                      }`}
+                    >
+                      <Crown className="w-3 h-3 text-[#7DA295]" />
+                      VIP (Ведение)
+                    </span>
+                  ) : (
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${
+                        isDark
                           ? 'bg-[#121B17] text-[#8E9E96] border-[#1F2E27]'
                           : 'bg-white text-[#7E9187] border-[#D8E0DB]'
-                    }`}
-                  >
-                    {c.is_vip ? 'VIP (Ведение)' : 'Подписчик канала'}
-                  </span>
+                      }`}
+                    >
+                      <UserCheck className="w-3 h-3 text-[#8E9E96]" />
+                      Подписчик
+                    </span>
+                  )}
                 </div>
+
+                {/* ID line: Database ID & Telegram ID */}
+                <div className="flex items-center gap-2 text-[11px] font-mono text-[#8E9E96]">
+                  <span className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-black/20">ID: #{c.id}</span>
+                  <span>•</span>
+                  <span>TG ID: {c.telegram_user_id || 'Не привязан'}</span>
+                  {c.messages_count !== undefined && (
+                    <>
+                      <span>•</span>
+                      <span>Сообщений: {c.messages_count}</span>
+                    </>
+                  )}
+                </div>
+
                 <p className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>
                   Цель: {c.profile?.goal || 'Не указана'}
                 </p>

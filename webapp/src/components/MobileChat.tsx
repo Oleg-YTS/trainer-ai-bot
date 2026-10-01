@@ -16,12 +16,14 @@ interface MobileChatProps {
   isDark: boolean;
   initialQuery?: string;
   onClearInitialQuery?: () => void;
+  clientId?: number;
 }
 
 export const MobileChat: React.FC<MobileChatProps> = ({
   isDark,
   initialQuery,
-  onClearInitialQuery
+  onClearInitialQuery,
+  clientId = 1
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -30,7 +32,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
   const DEFAULT_WELCOME: Message = {
     id: 1,
-    client_id: 1,
+    client_id: clientId,
     role: 'assistant',
     text: 'Здравствуйте! Я ассистент-библиотекарь тренера. Задайте вопрос по методике тренировок, расчету питания или восстановлению.',
     created_at: new Date().toISOString()
@@ -38,7 +40,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
   const fetchHistory = async () => {
     try {
-      const res = await apiFetch('/api/clients/1');
+      const res = await apiFetch(`/api/clients/${clientId}`);
       const data = await res.json();
       if (data && Array.isArray(data.messages) && data.messages.length > 0) {
         setMessages(data.messages);
@@ -53,7 +55,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [clientId]);
 
   useEffect(() => {
     if (initialQuery) {
@@ -75,7 +77,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
     const tempUserMsg: Message = {
       id: Date.now(),
-      client_id: 1,
+      client_id: clientId,
       role: 'user',
       text,
       created_at: new Date().toISOString()
@@ -87,7 +89,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: 1,
+          client_id: clientId,
           message_text: text,
           message: text
         })
@@ -105,7 +107,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
           tempUserMsg,
           {
             id: Date.now() + 1,
-            client_id: 1,
+            client_id: clientId,
             role: 'assistant',
             text: data.text,
             created_at: new Date().toISOString()
@@ -118,7 +120,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         ...prev,
         {
           id: Date.now() + 1,
-          client_id: 1,
+          client_id: clientId,
           role: 'assistant',
           text: 'Связь с сервером временно недоступна. Пожалуйста, повторите вопрос или задайте его в Telegram-боте.',
           created_at: new Date().toISOString()
