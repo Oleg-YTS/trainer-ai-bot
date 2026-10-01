@@ -71,10 +71,13 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
   useEffect(() => {
     const loadProfile = async () => {
-      const targetId = clientId || 1;
+      if (!clientId) {
+        setProfileLoading(false);
+        return;
+      }
       setProfileLoading(true);
       try {
-        const response = await apiFetch(`/api/client/profile?client_id=${encodeURIComponent(targetId)}`);
+        const response = await apiFetch(`/api/client/profile?client_id=${encodeURIComponent(clientId)}`);
         if (response.ok) {
           const text = await response.text();
           if (text && text.trim().startsWith('{')) {
@@ -104,7 +107,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetId = clientId || 1;
+    if (!clientId) return;
     setProfileSaving(true);
     setSaveSuccess(false);
     try {
@@ -112,7 +115,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: targetId,
+          client_id: clientId,
           name: formName,
           age: formAge ? Number(formAge) : undefined,
           height: formHeight ? Number(formHeight) : undefined,

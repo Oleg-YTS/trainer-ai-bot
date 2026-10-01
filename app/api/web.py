@@ -441,33 +441,15 @@ async def resolve_client_endpoint(
     tg_username = (payload.username if payload else None) or username
 
     if not tg_id:
-        stmt = select(Client).where((Client.id == 1) | (Client.telegram_user_id == 0))
-        res = await session.execute(stmt)
-        client = res.scalar_one_or_none()
-        if client is None:
-            client = Client(
-                trainer_id=settings.trainer_id,
-                name=client_name or "Гость",
-                telegram_user_id=0,
-                profile_json=json.dumps({"name": client_name or "Гость"}, ensure_ascii=False)
-            )
-            session.add(client)
-            await session.commit()
-            await session.refresh(client)
-        
-        prof = parse_profile(client.profile_json)
-        is_admin_val = settings.is_admin_telegram_id(0) or bool(prof.get("is_admin", False))
-        is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
-
         return {
             "ok": True,
-            "id": client.id,
-            "client_id": client.id,
-            "telegram_user_id": client.telegram_user_id,
-            "name": client.name,
-            "is_admin": is_admin_val,
-            "is_vip": is_vip_val,
-            "profile": prof
+            "id": 1,
+            "client_id": 1,
+            "telegram_user_id": None,
+            "name": client_name or "Гость",
+            "is_admin": False,
+            "is_vip": False,
+            "profile": {}
         }
 
     stmt = select(Client).where(Client.telegram_user_id == tg_id)
@@ -705,19 +687,13 @@ async def update_client_profile_endpoint(
     """
     Updates client profile in PostgreSQL. Supports root-level fields and nested profile payloads.
     """
-    client_id = payload.client_id or 1
+    if not payload.client_id:
+        raise HTTPException(status_code=400, detail="client_id is required")
+
+    client_id = payload.client_id
     client_obj = await session.get(Client, client_id)
     if not client_obj:
-        settings = get_settings()
-        client_obj = Client(
-            trainer_id=settings.trainer_id,
-            telegram_user_id=client_id,
-            name=payload.name or f"Пользователь #{client_id}",
-            profile_json="{}"
-        )
-        session.add(client_obj)
-        await session.commit()
-        await session.refresh(client_obj)
+        raise HTTPException(status_code=440, detail=f"Client {client_id} not found")
 
     existing_profile = parse_profile(client_obj.profile_json)
     new_data = dict(existing_profile)
