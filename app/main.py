@@ -10,13 +10,13 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.api.web import router as web_router
 from app.bot.router import build_dispatcher, setup_bot_menu
 from app.clients.service import build_default_profile
 from app.config.settings import get_settings
-from app.database.models import Base, Client, Trainer
+from app.database.models import Base, Client, Trainer, KnowledgeItem
 from app.database.session import get_engine, get_session_factory
 
 settings = get_settings()
@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         
-        # Ensure default Trainer #1 and hardcoded Admin profiles exist in PostgreSQL
+        # Ensure default Trainer #1, Admin profiles, and sample clients exist in PostgreSQL/SQLite
         session_factory = get_session_factory()
         async with session_factory() as session:
             trainer = await session.get(Trainer, 1)
@@ -61,9 +61,43 @@ async def lifespan(app: FastAPI):
                         profile_json=prof_str
                     )
                     session.add(admin_client)
+
+            # Ensure at least one test client exists if clients table is empty
+            client_count = await session.scalar(select(func.count(Client.id))) or 0
+            if client_count == 0:
+                test_prof = build_default_profile(name="Иван Смирнов", gender="male", is_admin=False, is_vip=True)
+                test_client = Client(
+                    trainer_id=1,
+                    name="Иван Смирнов",
+                    telegram_user_id=987654321,
+                    profile_json=json.dumps(test_prof, ensure_ascii=False)
+                )
+                session.add(test_client)
+
+            # Ensure default knowledge base articles exist if knowledge table is empty
+            kb_count = await session.scalar(select(func.count(KnowledgeItem.id))) or 0
+            if kb_count == 0:
+                sample_kbs = [
+                    KnowledgeItem(
+                        trainer_id=1,
+                        category="nutrition",
+                        title="Норма белка для набора массы",
+                        content="При наборе массы суточная норма белка составляет 1.8–2.2 г на 1 кг массы тела.",
+                        status="approved"
+                    ),
+                    KnowledgeItem(
+                        trainer_id=1,
+                        category="training",
+                        title="Прогрессия нагрузок и разминка",
+                        content="Перед каждой силовой тренировкой обязательна суставная разминка 5-7 минут.",
+                        status="approved"
+                    )
+                ]
+                session.add_all(sample_kbs)
+
             await session.commit()
             
-        logger.info("PostgreSQL database tables, Trainer #1, and Admin profiles initialized successfully.")
+        logger.info("Database tables, Trainer #1, Admin profiles, and initial seed data initialized successfully.")
     except Exception as exc:
         logger.warning("Database setup notice during startup: %s", exc)
 
