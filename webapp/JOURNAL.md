@@ -2,6 +2,35 @@
 
 ---
 
+## [Задача #19] Объединение WebApp и FastAPI Бэкенда в Единый Сервис на Render
+
+### Статус: ✅ Завершено (Готово к пушу по команде)
+
+### GOAL
+1. Объединить фронтенд (React Mini App) и бэкенд (Python FastAPI + Aiogram + PostgreSQL) в единый сервис на Render.
+2. Избавиться от необходимости отдельного Node.js сервиса с виртуальной памятью, исключив рассинхронизацию чатов и смешивание пользователей.
+3. Обеспечить раздачу собранного WebApp (`webapp/dist`) прямо через FastAPI по корневому URL сервиса `https://trainer-ai-bot.onrender.com/`.
+
+### PLAN
+1. Перевести `Dockerfile` на Multi-stage build (Stage 1: Node.js 22 alpine для сборки React SPA; Stage 2: Python 3.12 slim для запуска FastAPI + раздачи статики).
+2. В `app/main.py` настроить автоматическое монтирование статики `/assets` и SPA-маршрутизацию `FileResponse(index.html)` для всех клиентских путей.
+3. В `pyproject.toml` добавить `aiofiles` для стабильной асинхронной раздачи файлов.
+4. Синхронизировать кодовую базу `webapp/` с последними доработками.
+
+### CHANGES
+- `Dockerfile`: внедрен двухэтапный Docker build (сборка `webapp` через `npm run build` с последующим копированием в образ Python).
+- `app/main.py`: добавлено монтирование статических файлов `webapp/dist` и SPA-роутер (`serve_spa_frontend`).
+- `pyproject.toml`: добавлена зависимость `aiofiles>=24.1,<25`.
+- `JOURNAL.md`: зафиксирована задача #19.
+
+### VERIFICATION
+- `compile_applet`: успешно.
+- `lint_applet`: 0 ошибок.
+- `python3 -m py_compile`: синтаксис `app/main.py` и `app/api/web.py` корректен.
+- `npm run build`: React SPA успешно собирается в `dist/`.
+
+---
+
 ## [Задача #18] Доступ Администратора в Песочнице и Отказоустойчивые Pydantic-Схемы LLM
 
 ### Статус: ✅ Завершено (Готово к пушу по команде)

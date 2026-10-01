@@ -231,7 +231,7 @@ class Database {
       created_at: new Date(Date.now() - 5 * 86400000).toISOString()
     },
     {
-      id: 3,
+      id: 5,
       trainer_id: 1,
       telegram_user_id: 20003,
       telegram_username: 'alex_power',
@@ -251,7 +251,7 @@ class Database {
       created_at: new Date(Date.now() - 4 * 86400000).toISOString()
     },
     {
-      id: 4,
+      id: 6,
       trainer_id: 1,
       telegram_user_id: 20004,
       telegram_username: 'olga_balance',
@@ -349,7 +349,7 @@ class Database {
     }
   ];
 
-  nextClientId = 3;
+  nextClientId = 7;
   nextKnowledgeId = 5;
   nextGapId = 2;
   nextEscalationId = 2;
