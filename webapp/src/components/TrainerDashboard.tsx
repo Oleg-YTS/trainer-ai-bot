@@ -277,29 +277,64 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const fetchKnowledge = async () => {
     try {
       const res = await apiFetch('/api/knowledge');
-      setKnowledge(await res.json());
-    } catch (e) { console.error(e); }
+      const data = await res.json();
+      setKnowledge(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setKnowledge([]);
+    }
   };
 
   const fetchContentGaps = async () => {
     try {
       const res = await apiFetch('/api/content-gaps');
-      setContentGaps(await res.json());
-    } catch (e) { console.error(e); }
+      const data = await res.json();
+      setContentGaps(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setContentGaps([]);
+    }
   };
 
   const fetchEscalations = async () => {
     try {
       const res = await apiFetch('/api/escalations');
-      setEscalations(await res.json());
-    } catch (e) { console.error(e); }
+      const data = await res.json();
+      setEscalations(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setEscalations([]);
+    }
   };
 
   const fetchClients = async () => {
     try {
       const res = await apiFetch('/api/clients');
-      setClients(await res.json());
-    } catch (e) { console.error(e); }
+      const data = await res.json();
+      setClients(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+      setClients([]);
+    }
+  };
+
+  const handleToggleClientVip = async (clientId: number, currentVipStatus: boolean) => {
+    try {
+      const res = await apiFetch('/api/client/vip/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId,
+          is_vip: !currentVipStatus
+        })
+      });
+      if (res.ok) {
+        fetchClients();
+        fetchStats();
+      }
+    } catch (err) {
+      console.error('Failed to toggle client VIP status:', err);
+    }
   };
 
   useEffect(() => {
@@ -1158,6 +1193,24 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                     Активный фокус: {c.profile.active_topic}
                   </p>
                 )}
+
+                <div className="pt-1.5 border-t border-dashed border-inherit flex items-center justify-between">
+                  <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Изменить статус доступа:
+                  </span>
+                  <button
+                    onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
+                    className={`py-1 px-2.5 rounded-lg border text-[10px] font-semibold transition ${
+                      c.is_vip
+                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
+                        : isDark
+                          ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
+                          : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
+                    }`}
+                  >
+                    {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

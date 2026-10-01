@@ -24,6 +24,12 @@ from app.knowledge.service import CATEGORIES, PUBLISHED_STATUS
 
 logger = logging.getLogger(__name__)
 
+def format_iso_utc(dt) -> str:
+    if not dt:
+        return ""
+    iso = dt.isoformat()
+    return iso + "Z" if not iso.endswith("Z") and "+" not in iso else iso
+
 router = APIRouter(prefix="/api", tags=["web-client"])
 
 CATEGORY_METADATA: dict[str, dict[str, str]] = {
@@ -64,7 +70,23 @@ class ProfileUpdateRequest(BaseModel):
     client_id: int | None = Field(default=1)
     name: str | None = None
     gender: str | None = None
+    age: int | None = None
+    height: int | None = None
+    weight: int | None = None
+    goal: str | None = None
+    restrictions: str | None = None
+    is_admin: bool | None = None
+    is_vip: bool | None = None
     profile: dict[str, Any] | None = None
+
+
+class VIPToggleRequest(BaseModel):
+    client_id: int
+    is_vip: bool
+
+
+class VIPUpgradeRequest(BaseModel):
+    client_id: int | None = Field(default=1)
 
 
 class CreateKnowledgeRequest(BaseModel):
@@ -335,14 +357,14 @@ async def chat_endpoint(payload: ChatRequest):
             "client_id": client_id,
             "role": "assistant",
             "text": answer_text,
-            "created_at": asst_msg.created_at.isoformat() if asst_msg and asst_msg.created_at else "",
+            "created_at": format_iso_utc(asst_msg.created_at) if asst_msg else "",
         },
         "user_message": {
             "id": user_msg.id if user_msg else 0,
             "client_id": client_id,
             "role": "user",
             "text": text,
-            "created_at": user_msg.created_at.isoformat() if user_msg and user_msg.created_at else "",
+            "created_at": format_iso_utc(user_msg.created_at) if user_msg else "",
         },
     }
 
@@ -350,7 +372,7 @@ async def chat_endpoint(payload: ChatRequest):
 @router.get("/clients")
 async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
     """
-    Returns list of all clients in PostgreSQL.
+    Returns list of all clients in PostgreSQL with is_vip and is_admin.
     """
     try:
         statement = select(Client).order_by(Client.id.desc())
@@ -360,11 +382,14 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
         client_list = []
         for c in clients:
             try:
-                prof = read_profile(c.id) if c else {}
+                prof = await read_profile(c.id) if c else {}
             except Exception:
                 prof = {}
             msg_count_stmt = select(func.count(Message.id)).where(Message.client_id == c.id)
             msg_count = await session.scalar(msg_count_stmt) or 0
+
+            is_admin_val = (c.id == 1) or bool(prof.get("is_admin", False))
+            is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
 
             client_list.append({
                 "id": c.id,
@@ -374,6 +399,8 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
                 "created_at": c.created_at.isoformat() if c.created_at else "",
                 "messages_count": msg_count,
                 "profile": prof,
+                "is_vip": is_vip_val,
+                "is_admin": is_admin_val,
             })
         return client_list
     except SQLAlchemyError as exc:
@@ -419,9 +446,15 @@ async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_d
         client = await session.get(Client, client_id)
         messages = await get_history(session, client_id, limit=30)
         profile = await read_profile(client_id) if client else {}
+        
+        is_admin_val = (client_id == 1) or bool(profile.get("is_admin", False))
+        is_vip_val = is_admin_val or bool(profile.get("is_vip", False))
+        
         return {
             "id": client_id,
             "name": client.name if client else "Клиент",
+            "is_vip": is_vip_val,
+            "is_admin": is_admin_val,
             "profile": profile,
             "messages": [
                 {
@@ -429,14 +462,14 @@ async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_d
                     "client_id": m.client_id,
                     "role": m.role,
                     "text": m.text,
-                    "created_at": m.created_at.isoformat() if m.created_at else "",
+                    "created_at": format_iso_utc(m.created_at),
                 }
                 for m in messages
             ],
         }
     except Exception as exc:
         logger.warning("Failed to fetch client %s: %s", client_id, exc)
-        return {"id": client_id, "name": "Клиент", "profile": {}, "messages": []}
+        return {"id": client_id, "name": "Клиент", "profile": {}, "messages": [], "is_vip": (client_id == 1), "is_admin": (client_id == 1)}
 
 
 @router.get("/client/messages")
@@ -456,7 +489,7 @@ async def get_client_messages(
                 "client_id": m.client_id,
                 "role": m.role,
                 "text": m.text,
-                "created_at": m.created_at.isoformat() if m.created_at else "",
+                "created_at": format_iso_utc(m.created_at),
             }
             for m in messages
         ]
@@ -476,34 +509,79 @@ async def get_client_profile_endpoint(
     try:
         profile = await read_profile(client_id)
         client = await session.get(Client, client_id)
+        
+        is_admin_val = (client_id == 1) or bool(profile.get("is_admin", False))
+        is_vip_val = is_admin_val or bool(profile.get("is_vip", False))
+        
         return {
             "client_id": client_id,
             "name": client.name if client else profile.get("name", "Клиент"),
             "profile": profile,
+            "is_vip": is_vip_val,
+            "is_admin": is_admin_val
         }
     except Exception as exc:
         logger.warning("Failed to fetch client profile: %s", exc)
-        return {"client_id": client_id, "name": "Клиент", "profile": {}}
+        return {"client_id": client_id, "name": "Клиент", "profile": {}, "is_vip": (client_id == 1), "is_admin": (client_id == 1)}
 
 
 @router.put("/client/profile")
 @router.post("/client/profile")
 async def update_client_profile_endpoint(payload: ProfileUpdateRequest):
     """
-    Updates client profile in PostgreSQL.
+    Updates client profile in PostgreSQL. Supports root-level fields and nested profile payloads.
     """
     client_id = payload.client_id or 1
-    new_data: dict[str, Any] = {}
+    try:
+        existing_profile = await read_profile(client_id)
+    except Exception:
+        existing_profile = {}
+
+    new_data = dict(existing_profile)
+    
     if payload.profile:
         new_data.update(payload.profile)
-    if payload.name:
+
+    # Directly map root keys if supplied
+    if payload.name is not None:
         new_data["name"] = payload.name
-    if payload.gender:
+    if payload.gender is not None:
         new_data["gender"] = payload.gender
+    if payload.age is not None:
+        new_data["age"] = payload.age
+    if payload.height is not None:
+        new_data["height"] = payload.height
+    if payload.weight is not None:
+        new_data["weight"] = payload.weight
+    if payload.goal is not None:
+        new_data["goal"] = payload.goal
+    if payload.restrictions is not None:
+        new_data["restrictions"] = payload.restrictions
+    if payload.is_admin is not None:
+        new_data["is_admin"] = payload.is_admin
+        if payload.is_admin:
+            new_data["is_vip"] = True
+    if payload.is_vip is not None:
+        new_data["is_vip"] = payload.is_vip
 
     try:
         updated = await update_profile(client_id, new_data)
-        return {"ok": True, "client_id": client_id, "profile": updated}
+        
+        is_admin_val = (client_id == 1) or bool(updated.get("is_admin", False))
+        is_vip_val = is_admin_val or bool(updated.get("is_vip", False))
+        
+        return {
+            "success": True,
+            "ok": True,
+            "client_id": client_id,
+            "profile": updated,
+            "client": {
+                "id": client_id,
+                "is_vip": is_vip_val,
+                "is_admin": is_admin_val,
+                "profile": updated
+            }
+        }
     except Exception as exc:
         logger.error("Failed to update profile: %s", exc)
         raise HTTPException(status_code=400, detail=str(exc))
@@ -638,3 +716,64 @@ async def get_stats(session: AsyncSession = Depends(get_db_session)):
             "messages_count": 0,
             "open_escalations": 0,
         }
+
+
+@router.get("/content-gaps")
+async def get_content_gaps_endpoint():
+    """
+    Returns content gaps. Returns an empty list in PostgreSQL production
+    mode to prevent 404 and React rendering crashes.
+    """
+    return []
+
+
+@router.post("/content-gaps/{gap_id}/approve")
+async def approve_content_gap_endpoint(gap_id: int):
+    """
+    Dummy approval of content gaps.
+    """
+    return {"ok": True}
+
+
+@router.post("/client/vip/toggle")
+async def toggle_client_vip_endpoint(payload: VIPToggleRequest):
+    """
+    Toggles VIP status for a specific client.
+    """
+    client_id = payload.client_id
+    try:
+        existing_profile = await read_profile(client_id)
+    except Exception:
+        existing_profile = {}
+        
+    new_data = dict(existing_profile)
+    new_data["is_vip"] = payload.is_vip
+    
+    try:
+        updated = await update_profile(client_id, new_data)
+        return {"ok": True, "client_id": client_id, "is_vip": payload.is_vip, "profile": updated}
+    except Exception as exc:
+        logger.error("Failed to toggle VIP status for client %s: %s", client_id, exc)
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/client/vip/upgrade")
+async def upgrade_client_vip_endpoint(payload: VIPUpgradeRequest):
+    """
+    Endpoint to request or self-upgrade VIP status.
+    """
+    client_id = payload.client_id or 1
+    try:
+        existing_profile = await read_profile(client_id)
+    except Exception:
+        existing_profile = {}
+        
+    new_data = dict(existing_profile)
+    new_data["is_vip"] = True
+    
+    try:
+        updated = await update_profile(client_id, new_data)
+        return {"success": True, "is_vip": True, "message": "VIP-статус успешно активирован!"}
+    except Exception as exc:
+        logger.error("Failed to upgrade VIP status for client %s: %s", client_id, exc)
+        raise HTTPException(status_code=400, detail=str(exc))

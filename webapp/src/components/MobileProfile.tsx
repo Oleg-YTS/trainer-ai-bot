@@ -284,19 +284,43 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
             {!isVip && (
               <button
-                onClick={handleUpgradeToVip}
-                disabled={vipUpgrading}
-                className="mt-2 w-full py-2.5 px-4 rounded-xl font-bold text-xs text-[#0A100D] transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#D4AF37] via-[#FFD700] to-[#B8860B] hover:brightness-110 shadow-md shadow-[#D4AF37]/15 select-none"
+                onClick={async () => {
+                  setVipUpgrading(true);
+                  try {
+                    await apiFetch('/api/chat', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        client_id: 1,
+                        message_text: "Системный запрос: Клиент запрашивает активацию VIP-доступа у тренера.",
+                        category_id: "general"
+                      })
+                    });
+                    setPersonalTrainingRequested(true);
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setVipUpgrading(false);
+                  }
+                }}
+                disabled={vipUpgrading || personalTrainingRequested}
+                className={`mt-2 w-full py-2.5 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 select-none ${
+                  personalTrainingRequested
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                    : 'bg-gradient-to-r from-[#D4AF37] to-[#B8860B] text-[#0A100D] hover:brightness-110 shadow-md shadow-[#D4AF37]/15'
+                }`}
               >
                 {vipUpgrading ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Активация VIP...</span>
+                    <span>Отправка запроса...</span>
                   </>
+                ) : personalTrainingRequested ? (
+                  <span>Заявка отправлена тренеру ✅</span>
                 ) : (
                   <>
-                    <Crown className="w-4 h-4 fill-white text-white shrink-0" />
-                    <span className="text-white font-bold text-xs">Купить VIP-доступ</span>
+                    <Crown className="w-4 h-4 shrink-0" />
+                    <span>Запросить VIP у тренера</span>
                   </>
                 )}
               </button>
