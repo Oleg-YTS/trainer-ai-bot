@@ -1104,8 +1104,8 @@ app.all('/api/client/resolve', (req: Request, res: Response) => {
     };
     db.clients.push(client);
   } else {
+    client.is_admin = isAdmin;
     if (isAdmin) {
-      client.is_admin = true;
       client.is_vip = true;
     }
     if (name && client.name !== name) {

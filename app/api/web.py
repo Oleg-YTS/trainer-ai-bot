@@ -474,7 +474,7 @@ async def resolve_client_endpoint(
             client.name = client_name
             await session.commit()
 
-    is_admin_val = settings.is_admin_telegram_id(tg_id) or bool(prof.get("is_admin", False))
+    is_admin_val = settings.is_admin_telegram_id(tg_id)
     is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
 
     return {

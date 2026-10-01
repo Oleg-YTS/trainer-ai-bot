@@ -94,12 +94,12 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   }, [clientId, userIsAdmin, userIsVip]);
 
   const handleToggleAdmin = async (newAdminState: boolean) => {
+    if (!userIsAdmin) {
+      return;
+    }
     setIsAdmin(newAdminState);
     if (newAdminState) {
       setIsVip(true);
-      localStorage.setItem('trainer_is_admin', 'true');
-    } else {
-      localStorage.setItem('trainer_is_admin', 'false');
     }
     if (onUpdateAdminState) {
       onUpdateAdminState(newAdminState);
@@ -384,7 +384,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           )}
         </div>
 
-        {(userIsAdmin || isAdmin || (typeof window !== 'undefined' && localStorage.getItem('trainer_is_admin') === 'true')) && (
+        {userIsAdmin && (
           <div className="mt-3 pt-3 border-t border-dashed border-inherit space-y-2">
             <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
               Переключить режим тестирования (доступно администратору):
