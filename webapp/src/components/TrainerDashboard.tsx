@@ -330,11 +330,16 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     try {
       const res = await apiFetch('/api/clients');
       const data = await res.json();
-      setClients(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length > 0) {
+        setClients(data);
+        return;
+      }
     } catch (e) {
       console.error(e);
-      setClients([]);
     }
+    // Fallback to local users
+    const local = getLocalUsers();
+    setClients(local);
   };
 
   const handleSetClientRole = async (clientId: number, role: 'admin' | 'vip' | 'subscriber') => {
