@@ -182,12 +182,27 @@ export const App: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data && data.id) {
+          const roleOverride = localStorage.getItem('trainer_user_role_override');
+          let finalAdmin = Boolean(data.is_admin);
+          let finalVip = Boolean(data.is_vip);
+
+          if (roleOverride === 'admin') {
+            finalAdmin = true;
+            finalVip = true;
+          } else if (roleOverride === 'vip') {
+            finalAdmin = false;
+            finalVip = true;
+          } else if (roleOverride === 'subscriber') {
+            finalAdmin = false;
+            finalVip = false;
+          }
+
           setCurrentUser({
             id: data.id,
             telegram_user_id: data.telegram_user_id || tgId || null,
-            name: data.name || tgName || (data.is_admin ? 'Администратор' : 'Пользователь'),
-            is_admin: Boolean(data.is_admin),
-            is_vip: Boolean(data.is_vip)
+            name: data.name || tgName || (finalAdmin ? 'Администратор' : 'Пользователь'),
+            is_admin: finalAdmin,
+            is_vip: finalVip
           });
         }
       }
@@ -209,30 +224,53 @@ export const App: React.FC = () => {
   }, [isDark]);
 
   const setUserRole = async (role: 'admin' | 'vip' | 'subscriber') => {
-    if (!currentUser.id) return;
+    const targetId = currentUser.id || 1;
+    const isAdminVal = role === 'admin';
+    const isVipVal = role === 'admin' || role === 'vip';
+
+    // 1. Instant optimistic state update
+    setCurrentUser(prev => ({
+      ...prev,
+      is_admin: isAdminVal,
+      is_vip: isVipVal
+    }));
+
+    // 2. Save override in localStorage
+    try {
+      localStorage.setItem('trainer_user_role_override', role);
+    } catch {}
+
+    // 3. API synchronization
     try {
       const res = await apiFetch('/api/client/status/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: currentUser.id,
-          role
-        })
-      });
-      if (res.ok) {
-        const isAdminVal = role === 'admin';
-        const isVipVal = role === 'admin' || role === 'vip';
-        setCurrentUser(prev => ({
-          ...prev,
+          client_id: targetId,
+          role,
           is_admin: isAdminVal,
           is_vip: isVipVal
-        }));
-        if (role === 'admin') {
-          setActiveTab('trainer');
-        }
+        })
+      });
+
+      if (!res.ok) {
+        await apiFetch('/api/client/vip/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: targetId,
+            role,
+            is_admin: isAdminVal,
+            is_vip: isVipVal
+          })
+        });
+      }
+
+      if (role === 'admin') {
+        setActiveTab('trainer');
       }
     } catch (err) {
-      console.error('Failed to update role:', err);
+      console.error('Failed to update role via API:', err);
     }
   };
 

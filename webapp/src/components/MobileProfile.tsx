@@ -309,7 +309,11 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              onClick={() => onSetUserRole?.('subscriber')}
+              onClick={async () => {
+                setIsAdmin(false);
+                setIsVip(false);
+                if (onSetUserRole) await onSetUserRole('subscriber');
+              }}
               className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
                 !userIsAdmin && !isVip
                   ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-semibold'
@@ -320,7 +324,11 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onSetUserRole?.('vip')}
+              onClick={async () => {
+                setIsAdmin(false);
+                setIsVip(true);
+                if (onSetUserRole) await onSetUserRole('vip');
+              }}
               className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
                 !userIsAdmin && isVip
                   ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-semibold'
@@ -331,7 +339,11 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onSetUserRole?.('admin')}
+              onClick={async () => {
+                setIsAdmin(true);
+                setIsVip(true);
+                if (onSetUserRole) await onSetUserRole('admin');
+              }}
               className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
                 userIsAdmin
                   ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 font-semibold'
