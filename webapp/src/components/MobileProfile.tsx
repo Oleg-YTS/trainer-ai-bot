@@ -28,6 +28,7 @@ interface MobileProfileProps {
   isVip?: boolean;
   onRefreshUser?: () => void;
   onUpdateAdminState?: (adminState: boolean) => void;
+  onSetUserRole?: (role: 'admin' | 'vip' | 'subscriber') => Promise<void>;
 }
 
 export const MobileProfile: React.FC<MobileProfileProps> = ({
@@ -38,7 +39,8 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   clientId,
   isAdmin: userIsAdmin = false,
   isVip: userIsVip = false,
-  onRefreshUser
+  onRefreshUser,
+  onSetUserRole
 }) => {
   const [isAdmin, setIsAdmin] = useState(userIsAdmin);
   const [isVip, setIsVip] = useState(userIsVip);
@@ -300,6 +302,49 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             )}
           </div>
         )}
+
+        {/* DEV ROLE SWITCHER (Для тестирования прав) */}
+        <div className="mt-4 pt-3 border-t border-inherit">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[#7DA295] mb-2 flex items-center justify-between">
+            <span>Переключатель прав (Sandbox)</span>
+            <span className="text-[10px] opacity-70 font-normal">ID: {clientId || '—'}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onSetUserRole?.('subscriber')}
+              className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
+                !userIsAdmin && !isVip
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-semibold'
+                  : isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]' : 'bg-[#F0F4F1] border-[#D8E0DB] text-[#53665C]'
+              }`}
+            >
+              Пользователь
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetUserRole?.('vip')}
+              className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
+                !userIsAdmin && isVip
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-semibold'
+                  : isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]' : 'bg-[#F0F4F1] border-[#D8E0DB] text-[#53665C]'
+              }`}
+            >
+              VIP
+            </button>
+            <button
+              type="button"
+              onClick={() => onSetUserRole?.('admin')}
+              className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
+                userIsAdmin
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 font-semibold'
+                  : isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]' : 'bg-[#F0F4F1] border-[#D8E0DB] text-[#53665C]'
+              }`}
+            >
+              ★ Админ
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ========================================== */}

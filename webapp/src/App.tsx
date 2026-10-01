@@ -30,9 +30,9 @@ export const App: React.FC = () => {
   // Authenticated Telegram / Web Client identity
   const [isResolving, setIsResolving] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<CurrentUser>({
-    id: 1,
+    id: 0,
     telegram_user_id: null,
-    name: 'Пользователь',
+    name: 'Загрузка...',
     is_admin: false,
     is_vip: false
   });
@@ -208,6 +208,34 @@ export const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
+  const setUserRole = async (role: 'admin' | 'vip' | 'subscriber') => {
+    if (!currentUser.id) return;
+    try {
+      const res = await apiFetch('/api/client/status/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: currentUser.id,
+          role
+        })
+      });
+      if (res.ok) {
+        const isAdminVal = role === 'admin';
+        const isVipVal = role === 'admin' || role === 'vip';
+        setCurrentUser(prev => ({
+          ...prev,
+          is_admin: isAdminVal,
+          is_vip: isVipVal
+        }));
+        if (role === 'admin') {
+          setActiveTab('trainer');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update role:', err);
+    }
+  };
+
   const toggleTheme = () => setIsDark(prev => !prev);
 
   return (
@@ -242,8 +270,26 @@ export const App: React.FC = () => {
             </span>
           </div>
 
-          {/* Right: Version and subtle theme toggle */}
-          <div className="flex items-center gap-3">
+          {/* Right: Sandbox role toggle, theme & version */}
+          <div className="flex items-center gap-2">
+            {currentUser.is_admin ? (
+              <button
+                onClick={() => setActiveTab('trainer')}
+                className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30 transition flex items-center gap-1"
+                title="Перейти в панель тренера"
+              >
+                ★ Панель
+              </button>
+            ) : (
+              <button
+                onClick={() => setUserRole('admin')}
+                className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition"
+                title="Включить режим тренера для тестирования"
+              >
+                + Права админа
+              </button>
+            )}
+
             <button
               onClick={toggleTheme}
               aria-label="Переключить тему"
@@ -298,6 +344,7 @@ export const App: React.FC = () => {
               isAdmin={currentUser.is_admin}
               isVip={currentUser.is_vip}
               onRefreshUser={resolveCurrentUser}
+              onSetUserRole={setUserRole}
               onUpdateAdminState={(adminState) => {
                 setCurrentUser(prev => ({
                   ...prev,

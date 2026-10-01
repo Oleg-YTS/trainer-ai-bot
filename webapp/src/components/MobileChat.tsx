@@ -34,7 +34,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
   const [clearing, setClearing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeClientId = clientId || 1;
+  const activeClientId = clientId || 0;
 
   const DEFAULT_WELCOME: Message = {
     id: 1,
@@ -81,7 +81,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
   const handleSendMessage = async (textToSend?: string) => {
     const text = textToSend || inputText;
-    if (!text.trim() || loading) return;
+    if (!text.trim() || loading || !activeClientId) return;
 
     setInputText('');
     setLoading(true);

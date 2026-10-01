@@ -67,7 +67,7 @@ class ChatRequest(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
-    client_id: int | None = Field(default=1)
+    client_id: int | None = None
     name: str | None = None
     gender: str | None = None
     age: int | None = None
@@ -75,6 +75,9 @@ class ProfileUpdateRequest(BaseModel):
     weight: int | None = None
     goal: str | None = None
     restrictions: str | None = None
+    activity_level: str | None = None
+    training_frequency: str | None = None
+    diet_preferences: str | None = None
     is_admin: bool | None = None
     is_vip: bool | None = None
     profile: dict[str, Any] | None = None
@@ -113,7 +116,6 @@ class CreateClientRequest(BaseModel):
 
 class ResolveClientRequest(BaseModel):
     telegram_user_id: int | None = None
-    device_id: str | None = None
     name: str | None = None
     username: str | None = None
 
@@ -332,7 +334,10 @@ async def chat_endpoint(payload: ChatRequest):
     if not text:
         raise HTTPException(status_code=400, detail="Message text is required")
 
-    client_id = payload.client_id or 1
+    if not payload.client_id:
+        raise HTTPException(status_code=400, detail="client_id is required")
+
+    client_id = payload.client_id
 
     try:
         user_msg = await record_message(client_id, USER_ROLE, text)
@@ -391,10 +396,7 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
         settings = get_settings()
         client_list = []
         for c in clients:
-            try:
-                prof = await read_profile(c.id) if c else {}
-            except Exception:
-                prof = {}
+            prof = parse_profile(c.profile_json)
             msg_count_stmt = select(func.count(Message.id)).where(Message.client_id == c.id)
             msg_count = await session.scalar(msg_count_stmt) or 0
 
@@ -414,7 +416,7 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
                 "is_admin": is_admin_val,
             })
         return client_list
-    except SQLAlchemyError as exc:
+    except Exception as exc:
         logger.error("Failed to list clients: %s", exc)
         return []
 
@@ -423,129 +425,72 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
 @router.get("/client/resolve")
 async def resolve_client_endpoint(
     telegram_user_id: int | None = Query(default=None),
-    device_id: str | None = Query(default=None),
     name: str | None = Query(default=None),
     username: str | None = Query(default=None),
     payload: ResolveClientRequest | None = None,
     session: AsyncSession = Depends(get_db_session)
 ):
     """
-    Resolves client identity based on Telegram user ID or browser device_id.
+    Resolves client identity based on Telegram user ID.
+    If client exists in PostgreSQL, returns their profile and exact role.
+    If client is new, registers them safely with subscriber role.
     """
     settings = get_settings()
     tg_id = (payload.telegram_user_id if payload else None) or telegram_user_id
-    dev_id = (payload.device_id if payload else None) or device_id
     client_name = (payload.name if payload else None) or name
     tg_username = (payload.username if payload else None) or username
 
-    if tg_id:
-        stmt = select(Client).where(Client.telegram_user_id == tg_id)
-        res = await session.execute(stmt)
-        client = res.scalar_one_or_none()
-
-        if client is None:
-            display_name = client_name or (f"@{tg_username}" if tg_username else f"User {tg_id}")
-            client = Client(
-                trainer_id=settings.trainer_id,
-                name=display_name,
-                telegram_user_id=tg_id,
-                profile_json=json.dumps({"name": display_name}, ensure_ascii=False)
-            )
-            session.add(client)
-            await session.commit()
-            await session.refresh(client)
-            prof = {"name": display_name}
-        else:
-            try:
-                prof = await read_profile(client.id)
-            except Exception:
-                prof = {}
-
-            if client_name and client.name != client_name:
-                client.name = client_name
-                await session.commit()
-
-        is_admin_val = settings.is_admin_telegram_id(tg_id)
-        is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
-
+    if not tg_id:
         return {
             "ok": True,
-            "id": client.id,
-            "client_id": client.id,
-            "telegram_user_id": client.telegram_user_id,
-            "name": client.name,
-            "is_admin": is_admin_val,
-            "is_vip": is_vip_val,
-            "profile": prof
-        }
-
-    if dev_id:
-        stmt = select(Client).where(Client.telegram_user_id.is_(None))
-        res = await session.execute(stmt)
-        all_web_clients = res.scalars().all()
-        target_client = None
-        for c in all_web_clients:
-            try:
-                p = json.loads(c.profile_json or "{}")
-                if p.get("device_id") == dev_id:
-                    target_client = c
-                    break
-            except Exception:
-                pass
-
-        if target_client is None:
-            display_name = client_name or "Веб-посетитель"
-            init_profile = {"name": display_name, "device_id": dev_id}
-            target_client = Client(
-                trainer_id=settings.trainer_id,
-                name=display_name,
-                telegram_user_id=None,
-                profile_json=json.dumps(init_profile, ensure_ascii=False)
-            )
-            session.add(target_client)
-            await session.commit()
-            await session.refresh(target_client)
-            prof = init_profile
-        else:
-            try:
-                prof = await read_profile(target_client.id)
-            except Exception:
-                prof = {}
-
-        return {
-            "ok": True,
-            "id": target_client.id,
-            "client_id": target_client.id,
+            "id": 1,
+            "client_id": 1,
             "telegram_user_id": None,
-            "name": target_client.name,
+            "name": client_name or "Гость",
             "is_admin": False,
-            "is_vip": bool(prof.get("is_vip", False)),
-            "profile": prof
+            "is_vip": False,
+            "profile": {}
         }
 
-    client = await session.get(Client, 1)
-    if not client:
+    stmt = select(Client).where(Client.telegram_user_id == tg_id)
+    res = await session.execute(stmt)
+    client = res.scalar_one_or_none()
+
+    if client is None:
+        display_name = client_name or (f"@{tg_username}" if tg_username else f"User {tg_id}")
         client = Client(
-            id=1,
             trainer_id=settings.trainer_id,
-            name="Гость",
-            telegram_user_id=None,
-            profile_json="{}"
+            name=display_name,
+            telegram_user_id=tg_id,
+            profile_json=json.dumps({"name": display_name}, ensure_ascii=False)
         )
         session.add(client)
         await session.commit()
         await session.refresh(client)
+        prof = {"name": display_name}
+    else:
+        try:
+            prof = await read_profile(client.id)
+        except Exception:
+            prof = {}
+        if client_name and client.name != client_name:
+            client.name = client_name
+            await session.commit()
+
+    is_admin_val = settings.is_admin_telegram_id(tg_id)
+    is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
 
     return {
         "ok": True,
         "id": client.id,
         "client_id": client.id,
-        "telegram_user_id": None,
+        "telegram_user_id": client.telegram_user_id,
         "name": client.name,
-        "is_admin": False,
-        "is_vip": False,
-        "profile": {}
+        "is_admin": is_admin_val,
+        "is_vip": is_vip_val,
+        "profile": prof
     }
+
 
 @router.post("/clients")
 async def create_client_endpoint(payload: CreateClientRequest, session: AsyncSession = Depends(get_db_session)):
@@ -735,24 +680,31 @@ async def get_client_profile_endpoint(
 
 @router.put("/client/profile")
 @router.post("/client/profile")
-async def update_client_profile_endpoint(payload: ProfileUpdateRequest, session: AsyncSession = Depends(get_db_session)):
+async def update_client_profile_endpoint(
+    payload: ProfileUpdateRequest,
+    session: AsyncSession = Depends(get_db_session)
+):
     """
     Updates client profile in PostgreSQL. Supports root-level fields and nested profile payloads.
     """
-    client_id = payload.client_id or 1
-    try:
-        existing_profile = await read_profile(client_id)
-    except Exception:
-        existing_profile = {}
+    if not payload.client_id:
+        raise HTTPException(status_code=400, detail="client_id is required")
 
+    client_id = payload.client_id
+    client_obj = await session.get(Client, client_id)
+    if not client_obj:
+        raise HTTPException(status_code=440, detail=f"Client {client_id} not found")
+
+    existing_profile = parse_profile(client_obj.profile_json)
     new_data = dict(existing_profile)
-    
+
     if payload.profile:
         new_data.update(payload.profile)
 
     # Directly map root keys if supplied
     if payload.name is not None:
         new_data["name"] = payload.name
+        client_obj.name = payload.name
     if payload.gender is not None:
         new_data["gender"] = payload.gender
     if payload.age is not None:
@@ -765,6 +717,12 @@ async def update_client_profile_endpoint(payload: ProfileUpdateRequest, session:
         new_data["goal"] = payload.goal
     if payload.restrictions is not None:
         new_data["restrictions"] = payload.restrictions
+    if payload.activity_level is not None:
+        new_data["activity_level"] = payload.activity_level
+    if payload.training_frequency is not None:
+        new_data["training_frequency"] = payload.training_frequency
+    if payload.diet_preferences is not None:
+        new_data["diet_preferences"] = payload.diet_preferences
     if payload.is_admin is not None:
         new_data["is_admin"] = payload.is_admin
         if payload.is_admin:
@@ -774,12 +732,11 @@ async def update_client_profile_endpoint(payload: ProfileUpdateRequest, session:
 
     try:
         updated = await update_profile(client_id, new_data)
-        
+
         settings = get_settings()
-        client_obj = await session.get(Client, client_id)
         is_admin_val = (settings.is_admin_telegram_id(client_obj.telegram_user_id) if client_obj else False) or bool(updated.get("is_admin", False))
         is_vip_val = is_admin_val or bool(updated.get("is_vip", False))
-        
+
         return {
             "success": True,
             "ok": True,
