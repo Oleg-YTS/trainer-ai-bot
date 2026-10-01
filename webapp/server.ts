@@ -762,6 +762,65 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Proxy layer to Python Telegram Bot backend (PostgreSQL) when target URL is configured in environment
+const TARGET_BOT_URL = (
+  process.env.VITE_API_BASE_URL ||
+  process.env.API_BASE_URL ||
+  process.env.BOT_URL ||
+  process.env.BOT_API_URL ||
+  process.env.PYTHON_BACKEND_URL ||
+  process.env.RENDER_BOT_URL ||
+  ''
+).trim().replace(/\/+$/, '');
+
+if (TARGET_BOT_URL) {
+  console.log(`[Proxy] Python Bot upstream target configured: ${TARGET_BOT_URL}`);
+  console.log(`[Proxy] All /api/* traffic will be routed directly to the Python PostgreSQL backend.`);
+
+  app.use('/api', async (req: Request, res: Response, next) => {
+    const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
+
+    try {
+      const headers: Record<string, string> = {};
+      for (const [key, value] of Object.entries(req.headers)) {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey !== 'host' && lowerKey !== 'content-length' && typeof value === 'string') {
+          headers[key] = value;
+        }
+      }
+      if (!headers['content-type'] && (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH')) {
+        headers['content-type'] = 'application/json';
+      }
+
+      const fetchOptions: RequestInit = {
+        method: req.method,
+        headers,
+      };
+
+      if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
+        fetchOptions.body = JSON.stringify(req.body);
+      }
+
+      const upstreamRes = await fetch(targetUrl, fetchOptions);
+
+      res.status(upstreamRes.status);
+      upstreamRes.headers.forEach((val, key) => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
+          res.setHeader(key, val);
+        }
+      });
+
+      const buffer = await upstreamRes.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (err: any) {
+      console.error(`[Proxy Error] Failed to proxy ${req.method} ${req.originalUrl} -> ${targetUrl}:`, err);
+      // Fallback to local routes if upstream fails
+      next();
+    }
+  });
+}
+
 // Health Check
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
