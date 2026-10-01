@@ -1,3 +1,4 @@
+import json
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -9,18 +10,20 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import select
 
 from app.api.web import router as web_router
 from app.bot.router import build_dispatcher, setup_bot_menu
+from app.clients.service import build_default_profile
 from app.config.settings import get_settings
-
-from app.database.models import Base
-from app.database.session import get_engine
+from app.database.models import Base, Client, Trainer
+from app.database.session import get_engine, get_session_factory
 
 settings = get_settings()
 bot = Bot(settings.telegram_bot_token)
 dp = build_dispatcher()
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,9 +31,41 @@ async def lifespan(app: FastAPI):
         engine = get_engine()
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        logger.info("PostgreSQL database tables initialized successfully.")
+        
+        # Ensure default Trainer #1 and hardcoded Admin profiles exist in PostgreSQL
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            trainer = await session.get(Trainer, 1)
+            if not trainer:
+                session.add(Trainer(id=1, telegram_user_id=435297513, name="Главный Тренер"))
+                await session.commit()
+            
+            # Hardcoded Admin Telegram IDs
+            admin_configs = [
+                (747600306, "Администратор"),
+                (435297513, "Главный Тренер")
+            ]
+            for admin_tg_id, default_name in admin_configs:
+                stmt = select(Client).where(Client.telegram_user_id == admin_tg_id)
+                res = await session.execute(stmt)
+                admin_client = res.scalar_one_or_none()
+                
+                prof = build_default_profile(name=default_name, is_admin=True, is_vip=True)
+                prof_str = json.dumps(prof, ensure_ascii=False)
+                
+                if not admin_client:
+                    admin_client = Client(
+                        trainer_id=1,
+                        name=default_name,
+                        telegram_user_id=admin_tg_id,
+                        profile_json=prof_str
+                    )
+                    session.add(admin_client)
+            await session.commit()
+            
+        logger.info("PostgreSQL database tables, Trainer #1, and Admin profiles initialized successfully.")
     except Exception as exc:
-        logger.warning("Failed to auto-create PostgreSQL tables on startup: %s", exc)
+        logger.warning("Database setup notice during startup: %s", exc)
 
     if settings.webhook_url:
         await bot.set_webhook(
@@ -40,8 +75,10 @@ async def lifespan(app: FastAPI):
             drop_pending_updates=False,
         )
         await setup_bot_menu(bot)
+
     yield
     await bot.session.close()
+
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 
@@ -53,6 +90,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 app.include_router(web_router)
 
 # Serve compiled React frontend (webapp/dist) in production if present
@@ -78,9 +116,11 @@ if dist_path.exists():
             return FileResponse(index_file)
         raise HTTPException(status_code=404, detail="index.html not found")
 
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
 
 @app.post(settings.webhook_path)
 async def telegram_webhook(request: Request) -> dict[str, bool]:
@@ -98,7 +138,7 @@ async def telegram_webhook(request: Request) -> dict[str, bool]:
         logger.exception("Failed to process update %s", update.update_id)
     return {"ok": True}
 
+
 if __name__ == "__main__":
     logging.basicConfig(level=settings.log_level)
     uvicorn.run(app, host="0.0.0.0", port=settings.port)
-

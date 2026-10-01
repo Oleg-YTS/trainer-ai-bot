@@ -153,6 +153,9 @@ export const App: React.FC = () => {
           const savedTgId = localStorage.getItem('trainer_user_tg_id');
           if (savedTgId && Number(savedTgId)) {
             tgId = Number(savedTgId);
+          } else {
+            tgId = 900000000 + Math.floor(Math.random() * 89999999);
+            localStorage.setItem('trainer_user_tg_id', String(tgId));
           }
           const savedName = localStorage.getItem('trainer_user_tg_name');
           if (savedName && !tgName) {

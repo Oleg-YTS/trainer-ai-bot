@@ -62,7 +62,7 @@ CATEGORY_METADATA: dict[str, dict[str, str]] = {
 
 
 class ChatRequest(BaseModel):
-    client_id: int | None = Field(default=1)
+    client_id: int | None = None
     message_text: str | None = None
     message: str | None = None
 
@@ -92,7 +92,7 @@ class VIPToggleRequest(BaseModel):
 
 
 class VIPUpgradeRequest(BaseModel):
-    client_id: int | None = Field(default=1)
+    client_id: int | None = None
 
 
 class CreateKnowledgeRequest(BaseModel):
@@ -432,13 +432,14 @@ async def resolve_client_endpoint(
     telegram_user_id: int | None = Query(default=None),
     name: str | None = Query(default=None),
     username: str | None = Query(default=None),
+    device_id: str | None = Query(default=None),
     payload: ResolveClientRequest | None = None,
     session: AsyncSession = Depends(get_db_session)
 ):
     """
-    Resolves client identity based on Telegram user ID.
-    If client exists in PostgreSQL, returns their profile and exact role.
-    If client is new, registers them safely with subscriber role.
+    Resolves client identity based strictly on Telegram User ID.
+    If client exists in PostgreSQL, returns their profile and role.
+    If client is new, registers them in PostgreSQL.
     """
     settings = get_settings()
     tg_id = (payload.telegram_user_id if payload else None) or telegram_user_id
@@ -446,47 +447,22 @@ async def resolve_client_endpoint(
     tg_username = (payload.username if payload else None) or username
 
     if not tg_id:
-        stmt = select(Client).where((Client.id == 1) | (Client.telegram_user_id == 0))
-        res = await session.execute(stmt)
-        client = res.scalar_one_or_none()
-        if client is None:
-            display_name = client_name or "Гость"
-            default_prof = build_default_profile(name=display_name, is_admin=False, is_vip=False)
-            client = Client(
-                trainer_id=settings.trainer_id,
-                name=display_name,
-                telegram_user_id=0,
-                profile_json=json.dumps(default_prof, ensure_ascii=False)
-            )
-            session.add(client)
-            await session.commit()
-            await session.refresh(client)
-            save_profile_to_json_file(client.id, default_prof)
-        
-        prof = parse_profile(client.profile_json)
-        is_admin_val = settings.is_admin_telegram_id(0) or bool(prof.get("is_admin", False))
-        is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
+        # Fallback for pure browser guests without Telegram context: unique synthetic ID based on device_id
+        dev_str = device_id or "guest_browser_session"
+        tg_id = 900000000 + (abs(hash(dev_str)) % 99000000)
 
-        return {
-            "ok": True,
-            "id": client.id,
-            "client_id": client.id,
-            "telegram_user_id": client.telegram_user_id,
-            "name": client.name,
-            "is_admin": is_admin_val,
-            "is_vip": is_vip_val,
-            "profile": prof
-        }
-
+    # 1. Search existing client by Telegram User ID
     stmt = select(Client).where(Client.telegram_user_id == tg_id)
     res = await session.execute(stmt)
     client = res.scalar_one_or_none()
 
+    is_admin_val = settings.is_admin_telegram_id(tg_id)
+
     if client is None:
-        display_name = client_name or (f"@{tg_username}" if tg_username else f"User {tg_id}")
-        is_admin_val = settings.is_admin_telegram_id(tg_id)
+        display_name = client_name or (f"@{tg_username}" if tg_username else ("Администратор" if is_admin_val else f"Пользователь {tg_id}"))
         is_vip_val = is_admin_val
         default_prof = build_default_profile(name=display_name, is_admin=is_admin_val, is_vip=is_vip_val)
+        
         client = Client(
             trainer_id=settings.trainer_id,
             name=display_name,
@@ -499,15 +475,16 @@ async def resolve_client_endpoint(
         save_profile_to_json_file(client.id, default_prof)
         prof = default_prof
     else:
-        try:
-            prof = await read_profile(client.id)
-        except Exception:
-            prof = {}
+        prof = parse_profile(client.profile_json)
+        if is_admin_val:
+            prof["is_admin"] = True
+            prof["is_vip"] = True
+            client.profile_json = json.dumps(prof, ensure_ascii=False)
+            await session.commit()
         if client_name and client.name != client_name:
             client.name = client_name
             await session.commit()
 
-    is_admin_val = settings.is_admin_telegram_id(tg_id)
     is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
 
     return {
@@ -520,7 +497,6 @@ async def resolve_client_endpoint(
         "is_vip": is_vip_val,
         "profile": prof
     }
-
 
 @router.post("/clients")
 async def create_client_endpoint(payload: CreateClientRequest, session: AsyncSession = Depends(get_db_session)):
@@ -591,7 +567,7 @@ async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_d
 
 @router.get("/client/messages")
 async def get_client_messages(
-    client_id: int = Query(default=1),
+    client_id: int | None = Query(default=None),
     limit: int = Query(default=20),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -682,30 +658,49 @@ async def request_vip_endpoint(
 
 @router.get("/client/profile")
 async def get_client_profile_endpoint(
-    client_id: int = Query(default=1),
+    client_id: int | None = Query(default=None),
+    telegram_user_id: int | None = Query(default=None),
     session: AsyncSession = Depends(get_db_session),
 ):
     """
-    Retrieves client profile from PostgreSQL.
+    Retrieves client profile from PostgreSQL by ID or Telegram User ID.
     """
+    target_id = telegram_user_id or client_id
+    if not target_id:
+        return {"client_id": None, "name": "Гость", "profile": {}, "is_vip": False, "is_admin": False}
+
     try:
-        profile = await read_profile(client_id)
-        client = await session.get(Client, client_id)
-        
+        stmt = select(Client).where((Client.id == target_id) | (Client.telegram_user_id == target_id))
+        res = await session.execute(stmt)
+        client = res.scalar_one_or_none()
+
         settings = get_settings()
-        is_admin_val = settings.is_admin_telegram_id(client.telegram_user_id) if client else False
-        is_vip_val = is_admin_val or bool(profile.get("is_vip", False))
+        if client:
+            prof = parse_profile(client.profile_json)
+            is_admin_val = settings.is_admin_telegram_id(client.telegram_user_id)
+            is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
+            return {
+                "client_id": client.id,
+                "telegram_user_id": client.telegram_user_id,
+                "name": client.name,
+                "profile": prof,
+                "is_vip": is_vip_val,
+                "is_admin": is_admin_val
+            }
         
+        # Fallback profile if client record not created yet
+        is_admin_val = settings.is_admin_telegram_id(target_id)
         return {
-            "client_id": client_id,
-            "name": client.name if client else profile.get("name", "Клиент"),
-            "profile": profile,
-            "is_vip": is_vip_val,
+            "client_id": target_id,
+            "telegram_user_id": target_id,
+            "name": "Администратор" if is_admin_val else "Пользователь",
+            "profile": {"is_admin": is_admin_val, "is_vip": is_admin_val},
+            "is_vip": is_admin_val,
             "is_admin": is_admin_val
         }
     except Exception as exc:
         logger.warning("Failed to fetch client profile: %s", exc)
-        return {"client_id": client_id, "name": "Клиент", "profile": {}, "is_vip": False, "is_admin": False}
+        return {"client_id": target_id, "name": "Пользователь", "profile": {}, "is_vip": False, "is_admin": False}
 
 
 @router.put("/client/profile")
@@ -715,17 +710,22 @@ async def update_client_profile_endpoint(
     session: AsyncSession = Depends(get_db_session)
 ):
     """
-    Updates client profile in PostgreSQL. Supports root-level fields and nested profile payloads.
+    Updates client profile in PostgreSQL by ID or Telegram User ID.
     """
-    client_id = payload.client_id or 1
-    client_obj = await session.get(Client, client_id)
+    target_id = payload.client_id
+    if not target_id:
+        raise HTTPException(status_code=400, detail="client_id or telegram_user_id is required")
+
     settings = get_settings()
+    stmt = select(Client).where((Client.id == target_id) | (Client.telegram_user_id == target_id))
+    res = await session.execute(stmt)
+    client_obj = res.scalar_one_or_none()
 
     if not client_obj:
-        initial_name = payload.name or f"Пользователь #{client_id}"
-        is_admin = settings.is_admin_telegram_id(client_id) or bool(payload.is_admin)
+        initial_name = payload.name or f"Пользователь {target_id}"
+        is_admin = settings.is_admin_telegram_id(target_id) or bool(payload.is_admin)
         is_vip = is_admin or bool(payload.is_vip)
-        
+
         default_prof = build_default_profile(
             name=initial_name,
             gender=payload.gender or "male",
@@ -734,7 +734,7 @@ async def update_client_profile_endpoint(
         )
         client_obj = Client(
             trainer_id=settings.trainer_id,
-            telegram_user_id=client_id,
+            telegram_user_id=target_id,
             name=initial_name,
             profile_json=json.dumps(default_prof, ensure_ascii=False)
         )
@@ -742,268 +742,44 @@ async def update_client_profile_endpoint(
         await session.commit()
         await session.refresh(client_obj)
 
-    existing_profile = parse_profile(client_obj.profile_json)
-    if not existing_profile:
-        existing_profile = build_default_profile(
-            name=client_obj.name,
-            is_admin=settings.is_admin_telegram_id(client_obj.telegram_user_id)
-        )
-    
-    new_data = dict(existing_profile)
-
-    if payload.profile:
-        new_data.update(payload.profile)
-
-    # Directly map root keys if supplied
-    if payload.name is not None:
-        new_data["name"] = payload.name
+    # Parse and update profile fields
+    existing_prof = parse_profile(client_obj.profile_json)
+    if payload.name:
         client_obj.name = payload.name
-    if payload.gender is not None:
-        new_data["gender"] = payload.gender
-    if payload.age is not None:
-        new_data["age"] = payload.age
-    if payload.height is not None:
-        new_data["height"] = payload.height
-    if payload.weight is not None:
-        new_data["weight"] = payload.weight
-    if payload.goal is not None:
-        new_data["goal"] = payload.goal
-    if payload.restrictions is not None:
-        new_data["restrictions"] = payload.restrictions
-    if payload.activity_level is not None:
-        new_data["activity_level"] = payload.activity_level
-    if payload.training_frequency is not None:
-        new_data["training_frequency"] = payload.training_frequency
-    if payload.diet_preferences is not None:
-        new_data["diet_preferences"] = payload.diet_preferences
-    if payload.is_admin is not None:
-        new_data["is_admin"] = payload.is_admin
-        if payload.is_admin:
-            new_data["is_vip"] = True
-    if payload.is_vip is not None:
-        new_data["is_vip"] = payload.is_vip
+        existing_prof["name"] = payload.name
+    
+    if payload.gender: existing_prof["gender"] = payload.gender
+    if payload.age is not None: existing_prof["age"] = payload.age
+    if payload.height is not None: existing_prof["height"] = payload.height
+    if payload.weight is not None: existing_prof["weight"] = payload.weight
+    if payload.goal: existing_prof["goal"] = payload.goal
+    if payload.restrictions: existing_prof["restrictions"] = payload.restrictions
+    if payload.activity_level: existing_prof["activity_level"] = payload.activity_level
+    if payload.training_frequency: existing_prof["training_frequency"] = payload.training_frequency
+    if payload.diet_preferences: existing_prof["diet_preferences"] = payload.diet_preferences
 
-    try:
-        updated = await update_profile(client_id, new_data)
+    if payload.profile and isinstance(payload.profile, dict):
+        existing_prof.update(payload.profile)
 
-        settings = get_settings()
-        is_admin_val = (settings.is_admin_telegram_id(client_obj.telegram_user_id) if client_obj else False) or bool(updated.get("is_admin", False))
-        is_vip_val = is_admin_val or bool(updated.get("is_vip", False))
+    is_admin_val = settings.is_admin_telegram_id(client_obj.telegram_user_id) or bool(existing_prof.get("is_admin", False))
+    if is_admin_val:
+        existing_prof["is_admin"] = True
+        existing_prof["is_vip"] = True
 
-        return {
-            "success": True,
-            "ok": True,
-            "client_id": client_id,
-            "profile": updated,
-            "client": {
-                "id": client_id,
-                "is_vip": is_vip_val,
-                "is_admin": is_admin_val,
-                "profile": updated
-            }
-        }
-    except Exception as exc:
-        logger.error("Failed to update profile: %s", exc)
-        raise HTTPException(status_code=400, detail=str(exc))
-
-
-@router.get("/llm/status")
-async def get_llm_status_endpoint():
-    """
-    Returns LLM status and active configuration.
-    """
-    settings = get_settings()
-    orchestrator = get_orchestrator()
-    is_ready = bool(settings.aitunnel_api_key and settings.aitunnel_model)
+    client_obj.profile_json = json.dumps(existing_prof, ensure_ascii=False)
+    await session.commit()
+    await session.refresh(client_obj)
 
     return {
-        "configured": orchestrator.is_configured,
-        "is_ready": is_ready,
-        "provider": "ai_tunnel",
-        "effective_provider": "AI Tunnel",
-        "effective_model": settings.aitunnel_model,
-        "model": settings.aitunnel_model,
-        "has_key": bool(settings.aitunnel_api_key),
-        "status_message": f"AI Tunnel активен (Модель: {settings.aitunnel_model})" if is_ready else "AITUNNEL_API_KEY не обнаружен"
-    }
-
-
-class LLMConfigPayload(BaseModel):
-    provider: Optional[str] = "ai_tunnel"
-    aitunnelApiKey: Optional[str] = None
-    aitunnelModel: Optional[str] = None
-    aitunnel_api_key: Optional[str] = None
-    aitunnel_model: Optional[str] = None
-
-
-@router.post("/llm/config")
-async def update_llm_config_endpoint(payload: LLMConfigPayload):
-    """
-    Updates runtime AI Tunnel configuration and model.
-    """
-    settings = get_settings()
-    key = payload.aitunnelApiKey or payload.aitunnel_api_key
-    model = payload.aitunnelModel or payload.aitunnel_model
-    if key:
-        settings.aitunnel_api_key = key.strip()
-    if model:
-        settings.aitunnel_model = model.strip()
-
-    try:
-        orch = get_orchestrator()
-        if hasattr(orch, "client"):
-            if key:
-                orch.client._api_key = key.strip()
-                orch.client._client = None
-            if model:
-                orch.client.model = model.strip()
-    except Exception:
-        pass
-
-    is_ready = bool(settings.aitunnel_api_key and settings.aitunnel_model)
-    return {
+        "ok": True,
         "success": True,
-        "status": {
-            "is_ready": is_ready,
-            "effective_provider": "AI Tunnel",
-            "effective_model": settings.aitunnel_model,
-            "has_key": bool(settings.aitunnel_api_key),
-            "status_message": f"AI Tunnel активен (Модель: {settings.aitunnel_model})" if is_ready else "AITUNNEL_API_KEY не обнаружен",
-        },
+        "client_id": client_obj.id,
+        "telegram_user_id": client_obj.telegram_user_id,
+        "name": client_obj.name,
+        "profile": existing_prof,
+        "is_admin": is_admin_val,
+        "is_vip": bool(existing_prof.get("is_vip", False))
     }
-
-
-@router.post("/llm/test")
-async def test_llm_generation_endpoint(payload: LLMTestRequest, session: AsyncSession = Depends(get_db_session)):
-    """
-    Diagnostic endpoint to test LLM classification, retrieval, and grounding logic.
-    """
-    q = (payload.prompt or payload.question or "").strip()
-    if not q:
-        raise HTTPException(status_code=400, detail="Prompt is required")
-
-    orchestrator = get_orchestrator()
-    if not orchestrator.is_configured:
-        return {
-            "success": False,
-            "error": "ИИ провайдер не настроен. Проверьте AITUNNEL_API_KEY в переменных окружения.",
-        }
-
-    try:
-        classification = await orchestrator.classify(q)
-        cat = getattr(classification, "category", "other")
-
-        knowledge = await search_knowledge(
-            session, get_settings().trainer_id, q, category=cat if cat in CATEGORIES else None, limit=5
-        )
-
-        answer_text = await build_grounded_answer(orchestrator, client_id=1, question=q)
-
-        return {
-            "success": True,
-            "question": q,
-            "classified_category": cat,
-            "matched_kb_count": len(knowledge),
-            "matched_articles": [
-                {"id": k.id, "title": k.title, "category": k.category}
-                for k in knowledge
-            ],
-            "generated_answer": answer_text,
-        }
-    except Exception as exc:
-        logger.error("LLM test failed: %s", exc)
-        return {"success": False, "error": str(exc)}
-
-
-@router.get("/escalations")
-async def get_escalations_endpoint(session: AsyncSession = Depends(get_db_session)):
-    """
-    Returns open escalations needing trainer attention.
-    """
-    try:
-        statement = select(Escalation).order_by(Escalation.id.desc())
-        result = await session.execute(statement)
-        escalations = result.scalars().all()
-        return [
-            {
-                "id": e.id,
-                "client_id": e.client_id,
-                "reason": e.reason,
-                "question": e.question,
-                "status": e.status,
-                "created_at": e.created_at.isoformat() if e.created_at else "",
-            }
-            for e in escalations
-        ]
-    except SQLAlchemyError as exc:
-        logger.error("Failed to list escalations: %s", exc)
-        return []
-
-
-@router.post("/escalations/{escalation_id}/resolve")
-async def resolve_escalation_endpoint(escalation_id: int, session: AsyncSession = Depends(get_db_session)):
-    """
-    Marks an escalation as resolved in PostgreSQL.
-    """
-    try:
-        esc = await session.get(Escalation, escalation_id)
-        if not esc:
-            raise HTTPException(status_code=404, detail="Escalation not found")
-        esc.status = "resolved"
-        await session.commit()
-        return {"ok": True, "id": escalation_id}
-    except SQLAlchemyError as exc:
-        logger.error("Failed to resolve escalation %s: %s", escalation_id, exc)
-        raise HTTPException(status_code=400, detail="Could not resolve escalation")
-
-
-@router.get("/stats")
-async def get_stats(session: AsyncSession = Depends(get_db_session)):
-    """
-    Returns basic dashboard metrics for trainer.
-    """
-    try:
-        kb_count = await session.scalar(
-            select(func.count(KnowledgeItem.id)).where(KnowledgeItem.status.in_(["published", "approved"]))
-        ) or 0
-        clients_count = await session.scalar(select(func.count(Client.id))) or 0
-        messages_count = await session.scalar(select(func.count(Message.id))) or 0
-        open_escalations = await session.scalar(
-            select(func.count(Escalation.id)).where(Escalation.status == "open")
-        ) or 0
-
-        return {
-            "knowledge_count": kb_count,
-            "clients_count": clients_count,
-            "messages_count": messages_count,
-            "open_escalations": open_escalations,
-        }
-    except Exception as exc:
-        logger.warning("Stats retrieval error: %s", exc)
-        return {
-            "knowledge_count": 0,
-            "clients_count": 0,
-            "messages_count": 0,
-            "open_escalations": 0,
-        }
-
-
-@router.get("/content-gaps")
-async def get_content_gaps_endpoint():
-    """
-    Returns content gaps. Returns an empty list in PostgreSQL production
-    mode to prevent 404 and React rendering crashes.
-    """
-    return []
-
-
-@router.post("/content-gaps/{gap_id}/approve")
-async def approve_content_gap_endpoint(gap_id: int):
-    """
-    Dummy approval of content gaps.
-    """
-    return {"ok": True}
-
 
 @router.post("/client/vip/toggle")
 @router.post("/client/status/update")

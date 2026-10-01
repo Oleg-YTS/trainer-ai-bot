@@ -1,9 +1,7 @@
 import json
 from typing import Any
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.clients.json_store import load_profile_from_json_file, save_profile_to_json_file
 from app.config.settings import get_settings
 from app.database.models import Client
@@ -90,11 +88,14 @@ async def read_profile(client_id: int | None) -> dict[str, Any]:
     if client_id is None:
         return {}
     async with get_session_factory()() as session:
-        client = await session.get(Client, client_id)
+        stmt = select(Client).where((Client.id == client_id) | (Client.telegram_user_id == client_id))
+        res = await session.execute(stmt)
+        client = res.scalar_one_or_none()
+        
         if client is not None:
             prof = parse_profile(client.profile_json)
             if prof:
-                save_profile_to_json_file(client_id, prof)
+                save_profile_to_json_file(client.id, prof)
                 return prof
         
         json_file_prof = load_profile_from_json_file(client_id)
@@ -105,7 +106,10 @@ async def read_profile(client_id: int | None) -> dict[str, Any]:
 
 async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, Any]:
     async with get_session_factory()() as session:
-        client = await session.get(Client, client_id)
+        stmt = select(Client).where((Client.id == client_id) | (Client.telegram_user_id == client_id))
+        res = await session.execute(stmt)
+        client = res.scalar_one_or_none()
+        
         settings = get_settings()
 
         if client is None:
@@ -113,7 +117,7 @@ async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, A
             initial_name = profile.get("name") or f"Пользователь #{client_id}"
             is_admin = settings.is_admin_telegram_id(client_id) or bool(profile.get("is_admin", False))
             is_vip = is_admin or bool(profile.get("is_vip", False))
-            
+
             base_prof = build_default_profile(
                 name=initial_name,
                 gender=profile.get("gender", "male"),
@@ -121,7 +125,7 @@ async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, A
                 is_vip=is_vip
             )
             base_prof.update({k: v for k, v in profile.items() if v is not None})
-            
+
             client = Client(
                 trainer_id=trainer.id,
                 telegram_user_id=client_id,
@@ -139,9 +143,9 @@ async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, A
                     name=client.name,
                     is_admin=settings.is_admin_telegram_id(client.telegram_user_id)
                 )
-            
+
             existing.update({k: v for k, v in profile.items() if v is not None})
-            
+
             if profile.get("name"):
                 client.name = profile["name"]
 
