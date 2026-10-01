@@ -109,6 +109,27 @@ export const App: React.FC = () => {
         } catch {}
       }
 
+      // 5. Local Device Fallback
+      if (!tgId) {
+        try {
+          const savedTgId = localStorage.getItem('trainer_user_tg_id');
+          if (savedTgId && Number(savedTgId)) {
+            tgId = Number(savedTgId);
+          }
+          const savedName = localStorage.getItem('trainer_user_tg_name');
+          if (savedName && !tgName) {
+            tgName = savedName;
+          }
+        } catch {}
+      }
+
+      if (tgId) {
+        try {
+          localStorage.setItem('trainer_user_tg_id', String(tgId));
+          if (tgName) localStorage.setItem('trainer_user_tg_name', tgName);
+        } catch {}
+      }
+
       const res = await apiFetch('/api/client/resolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
