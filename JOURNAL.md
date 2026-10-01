@@ -2,6 +2,34 @@
 
 ---
 
+## [Задача #18] Доступ Администратора в Песочнице и Отказоустойчивые Pydantic-Схемы LLM
+
+### Статус: ✅ Завершено (Готово к пушу по команде)
+
+### GOAL
+1. Предоставить пользователю в песочнице (браузерном предпросмотре) права администратора по умолчанию (профиль «Иван» с `is_admin: true`), чтобы обеспечить доступ ко всему функционалу Панели тренера (База знаний, Эскалации, Пробелы, Настройки LLM, Деплой).
+2. Устранить ошибку валидации Pydantic `1 validation error for Classification: intent Field required` при ответе моделей AI Tunnel через добавление безопасных дефолтных значений и экранирование markdown в парсере.
+3. Добавить кнопку «Скопировать ошибку» в тестовую консоль диалога с LLM.
+
+### CHANGES
+- `server.ts`:
+  - Установлен флаг `is_admin: true` и `is_vip: true` для профиля «Иван» (`id: 3`).
+  - В роуте `/api/client/resolve` при работе в песочнице (`!tg_id`) возвращается `is_admin: true`.
+- `bot/ai/schemas.py`:
+  - `Classification`: поля `category: Category = "other"`, `intent: str = "general_question"`, `needs_trainer: bool = False`, `reason: str | None = None` снабжены дефолтными значениями.
+  - `GeneratedAnswer`: поле `answer: str = ""` снабжено дефолтным значением.
+- `bot/ai/orchestrator.py`:
+  - Добавлена функция `parse_json_safely()` с автоматическим снятием markdown-обёрток ````json ... ```` и поиском валидного JSON объекта.
+- `src/components/TrainerDashboard.tsx`:
+  - Добавлена кнопка «Скопировать ошибку» с визуальным подтверждением «Скопировано в буфер!».
+
+### VERIFICATION
+- `compile_applet`: успешно.
+- `lint_applet`: 0 ошибок.
+- `python3 -m py_compile`: успешно.
+
+---
+
 ## [Задача #17] Исправление Импорта Optional в Python Backend (FastAPI Web Router)
 
 ### Статус: ✅ Завершено и отправлено в GitHub (`ac754d6`)

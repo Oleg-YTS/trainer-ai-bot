@@ -189,8 +189,8 @@ class Database {
       telegram_user_id: 20001,
       telegram_username: 'ivan_sport',
       name: 'Иван',
-      is_vip: false,
-      is_admin: false,
+      is_vip: true,
+      is_admin: true,
       profile: {
         name: 'Иван',
         telegram_username: 'ivan_sport',
@@ -937,16 +937,16 @@ app.all('/api/client/resolve', (req: Request, res: Response) => {
   ].map(s => s.trim()).filter(Boolean);
 
   if (!tg_id) {
-    // Default fallback for guest / browser sandbox without Telegram
-    const defaultClient = db.clients.find(c => !c.is_admin) || db.clients[2] || db.clients[0];
+    // Default fallback for guest / browser sandbox without Telegram (admin access for sandbox testing)
+    const defaultClient = db.clients.find(c => c.name === 'Иван') || db.clients[2] || db.clients[0];
     return res.json({
       ok: true,
       id: defaultClient.id,
       client_id: defaultClient.id,
       telegram_user_id: defaultClient.telegram_user_id,
       name: defaultClient.name,
-      is_admin: false,
-      is_vip: defaultClient.is_vip || false,
+      is_admin: true,
+      is_vip: true,
       profile: defaultClient.profile
     });
   }

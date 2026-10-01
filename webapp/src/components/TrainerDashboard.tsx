@@ -124,6 +124,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const [testPrompt, setTestPrompt] = useState('Каковы ключевые правила гидратации во время силовой тренировки?');
   const [testingLlm, setTestingLlm] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [copiedError, setCopiedError] = useState(false);
 
   // Runtime LLM Config State
   const [selectedModel, setSelectedModel] = useState('gpt-6-luna-pro');
@@ -2401,12 +2402,53 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 </div>
 
                 {testResult.success ? (
-                  <div className="p-2.5 rounded-lg bg-black/15 font-sans leading-relaxed whitespace-pre-wrap text-xs">
-                    {testResult.answer}
+                  <div className="space-y-2">
+                    <div className="p-2.5 rounded-lg bg-black/15 font-sans leading-relaxed whitespace-pre-wrap text-xs">
+                      {testResult.answer}
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(testResult.answer || '');
+                          setCopiedError(true);
+                          setTimeout(() => setCopiedError(false), 2000);
+                        }}
+                        className={`text-[11px] py-1 px-2.5 rounded-lg border font-medium flex items-center gap-1.5 transition ${
+                          isDark
+                            ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:bg-[#1F2E27]'
+                            : 'bg-white border-[#C8D6CF] text-[#141F1A] hover:bg-[#EBF0EC]'
+                        }`}
+                      >
+                        {copiedError ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedError ? 'Скопировано!' : 'Скопировать ответ'}</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="p-2.5 rounded-lg bg-black/20 font-mono text-[11px] leading-relaxed break-all">
-                    {testResult.error}
+                  <div className="space-y-2">
+                    <div className="p-2.5 rounded-lg bg-black/20 font-mono text-[11px] leading-relaxed break-all select-all">
+                      {testResult.error}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] opacity-70">Нажмите на кнопку справа для копирования полного текста ошибки</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(testResult.error || '');
+                          setCopiedError(true);
+                          setTimeout(() => setCopiedError(false), 2000);
+                        }}
+                        className={`text-[11px] py-1 px-2.5 rounded-lg border font-medium flex items-center gap-1.5 transition shrink-0 ${
+                          isDark
+                            ? 'bg-[#2A1518] border-[#5A232B] text-[#FFA8B3] hover:bg-[#3A1D21]'
+                            : 'bg-white border-[#F8C1C8] text-[#931D2D] hover:bg-[#FFF0F2]'
+                        }`}
+                      >
+                        {copiedError ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedError ? 'Скопировано в буфер!' : 'Скопировать ошибку'}</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
