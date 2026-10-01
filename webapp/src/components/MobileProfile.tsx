@@ -166,13 +166,14 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       const response = await apiFetch('/api/client/vip/upgrade', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: 1 })
+        body: JSON.stringify({ client_id: clientId })
       });
       if (response.ok) {
         const res = await response.json();
         if (res && res.success) {
           setIsVip(true);
         }
+        if (onRefreshUser) onRefreshUser();
       }
     } catch (err) {
       console.error('Failed to upgrade to VIP:', err);
@@ -216,7 +217,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          client_id: 1,
+          client_id: clientId,
           message_text: 'Запрос на персональное ведение тренером (отправлено через профиль)'
         })
       });
@@ -377,6 +378,63 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </span>
           )}
         </div>
+
+        {userIsAdmin && (
+          <div className="mt-3 pt-3 border-t border-dashed border-inherit space-y-2">
+            <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+              Переключить режим тестирования (доступно администратору):
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleToggleAdmin(false)}
+                className={`py-1.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 transition ${
+                  !isAdmin && !isVip
+                    ? isDark ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]' : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
+                    : 'opacity-60 hover:opacity-100 border-inherit'
+                }`}
+              >
+                <UserCheck className="w-3 h-3" />
+                <span>Подписчик</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsAdmin(false);
+                  setIsVip(true);
+                  await apiFetch('/api/client/status/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_id: clientId, role: 'vip' })
+                  });
+                  if (onRefreshUser) onRefreshUser();
+                }}
+                className={`py-1.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 transition ${
+                  !isAdmin && isVip
+                    ? isDark ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]' : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
+                    : 'opacity-60 hover:opacity-100 border-inherit'
+                }`}
+              >
+                <Crown className="w-3 h-3 text-[#7DA295]" />
+                <span>VIP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleAdmin(true)}
+                className={`py-1.5 px-2 rounded-lg border text-[11px] font-semibold flex items-center justify-center gap-1 transition ${
+                  isAdmin
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                    : 'opacity-60 hover:opacity-100 border-inherit'
+                }`}
+              >
+                <Star className="w-3 h-3 fill-amber-400/20 text-amber-400" />
+                <span>Админ</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================== */}

@@ -82,7 +82,9 @@ class ProfileUpdateRequest(BaseModel):
 
 class VIPToggleRequest(BaseModel):
     client_id: int
-    is_vip: bool
+    is_vip: bool | None = None
+    is_admin: bool | None = None
+    role: str | None = None
 
 
 class VIPUpgradeRequest(BaseModel):
@@ -818,9 +820,10 @@ async def approve_content_gap_endpoint(gap_id: int):
 
 
 @router.post("/client/vip/toggle")
+@router.post("/client/status/update")
 async def toggle_client_vip_endpoint(payload: VIPToggleRequest):
     """
-    Toggles VIP status for a specific client.
+    Updates VIP and/or Admin status for a specific client in PostgreSQL.
     """
     client_id = payload.client_id
     try:
@@ -829,13 +832,37 @@ async def toggle_client_vip_endpoint(payload: VIPToggleRequest):
         existing_profile = {}
         
     new_data = dict(existing_profile)
-    new_data["is_vip"] = payload.is_vip
+    
+    if payload.role:
+        if payload.role == "admin":
+            new_data["is_admin"] = True
+            new_data["is_vip"] = True
+        elif payload.role == "vip":
+            new_data["is_admin"] = False
+            new_data["is_vip"] = True
+        else:
+            new_data["is_admin"] = False
+            new_data["is_vip"] = False
+    else:
+        if payload.is_admin is not None:
+            new_data["is_admin"] = payload.is_admin
+            if payload.is_admin:
+                new_data["is_vip"] = True
+        if payload.is_vip is not None:
+            new_data["is_vip"] = payload.is_vip
     
     try:
         updated = await update_profile(client_id, new_data)
-        return {"ok": True, "client_id": client_id, "is_vip": payload.is_vip, "profile": updated}
+        return {
+            "ok": True,
+            "success": True,
+            "client_id": client_id,
+            "is_vip": bool(updated.get("is_vip", False)),
+            "is_admin": bool(updated.get("is_admin", False)),
+            "profile": updated
+        }
     except Exception as exc:
-        logger.error("Failed to toggle VIP status for client %s: %s", client_id, exc)
+        logger.error("Failed to update status for client %s: %s", client_id, exc)
         raise HTTPException(status_code=400, detail=str(exc))
 
 

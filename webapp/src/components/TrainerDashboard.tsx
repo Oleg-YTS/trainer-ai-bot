@@ -324,23 +324,50 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     }
   };
 
-  const handleToggleClientVip = async (clientId: number, currentVipStatus: boolean) => {
+  const handleSetClientRole = async (clientId: number, role: 'admin' | 'vip' | 'subscriber') => {
+    // Optimistic UI update
+    setClients(prev => prev.map(c => {
+      if (c.id !== clientId) return c;
+      return {
+        ...c,
+        is_admin: role === 'admin',
+        is_vip: role === 'admin' || role === 'vip'
+      };
+    }));
+
     try {
-      const res = await apiFetch('/api/client/vip/toggle', {
+      const res = await apiFetch('/api/client/status/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: clientId,
-          is_vip: !currentVipStatus
+          role,
+          is_admin: role === 'admin',
+          is_vip: role === 'admin' || role === 'vip'
         })
       });
-      if (res.ok) {
-        fetchClients();
-        fetchStats();
+      if (!res.ok) {
+        await apiFetch('/api/client/vip/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: clientId,
+            role,
+            is_vip: role === 'admin' || role === 'vip',
+            is_admin: role === 'admin'
+          })
+        });
       }
+      fetchClients();
+      fetchStats();
     } catch (err) {
-      console.error('Failed to toggle client VIP status:', err);
+      console.error('Failed to update client status:', err);
+      fetchClients();
     }
+  };
+
+  const handleToggleClientVip = async (clientId: number, currentVipStatus: boolean) => {
+    await handleSetClientRole(clientId, currentVipStatus ? 'subscriber' : 'vip');
   };
 
   useEffect(() => {
@@ -1230,22 +1257,72 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   </p>
                 )}
 
-                <div className="pt-1.5 border-t border-dashed border-inherit flex items-center justify-between">
-                  <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                    Изменить статус доступа:
-                  </span>
-                  <button
-                    onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
-                    className={`py-1 px-2.5 rounded-lg border text-[10px] font-semibold transition ${
-                      c.is_vip
-                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
-                        : isDark
-                          ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
-                          : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
-                    }`}
-                  >
-                    {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
-                  </button>
+                <div className="pt-2 border-t border-dashed border-inherit space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                      Управление статусом:
+                    </span>
+                    <button
+                      onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
+                      className={`py-0.5 px-2 rounded border text-[10px] font-semibold transition ${
+                        c.is_vip
+                          ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
+                          : isDark
+                            ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
+                            : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
+                      }`}
+                    >
+                      {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      onClick={() => handleSetClientRole(c.id, 'subscriber')}
+                      className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                        !c.is_vip && !c.is_admin
+                          ? isDark
+                            ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]'
+                            : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
+                          : isDark
+                            ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                            : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                      }`}
+                    >
+                      <UserCheck className="w-2.5 h-2.5" />
+                      <span>Подписчик</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSetClientRole(c.id, 'vip')}
+                      className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                        c.is_vip && !c.is_admin
+                          ? isDark
+                            ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]'
+                            : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
+                          : isDark
+                            ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                            : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                      }`}
+                    >
+                      <Crown className="w-2.5 h-2.5" />
+                      <span>VIP</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSetClientRole(c.id, 'admin')}
+                      className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                        c.is_admin
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                          : isDark
+                            ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                            : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                      }`}
+                    >
+                      <Star className="w-2.5 h-2.5 fill-amber-400/20" />
+                      <span>Админ</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

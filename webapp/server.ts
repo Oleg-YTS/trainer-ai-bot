@@ -68,6 +68,8 @@ export interface ClientProfile {
   notes?: string;
   intent_analytics?: Record<string, number>;
   active_topic?: string;
+  is_vip?: boolean;
+  is_admin?: boolean;
 }
 
 export interface Client {
@@ -1124,7 +1126,50 @@ app.post('/api/client/vip/upgrade', (req: Request, res: Response) => {
   if (!client) return res.status(404).json({ error: 'Client not found' });
 
   client.is_vip = true;
+  if (client.profile) client.profile.is_vip = true;
   res.json({ success: true, is_vip: client.is_vip, message: 'VIP-статус успешно активирован!' });
+});
+
+// VIP / Status Toggle Endpoint
+app.post(['/api/client/vip/toggle', '/api/client/status/update'], (req: Request, res: Response) => {
+  const { client_id, is_vip, is_admin, role } = req.body;
+  const client = db.clients.find(c => c.id === Number(client_id || 1));
+  if (!client) return res.status(404).json({ error: 'Client not found' });
+
+  if (role) {
+    if (role === 'admin') {
+      client.is_admin = true;
+      client.is_vip = true;
+    } else if (role === 'vip') {
+      client.is_admin = false;
+      client.is_vip = true;
+    } else {
+      client.is_admin = false;
+      client.is_vip = false;
+    }
+  } else {
+    if (is_admin !== undefined) {
+      client.is_admin = !!is_admin;
+      if (client.is_admin) client.is_vip = true;
+    }
+    if (is_vip !== undefined) {
+      client.is_vip = !!is_vip;
+    }
+  }
+
+  if (client.profile) {
+    client.profile.is_vip = client.is_vip;
+    client.profile.is_admin = client.is_admin;
+  }
+
+  res.json({
+    ok: true,
+    success: true,
+    client_id: client.id,
+    is_vip: client.is_vip,
+    is_admin: client.is_admin,
+    client
+  });
 });
 
 // Interactive Chat API
