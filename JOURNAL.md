@@ -2,6 +2,20 @@
 
 ---
 
+## [Задача #17] Исправление Импорта Optional в Python Backend (FastAPI Web Router)
+
+### Статус: ✅ Завершено и отправлено в GitHub (`ac754d6`)
+
+### GOAL
+Исправить ошибку `NameError: name 'Optional' is not defined` в файле `app/api/web.py`, возникавшую при старте FastAPI сервиса на Render при парсинге Pydantic-модели `ClearMessagesPayload`.
+
+### CHANGES
+- `bot/api/web.py` / `app/api/web.py`: добавлен импорт `Optional` из модуля `typing` (`from typing import Any, Optional`).
+- Проверена компиляция Python через `python3 -m py_compile`.
+- Скомпилирован и запушен коммит `ac754d6` в ветку `main`.
+
+---
+
 ## [Задача #16] AI Tunnel как Единственный LLM-Провайдер и Управление Моделями Нейросети
 
 ### Статус: ✅ Завершено (Готово к тестированию и пушу)
