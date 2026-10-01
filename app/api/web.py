@@ -553,7 +553,7 @@ async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_d
         }
     except Exception as exc:
         logger.warning("Failed to fetch client %s: %s", client_id, exc)
-        return {"id": client_id, "name": "Клиент", "profile": {}, "messages": [], "is_vip": (client_id == 1), "is_admin": (client_id == 1)}
+        return {"id": client_id, "name": "Клиент", "profile": {}, "messages": [], "is_vip": False, "is_admin": False}
 
 
 @router.get("/client/messages")
@@ -607,7 +607,7 @@ async def get_client_profile_endpoint(
         }
     except Exception as exc:
         logger.warning("Failed to fetch client profile: %s", exc)
-        return {"client_id": client_id, "name": "Клиент", "profile": {}, "is_vip": (client_id == 1), "is_admin": (client_id == 1)}
+        return {"client_id": client_id, "name": "Клиент", "profile": {}, "is_vip": False, "is_admin": False}
 
 
 @router.put("/client/profile")

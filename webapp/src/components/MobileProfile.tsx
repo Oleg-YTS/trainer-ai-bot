@@ -32,6 +32,7 @@ interface MobileProfileProps {
   isAdmin?: boolean;
   isVip?: boolean;
   onRefreshUser?: () => void;
+  onUpdateAdminState?: (isAdmin: boolean) => void;
 }
 
 export const MobileProfile: React.FC<MobileProfileProps> = ({
@@ -42,7 +43,8 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   clientId = 1,
   isAdmin: userIsAdmin = false,
   isVip: userIsVip = false,
-  onRefreshUser
+  onRefreshUser,
+  onUpdateAdminState
 }) => {
   const [personalTrainingRequested, setPersonalTrainingRequested] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
@@ -99,6 +101,9 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
     setIsAdmin(newAdminState);
     if (newAdminState) {
       setIsVip(true);
+    }
+    if (onUpdateAdminState) {
+      onUpdateAdminState(newAdminState);
     }
     try {
       const response = await apiFetch('/api/client/profile', {

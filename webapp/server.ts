@@ -141,18 +141,56 @@ class Database {
   ];
 
   trainers: Trainer[] = [
-    { id: 1, name: 'Алексей Смирнов (Главный тренер)', telegram_user_id: 10001 }
+    { id: 1, name: 'Денис (Главный тренер)', telegram_user_id: 435297513 }
   ];
 
   clients: Client[] = [
     {
       id: 1,
       trainer_id: 1,
+      telegram_user_id: 435297513,
+      telegram_username: 'denis_trainer',
+      name: 'Денис (Тренер)',
+      is_vip: true,
+      is_admin: true,
+      profile: {
+        name: 'Денис',
+        telegram_username: 'denis_trainer',
+        gender: 'male',
+        goal: 'Главный тренер и наставник',
+        activity_level: 'Высокая',
+        intent_analytics: { muscle_gain: 10, training: 10, nutrition: 8, recovery: 8 },
+        active_topic: 'training'
+      },
+      created_at: new Date(Date.now() - 30 * 86400000).toISOString()
+    },
+    {
+      id: 2,
+      trainer_id: 1,
+      telegram_user_id: 747600306,
+      telegram_username: 'oleg_admin',
+      name: 'Олег (Администратор)',
+      is_vip: true,
+      is_admin: true,
+      profile: {
+        name: 'Олег',
+        telegram_username: 'oleg_admin',
+        gender: 'male',
+        goal: 'Администрирование и развитие системы',
+        activity_level: 'Умеренная',
+        intent_analytics: { training: 8, nutrition: 6, recovery: 5 },
+        active_topic: 'training'
+      },
+      created_at: new Date(Date.now() - 25 * 86400000).toISOString()
+    },
+    {
+      id: 3,
+      trainer_id: 1,
       telegram_user_id: 20001,
       telegram_username: 'ivan_sport',
       name: 'Иван',
-      is_vip: true,
-      is_admin: true,
+      is_vip: false,
+      is_admin: false,
       profile: {
         name: 'Иван',
         telegram_username: 'ivan_sport',
@@ -171,12 +209,13 @@ class Database {
       created_at: new Date(Date.now() - 7 * 86400000).toISOString()
     },
     {
-      id: 2,
+      id: 4,
       trainer_id: 1,
       telegram_user_id: 20002,
       telegram_username: 'elena_fitness',
       name: 'Елена',
-      is_vip: false,
+      is_vip: true,
+      is_admin: false,
       profile: {
         name: 'Елена',
         telegram_username: 'elena_fitness',
@@ -1018,48 +1057,60 @@ app.get('/api/clients/:id', (req: Request, res: Response) => {
 // Resolve Client by Telegram User ID Endpoint
 app.all('/api/client/resolve', (req: Request, res: Response) => {
   const tg_id = Number(req.body?.telegram_user_id || req.query?.telegram_user_id);
-  const name = req.body?.name || req.query?.name || (tg_id ? `User ${tg_id}` : 'Иван');
+  const name = req.body?.name || req.query?.name;
 
-  const adminIds = (
-    process.env.TELEGRAM_ADMIN_CHAT_ID ||
-    process.env.ADMIN_TELEGRAM_IDS ||
-    process.env.ADMIN_IDS ||
-    process.env.ADMIN_ID ||
-    process.env.TRAINER_TELEGRAM_ID ||
-    '10001,20001'
-  ).split(',').map(s => s.trim()).filter(Boolean);
+  const adminIds = [
+    '747600306',
+    '435297513',
+    ...(process.env.TELEGRAM_ADMIN_CHAT_ID || '').split(','),
+    ...(process.env.ADMIN_TELEGRAM_IDS || '').split(','),
+    ...(process.env.ADMIN_IDS || '').split(','),
+    ...(process.env.ADMIN_ID || '').split(','),
+    ...(process.env.TRAINER_TELEGRAM_ID || '').split(',')
+  ].map(s => s.trim()).filter(Boolean);
 
   if (!tg_id) {
+    // Default fallback for guest / browser sandbox without Telegram
+    const defaultClient = db.clients.find(c => !c.is_admin) || db.clients[2] || db.clients[0];
     return res.json({
       ok: true,
-      id: db.clients[0].id,
-      client_id: db.clients[0].id,
-      telegram_user_id: db.clients[0].telegram_user_id,
-      name: db.clients[0].name,
-      is_admin: db.clients[0].is_admin,
-      is_vip: db.clients[0].is_vip,
-      profile: db.clients[0].profile
+      id: defaultClient.id,
+      client_id: defaultClient.id,
+      telegram_user_id: defaultClient.telegram_user_id,
+      name: defaultClient.name,
+      is_admin: false,
+      is_vip: defaultClient.is_vip || false,
+      profile: defaultClient.profile
     });
   }
 
-  let client = db.clients.find(c => c.telegram_user_id === tg_id);
   const isAdmin = adminIds.includes(String(tg_id));
+  let client = db.clients.find(c => c.telegram_user_id === tg_id);
 
   if (!client) {
+    const displayName = name ? String(name) : `User ${tg_id}`;
     client = {
       id: db.nextClientId++,
       trainer_id: 1,
       telegram_user_id: tg_id,
-      name: String(name),
+      name: displayName,
       is_vip: isAdmin,
       is_admin: isAdmin,
       profile: {
-        name: String(name),
+        name: displayName,
         goal: 'Общая физическая подготовка'
       },
       created_at: new Date().toISOString()
     };
     db.clients.push(client);
+  } else {
+    if (isAdmin) {
+      client.is_admin = true;
+      client.is_vip = true;
+    }
+    if (name && client.name !== name) {
+      client.name = String(name);
+    }
   }
 
   res.json({

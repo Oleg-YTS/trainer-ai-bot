@@ -168,15 +168,18 @@ export const App: React.FC = () => {
               isDark={isDark}
               onToggleTheme={toggleTheme}
               onOpenInstallModal={() => setShowInstallModal(true)}
-              onOpenTrainerDashboard={() => {
-                if (currentUser.is_admin) {
-                  setActiveTab('trainer');
-                }
-              }}
+              onOpenTrainerDashboard={() => setActiveTab('trainer')}
               clientId={currentUser.id}
               isAdmin={currentUser.is_admin}
               isVip={currentUser.is_vip}
               onRefreshUser={resolveCurrentUser}
+              onUpdateAdminState={(adminState) => {
+                setCurrentUser(prev => ({
+                  ...prev,
+                  is_admin: adminState,
+                  is_vip: adminState ? true : prev.is_vip
+                }));
+              }}
             />
           )}
 
