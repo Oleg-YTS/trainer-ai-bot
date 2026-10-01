@@ -81,6 +81,7 @@ interface Client {
   id: number;
   name: string;
   telegram_user_id?: number | null;
+  telegram_username?: string;
   is_vip: boolean;
   is_admin?: boolean;
   profile: any;
@@ -255,6 +256,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const [loadingClientMessages, setLoadingClientMessages] = useState<boolean>(false);
   const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
   const [clientFilterStatus, setClientFilterStatus] = useState<'all' | 'vip' | 'subscriber' | 'admin'>('all');
+  const [tgActionToast, setTgActionToast] = useState<{ message: string; sub?: string } | null>(null);
 
   // KB Add/Edit Modal
   const [showKbModal, setShowKbModal] = useState(false);
@@ -407,26 +409,69 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   };
 
   const handleOpenTelegramChat = (telegramUserId?: number | null, username?: string) => {
-    if (username) {
-      const clean = username.replace(/^@/, '');
-      const url = `https://t.me/${clean}`;
-      if ((window as any).Telegram?.WebApp?.openTelegramLink) {
-        (window as any).Telegram.WebApp.openTelegramLink(url);
+    const cleanUser = username?.replace(/^@/, '').trim();
+    if (cleanUser) {
+      const url = `https://t.me/${cleanUser}`;
+      try {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(`@${cleanUser}`);
+        }
+      } catch (e) {}
+
+      const tgApp = (window as any).Telegram?.WebApp;
+      if (tgApp?.openTelegramLink) {
+        tgApp.openTelegramLink(url);
       } else {
-        window.open(url, '_blank');
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
+
+      setTgActionToast({
+        message: `Открываем диалог с @${cleanUser}`,
+        sub: `Ссылка https://t.me/${cleanUser} открыта в новой вкладке (логин скопирован)`
+      });
+      setTimeout(() => setTgActionToast(null), 4000);
       return;
     }
+
     if (telegramUserId) {
       const tgUrl = `tg://user?id=${telegramUserId}`;
-      if ((window as any).Telegram?.WebApp?.openTelegramLink) {
-        (window as any).Telegram.WebApp.openTelegramLink(`https://t.me/${telegramUserId}`);
+      const webUrl = `https://t.me/${telegramUserId}`;
+      try {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(tgUrl);
+        }
+      } catch (e) {}
+
+      const tgApp = (window as any).Telegram?.WebApp;
+      if (tgApp?.openTelegramLink) {
+        tgApp.openTelegramLink(tgUrl);
       } else {
-        window.location.href = tgUrl;
+        const link = document.createElement('a');
+        link.href = tgUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
+
+      setTgActionToast({
+        message: `Диалог в Telegram: ID #${telegramUserId}`,
+        sub: `В браузере прямая ссылка скопирована: ${tgUrl}`
+      });
+      setTimeout(() => setTgActionToast(null), 4000);
       return;
     }
-    alert('У данного клиента не привязан Telegram ID или username.');
+
+    setTgActionToast({
+      message: `Telegram ID не указан`,
+      sub: `У данного пользователя нет привязанного Telegram-аккаунта`
+    });
+    setTimeout(() => setTgActionToast(null), 3000);
   };
 
   useEffect(() => {
@@ -1265,6 +1310,29 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             </span>
           </div>
 
+          {/* Telegram Action Toast Feedback */}
+          {tgActionToast && (
+            <div className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 animate-in fade-in slide-in-from-top-1 ${
+              isDark ? 'bg-sky-950/40 border-sky-500/40 text-sky-200' : 'bg-sky-50 border-sky-300 text-sky-900'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-sky-500/20 text-sky-400 shrink-0">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div className="text-xs">
+                  <span className="font-bold block text-sky-300">{tgActionToast.message}</span>
+                  {tgActionToast.sub && <span className="text-[11px] opacity-80">{tgActionToast.sub}</span>}
+                </div>
+              </div>
+              <button
+                onClick={() => setTgActionToast(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-sky-400 hover:text-white transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Search & Filter Bar */}
           <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
             <div className="relative flex-1">
@@ -1415,11 +1483,17 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                       )}
                     </div>
 
-                    {/* ID line: Database ID & Telegram ID */}
-                    <div className="flex items-center gap-2 text-[11px] font-mono text-[#8E9E96]">
+                    {/* ID line: Database ID, Telegram ID & Username */}
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-[#8E9E96]">
                       <span className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-black/20">ID: #{c.id}</span>
                       <span>•</span>
                       <span>TG ID: {c.telegram_user_id || 'Не привязан'}</span>
+                      {(c.telegram_username || c.profile?.telegram_username) && (
+                        <>
+                          <span>•</span>
+                          <span className="text-sky-400 font-medium">@{c.telegram_username || c.profile?.telegram_username}</span>
+                        </>
+                      )}
                       {c.messages_count !== undefined && (
                         <>
                           <span>•</span>
@@ -1463,7 +1537,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                       <button
                         type="button"
-                        onClick={() => handleOpenTelegramChat(c.telegram_user_id, c.profile?.telegram_username)}
+                        onClick={() => handleOpenTelegramChat(c.telegram_user_id, c.telegram_username || c.profile?.telegram_username)}
                         className="py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 text-sky-400"
                       >
                         <Send className="w-3.5 h-3.5" />
@@ -1741,7 +1815,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                   <button
                     type="button"
-                    onClick={() => handleOpenTelegramChat(selectedClientDossier.telegram_user_id, selectedClientDossier.profile?.telegram_username)}
+                    onClick={() => handleOpenTelegramChat(selectedClientDossier.telegram_user_id, selectedClientDossier.telegram_username || selectedClientDossier.profile?.telegram_username)}
                     className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition"
                   >
                     <Send className="w-4 h-4" />

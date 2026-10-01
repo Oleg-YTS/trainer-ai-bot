@@ -405,6 +405,7 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
                 "trainer_id": c.trainer_id,
                 "name": c.name,
                 "telegram_user_id": c.telegram_user_id,
+                "telegram_username": prof.get("telegram_username") or prof.get("username"),
                 "created_at": c.created_at.isoformat() if c.created_at else "",
                 "messages_count": msg_count,
                 "profile": prof,
@@ -534,6 +535,7 @@ async def get_client_by_id(client_id: int, session: AsyncSession = Depends(get_d
         return {
             "id": client_id,
             "telegram_user_id": client.telegram_user_id if client else None,
+            "telegram_username": profile.get("telegram_username") or profile.get("username"),
             "name": client.name if client else "Клиент",
             "is_vip": is_vip_val,
             "is_admin": is_admin_val,

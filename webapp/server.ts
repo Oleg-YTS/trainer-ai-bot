@@ -56,6 +56,7 @@ export interface Trainer {
 
 export interface ClientProfile {
   name?: string;
+  telegram_username?: string;
   gender?: string; // 'male' | 'female'
   age?: number;
   height?: number;
@@ -76,6 +77,7 @@ export interface Client {
   id: number;
   trainer_id: number;
   telegram_user_id: number;
+  telegram_username?: string;
   name: string;
   profile: ClientProfile;
   is_vip: boolean; // True for personal training clients
@@ -147,11 +149,13 @@ class Database {
       id: 1,
       trainer_id: 1,
       telegram_user_id: 20001,
+      telegram_username: 'ivan_sport',
       name: 'Иван',
       is_vip: true,
       is_admin: true,
       profile: {
         name: 'Иван',
+        telegram_username: 'ivan_sport',
         gender: 'male',
         age: 28,
         height: 180,
@@ -170,10 +174,12 @@ class Database {
       id: 2,
       trainer_id: 1,
       telegram_user_id: 20002,
+      telegram_username: 'elena_fitness',
       name: 'Елена',
       is_vip: false,
       profile: {
         name: 'Елена',
+        telegram_username: 'elena_fitness',
         gender: 'female',
         age: 31,
         height: 165,
@@ -189,10 +195,12 @@ class Database {
       id: 3,
       trainer_id: 1,
       telegram_user_id: 20003,
+      telegram_username: 'alex_power',
       name: 'Алексей',
       is_vip: true,
       profile: {
         name: 'Алексей',
+        telegram_username: 'alex_power',
         gender: 'male',
         age: 34,
         height: 175,
@@ -207,10 +215,12 @@ class Database {
       id: 4,
       trainer_id: 1,
       telegram_user_id: 20004,
+      telegram_username: 'olga_balance',
       name: 'Ольга',
       is_vip: false,
       profile: {
         name: 'Ольга',
+        telegram_username: 'olga_balance',
         gender: 'female',
         age: 26,
         height: 168,
