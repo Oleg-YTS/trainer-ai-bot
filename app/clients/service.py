@@ -84,11 +84,16 @@ def parse_profile(profile_json: str | None) -> dict[str, Any]:
     return profile if isinstance(profile, dict) else {}
 
 
-async def read_profile(client_id: int | None) -> dict[str, Any]:
-    if client_id is None:
+async def read_profile(client_id: int | None, telegram_user_id: int | None = None) -> dict[str, Any]:
+    if client_id is None and telegram_user_id is None:
         return {}
     async with get_session_factory()() as session:
-        stmt = select(Client).where((Client.id == client_id) | (Client.telegram_user_id == client_id))
+        if client_id is not None and client_id < 1000000:
+            stmt = select(Client).where(Client.id == client_id)
+        elif telegram_user_id is not None:
+            stmt = select(Client).where(Client.telegram_user_id == telegram_user_id)
+        else:
+            stmt = select(Client).where(Client.telegram_user_id == client_id)
         res = await session.execute(stmt)
         client = res.scalar_one_or_none()
         
@@ -98,15 +103,20 @@ async def read_profile(client_id: int | None) -> dict[str, Any]:
                 save_profile_to_json_file(client.id, prof)
                 return prof
         
-        json_file_prof = load_profile_from_json_file(client_id)
+        json_file_prof = load_profile_from_json_file(client_id or 1)
         if json_file_prof:
             return json_file_prof
         return {}
 
 
-async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, Any]:
+async def update_profile(client_id: int, profile: dict[str, Any], telegram_user_id: int | None = None) -> dict[str, Any]:
     async with get_session_factory()() as session:
-        stmt = select(Client).where((Client.id == client_id) | (Client.telegram_user_id == client_id))
+        if client_id < 1000000:
+            stmt = select(Client).where(Client.id == client_id)
+        elif telegram_user_id is not None:
+            stmt = select(Client).where(Client.telegram_user_id == telegram_user_id)
+        else:
+            stmt = select(Client).where(Client.telegram_user_id == client_id)
         res = await session.execute(stmt)
         client = res.scalar_one_or_none()
         
@@ -114,8 +124,9 @@ async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, A
 
         if client is None:
             trainer = await get_or_create_trainer(session, settings.trainer_id)
-            initial_name = profile.get("name") or f"Пользователь #{client_id}"
-            is_admin = settings.is_admin_telegram_id(client_id) or bool(profile.get("is_admin", False))
+            effective_tg_id = telegram_user_id or (client_id if client_id >= 1000000 else 200000000 + client_id)
+            initial_name = profile.get("name") or f"Пользователь #{effective_tg_id}"
+            is_admin = settings.is_admin_telegram_id(effective_tg_id) or bool(profile.get("is_admin", False))
             is_vip = is_admin or bool(profile.get("is_vip", False))
 
             base_prof = build_default_profile(
@@ -128,7 +139,7 @@ async def update_profile(client_id: int, profile: dict[str, Any]) -> dict[str, A
 
             client = Client(
                 trainer_id=trainer.id,
-                telegram_user_id=client_id,
+                telegram_user_id=effective_tg_id,
                 name=initial_name,
                 profile_json=json.dumps(base_prof, ensure_ascii=False)
             )

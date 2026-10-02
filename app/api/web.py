@@ -423,50 +423,6 @@ async def get_clients_list(session: AsyncSession = Depends(get_db_session)):
                 "is_admin": is_admin_val,
             })
 
-        # Also load any JSON users from webapp/users/
-        json_users = load_all_json_users()
-        for ju in json_users:
-            tg_id = ju.get("telegram_user_id")
-            if tg_id and tg_id in seen_tg_ids:
-                continue
-            if tg_id:
-                seen_tg_ids.add(tg_id)
-            prof = ju.get("profile") or ju
-            is_admin_val = settings.is_admin_telegram_id(tg_id) or bool(prof.get("is_admin", False))
-            is_vip_val = is_admin_val or bool(prof.get("is_vip", False))
-            client_list.append({
-                "id": ju.get("client_id", 999),
-                "trainer_id": 1,
-                "name": ju.get("name") or prof.get("name") or "Пользователь из JSON",
-                "telegram_user_id": tg_id,
-                "telegram_username": prof.get("telegram_username") or prof.get("username"),
-                "created_at": ju.get("updated_at", ""),
-                "messages_count": 0,
-                "profile": prof,
-                "is_vip": is_vip_val,
-                "is_admin": is_admin_val,
-            })
-
-        return client_list
-    except Exception as exc:
-        logger.error("Failed to list clients: %s", exc)
-        json_users = load_all_json_users()
-        client_list = []
-        for ju in json_users:
-            prof = ju.get("profile") or ju
-            client_list.append({
-                "id": ju.get("client_id", 1),
-                "trainer_id": 1,
-                "name": ju.get("name") or prof.get("name") or "Пользователь",
-                "telegram_user_id": ju.get("telegram_user_id"),
-                "telegram_username": prof.get("telegram_username"),
-                "created_at": "",
-                "messages_count": 0,
-                "profile": prof,
-                "is_vip": bool(ju.get("is_vip") or prof.get("is_vip")),
-                "is_admin": bool(ju.get("is_admin") or prof.get("is_admin")),
-            })
-        return client_list)
         return client_list
     except Exception as exc:
         logger.error("Failed to list clients: %s", exc)
@@ -494,9 +450,8 @@ async def resolve_client_endpoint(
     tg_username = (payload.username if payload else None) or username
 
     if not tg_id:
-        # Fallback for pure browser guests without Telegram context: unique synthetic ID based on device_id
-        dev_str = device_id or "guest_browser_session"
-        tg_id = 900000000 + (abs(hash(dev_str)) % 99000000)
+        # Browser preview without Telegram context defaults to Trainer profile
+        tg_id = settings.trainer_telegram_id or 435297513
 
     # 1. Search existing client by Telegram User ID
     stmt = select(Client).where(Client.telegram_user_id == tg_id)

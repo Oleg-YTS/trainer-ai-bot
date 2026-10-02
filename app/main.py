@@ -62,17 +62,8 @@ async def lifespan(app: FastAPI):
                     )
                     session.add(admin_client)
 
-            # Ensure at least one test client exists if clients table is empty
-            client_count = await session.scalar(select(func.count(Client.id))) or 0
-            if client_count == 0:
-                test_prof = build_default_profile(name="Иван Смирнов", gender="male", is_admin=False, is_vip=True)
-                test_client = Client(
-                    trainer_id=1,
-                    name="Иван Смирнов",
-                    telegram_user_id=987654321,
-                    profile_json=json.dumps(test_prof, ensure_ascii=False)
-                )
-                session.add(test_client)
+            # Admin profiles guaranteed in DB
+            pass
 
             # Ensure default knowledge base articles exist if knowledge table is empty
             kb_count = await session.scalar(select(func.count(KnowledgeItem.id))) or 0
