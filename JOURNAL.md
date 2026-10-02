@@ -1,5 +1,36 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #59: Sandbox-only UI Rules Formalization
+
+### TASK
+1. Formalize Rule #13 in `AGENTS.md`: Sandbox Role Selector (status toggles) must only be visible in the sandbox environment.
+2. Ensure production builds exclude these debug/test interface elements.
+3. Verify existing implementation in `App.tsx`.
+
+### DISCUSSION SUMMARY
+- **Context**: To prevent debug tools from appearing in the final production environment (e.g., Render), a strict rule is established.
+- **Decision**: Added Rule #13 to `AGENTS.md`. The check in `App.tsx` already uses `window.location.hostname` filtering to satisfy this requirement.
+
+### GOAL
+Prevent unauthorized or accidental role switching in the production environment by hiding debug tools.
+
+### CHANGES
+- `AGENTS.md`: Added rule #13.
+- `src/App.tsx`: Verified that `isSandbox` logic correctly filters by hostname.
+
+### FILES
+- `AGENTS.md`
+- `src/App.tsx`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- Logic Review: Hostname check (`ais-`, `localhost`, `127.0.0.1`) is robust for identifying sandbox environments.
+
+### RESULT
+Rule established and verified. Production security posture improved.
+
+---
+
 ## 2026-10-02 — Task #58: Release ver 2.0.0 — Sandbox Stage Complete
 
 ### TASK
