@@ -192,10 +192,8 @@ export interface Message {
 
 // PostgreSQL Database Connection & Service
 let pgPoolInstance: pg.Pool | null = null;
-let pgIsDown = false;
 
 function getPgPool(): pg.Pool | null {
-  if (pgIsDown) return null;
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl || !dbUrl.trim()) return null;
   const cleanUrl = dbUrl.trim().replace(/^postgres:\/\//, 'postgresql://');
@@ -229,7 +227,6 @@ function getPgPool(): pg.Pool | null {
     pgPoolInstance.on('error', (err) => {
       console.warn('[PostgreSQL Pool Warning]:', err.message);
       if (err.message.includes('EAI_AGAIN') || err.message.includes('ENOTFOUND') || err.message.includes('ECONNREFUSED') || err.message.includes('password authentication failed') || err.message.includes('connection refused')) {
-        pgIsDown = true;
         if (pgPoolInstance) {
           pgPoolInstance.end().catch(() => {});
           pgPoolInstance = null;
@@ -271,7 +268,6 @@ export const pgService = {
         console.warn('[PostgreSQL Connection Check Failed]:', err.message);
       }
       if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND') || err.message.includes('connection refused') || err.message.includes('ETIMEDOUT')) {
-        pgIsDown = true;
         if (pgPoolInstance) {
           pgPoolInstance.end().catch(() => {});
           pgPoolInstance = null;
@@ -2427,6 +2423,9 @@ async function startServer() {
 
         const upstreamRes = await fetch(targetUrl, fetchOptions);
         if (upstreamRes.status === 404 || upstreamRes.status === 405) {
+          if (req.originalUrl.startsWith('/api')) {
+            return res.status(upstreamRes.status).json({ error: `API route returned ${upstreamRes.status}` });
+          }
           return next();
         }
 
@@ -2441,7 +2440,47 @@ async function startServer() {
         res.send(Buffer.from(buffer));
       } catch (err: any) {
         console.error(`[Proxy Error] ${req.method} ${req.originalUrl} -> ${targetUrl}:`, err.message);
+        if (req.originalUrl.startsWith('/api')) {
+          return res.status(502).json({ error: 'Upstream API server is offline or restarting' });
+        }
         next();
+      }
+    });
+
+    app.use('/telegram', async (req: Request, res: Response, next) => {
+      const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
+      try {
+        const forbiddenHeaders = ['host', 'content-length', 'connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'accept-encoding'];
+        const headers: Record<string, string> = {};
+        for (const [key, value] of Object.entries(req.headers)) {
+          const lowerKey = key.toLowerCase();
+          if (!forbiddenHeaders.includes(lowerKey) && typeof value === 'string') {
+            headers[key] = value;
+          }
+        }
+
+        const fetchOptions: RequestInit = {
+          method: req.method,
+          headers,
+        };
+
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
+          fetchOptions.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        }
+
+        const upstreamRes = await fetch(targetUrl, fetchOptions);
+        res.status(upstreamRes.status);
+        upstreamRes.headers.forEach((val, key) => {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
+            res.setHeader(key, val);
+          }
+        });
+        const buffer = await upstreamRes.arrayBuffer();
+        res.send(Buffer.from(buffer));
+      } catch (err: any) {
+        console.error(`[Telegram Webhook Proxy Error] ${req.method} ${req.originalUrl} -> ${targetUrl}:`, err.message);
+        res.status(502).json({ error: 'Upstream Telegram Bot backend is offline or restarting' });
       }
     });
   }
