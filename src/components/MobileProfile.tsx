@@ -267,14 +267,14 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       {/* SECTION 0: ДЛЯ АДМИНА (Только для тренера) */}
       {/* ========================================== */}
       {userIsAdmin && (
-        <div className={`p-4 rounded-2xl border ${
+        <div className={`p-4 rounded-lg border ${
           isDark
             ? 'bg-amber-500/10 border-amber-500/30 text-[#E8ECE9]'
             : 'bg-amber-50 border-amber-200 text-[#141F1A]'
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+              <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400">
                 <Star className="w-5 h-5 fill-amber-400/30" />
               </div>
               <div>
@@ -286,7 +286,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </div>
             <button
               onClick={onOpenTrainerDashboard}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-[#0A100D] text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+              className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-[#0A100D] text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span>Панель тренера</span>
@@ -298,7 +298,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       {/* ========================================== */}
       {/* БЛОК 1: СТАТУС И ЗАПРОС ВЕДЕНИЯ (VIP)     */}
       {/* ========================================== */}
-      <div className={`p-4 rounded-2xl border transition shadow-sm ${
+      <div className={`p-4 rounded-lg border transition shadow-sm ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
         <div className="flex items-center justify-between pb-2 mb-3">
@@ -332,7 +332,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
         {/* Status description & VIP benefits card */}
         {userIsAdmin ? (
-          <div className={`p-3 rounded-xl border text-xs leading-relaxed space-y-1 ${
+          <div className={`p-3 rounded-lg border text-xs leading-relaxed space-y-1 ${
             isDark ? 'bg-[#182820] border-[#253A30] text-[#C2D1C9]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
           }`}>
             <div className="font-semibold flex items-center gap-1.5 text-amber-400">
@@ -344,7 +344,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </p>
           </div>
         ) : isVip ? (
-          <div className={`p-3 rounded-xl border text-xs leading-relaxed space-y-1 ${
+          <div className={`p-3 rounded-lg border text-xs leading-relaxed space-y-1 ${
             isDark ? 'bg-[#182820] border-[#253A30] text-[#C2D1C9]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
           }`}>
             <div className="font-semibold flex items-center gap-1.5 text-[#7DA295]">
@@ -358,7 +358,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         ) : (
           <div className="space-y-4">
             {/* Tariff Option 1: Unlimited Search AI */}
-            <div className={`p-3.5 rounded-xl border space-y-2 ${
+            <div className={`p-3.5 rounded-lg border space-y-2 ${
               isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
             }`}>
               <div className="flex justify-between items-start">
@@ -395,7 +395,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </div>
 
             {/* Tariff Option 2: Personal Coach (VIP) */}
-            <div className={`p-3.5 rounded-xl border space-y-2 ${
+            <div className={`p-3.5 rounded-lg border space-y-2 ${
               isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
             }`}>
               <div className="flex justify-between items-start">
@@ -436,7 +436,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       {/* ========================================== */}
       {/* БЛОК 2: АНКЕТА ПОДОПЕЧНОГО (Стандарт БД)    */}
       {/* ========================================== */}
-      <div className={`rounded-2xl border transition shadow-sm overflow-hidden ${
+      <div className={`rounded-lg border transition shadow-sm overflow-hidden ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
         <button
@@ -449,7 +449,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit text-left">Профиль</h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`text-[10px] py-0.5 px-2 rounded-full font-semibold border ${
+            <span className={`text-[10px] py-0.5 px-2 rounded-lg font-semibold border ${
               isProfileAccordionOpen
                 ? 'bg-[#5B8A78]/25 text-[#5B8A78] border-[#5B8A78]/40'
                 : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
@@ -478,7 +478,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
                 placeholder="Как к вам обращаться"
-                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                className={`w-full px-3 py-2 rounded-lg text-xs border outline-none transition ${
                   isDark
                     ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                     : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -497,7 +497,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                   value={formAge}
                   onChange={e => setFormAge(e.target.value)}
                   placeholder="28"
-                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                  className={`w-full px-2.5 py-2 rounded-lg text-xs border outline-none transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                       : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -514,7 +514,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                   value={formHeight}
                   onChange={e => setFormHeight(e.target.value)}
                   placeholder="178"
-                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                  className={`w-full px-2.5 py-2 rounded-lg text-xs border outline-none transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                       : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -532,7 +532,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                   value={formWeight}
                   onChange={e => setFormWeight(e.target.value)}
                   placeholder="76.5"
-                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                  className={`w-full px-2.5 py-2 rounded-lg text-xs border outline-none transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                       : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -549,7 +549,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
               <select
                 value={formGoal}
                 onChange={e => setFormGoal(e.target.value)}
-                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                className={`w-full px-3 py-2 rounded-lg text-xs border outline-none transition ${
                   isDark
                     ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                     : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -572,7 +572,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 <select
                   value={formActivityLevel}
                   onChange={e => setFormActivityLevel(e.target.value)}
-                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                  className={`w-full px-2.5 py-2 rounded-lg text-xs border outline-none transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                       : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -591,7 +591,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 <select
                   value={formFrequency}
                   onChange={e => setFormFrequency(e.target.value)}
-                  className={`w-full px-2.5 py-2 rounded-xl text-xs border outline-none transition ${
+                  className={`w-full px-2.5 py-2 rounded-lg text-xs border outline-none transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                       : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -614,7 +614,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 value={formRestrictions}
                 onChange={e => setFormRestrictions(e.target.value)}
                 placeholder="Например: протрузия L5-S1, боль в коленях при глубоком приседе"
-                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                className={`w-full px-3 py-2 rounded-lg text-xs border outline-none transition ${
                   isDark
                     ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                     : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -632,7 +632,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 value={formDietPreferences}
                 onChange={e => setFormDietPreferences(e.target.value)}
                 placeholder="Например: не ем молочные продукты, аллергия на орехи"
-                className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+                className={`w-full px-3 py-2 rounded-lg text-xs border outline-none transition ${
                   isDark
                     ? 'bg-[#18231E] border-[#1F2E27] focus:border-[#5B8A78] text-[#E8ECE9]'
                     : 'bg-[#F4F7F5] border-[#D8E0DB] focus:border-[#2B4A3D] text-[#141F1A]'
@@ -642,14 +642,14 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
             {/* Чекбокс прикрепления к заявке на VIP */}
             {!isVip && !userIsAdmin && (
-              <label className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${
+              <label className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition ${
                 isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
               }`}>
                 <input
                   type="checkbox"
                   checked={attachVipRequest}
                   onChange={e => setAttachVipRequest(e.target.checked)}
-                  className="mt-0.5 rounded border-[#5B8A78] text-[#5B8A78] focus:ring-0"
+                  className="mt-0.5 rounded-lg border-[#5B8A78] text-[#5B8A78] focus:ring-0"
                 />
                 <span className={`text-[11px] leading-tight ${isDark ? 'text-[#C2D1C9]' : 'text-[#2B4A3D]'}`}>
                   Отправить эти данные тренеру вместе с заявкой на персональное ведение (VIP)
@@ -658,7 +658,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             )}
 
             {saveErrorMsg && (
-              <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+              <div className={`p-3 rounded-lg border text-xs flex items-center gap-2 ${
                 isDark ? "bg-rose-950/40 border-rose-500/40 text-rose-200" : "bg-rose-50 border-rose-300 text-rose-900"
               }`}>
                 <Info className="w-4 h-4 text-rose-400 shrink-0" />
@@ -670,7 +670,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
               <button
                 type="submit"
                 disabled={profileSaving}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.99] shadow-sm ${
+                className={`w-full py-2.5 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.99] shadow-sm ${
                   isDark
                     ? 'bg-[#5B8A78] hover:bg-[#7DA295] text-[#0A100D]'
                     : 'bg-[#2B4A3D] hover:bg-[#3C6150] text-white'
@@ -699,11 +699,11 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       </div>
 
       {/* Быстрое добавление на домашний экран */}
-      <div className={`p-3.5 rounded-2xl border flex items-center justify-between transition ${
+      <div className={`p-3.5 rounded-lg border flex items-center justify-between transition ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
         <div className="flex items-center gap-2.5">
-          <div className={`p-2 rounded-xl ${
+          <div className={`p-2 rounded-lg ${
             isDark ? 'bg-[#18231E] text-[#5B8A78]' : 'bg-[#EBF0EC] text-[#2B4A3D]'
           }`}>
             <Smartphone className="w-4 h-4" />
@@ -726,12 +726,12 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       {/* PAYMENT MODAL SIMULATOR */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl relative ${
+          <div className={`w-full max-w-sm rounded-lg border p-5 shadow-2xl relative ${
             isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]' : 'bg-white border-[#D8E0DB] text-[#141F1A]'
           }`}>
             <button
               onClick={() => setShowPaymentModal(false)}
-              className={`absolute top-3.5 right-3.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition hover:opacity-80 border ${
+              className={`absolute top-3.5 right-3.5 w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition hover:opacity-80 border ${
                 isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#C8D6CF]'
               }`}
             >
@@ -741,7 +741,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             {paymentStep === 'checkout' && (
               <div className="space-y-4">
                 <div className="flex items-center gap-2.5">
-                  <div className={`p-2.5 rounded-xl ${paymentType === 'vip' ? 'bg-amber-500/20 text-amber-400' : 'bg-[#5B8A78]/20 text-[#5B8A78]'}`}>
+                  <div className={`p-2.5 rounded-lg ${paymentType === 'vip' ? 'bg-amber-500/20 text-amber-400' : 'bg-[#5B8A78]/20 text-[#5B8A78]'}`}>
                     {paymentType === 'vip' ? <Crown className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
                   </div>
                   <div>
@@ -752,7 +752,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                   </div>
                 </div>
 
-                <div className={`p-3.5 rounded-xl border space-y-1.5 text-xs ${
+                <div className={`p-3.5 rounded-lg border space-y-1.5 text-xs ${
                   isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
                 }`}>
                   <div className="flex justify-between font-medium">
@@ -774,7 +774,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 <div className="space-y-2 pt-1">
                   <button
                     onClick={executePaymentSimulation}
-                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.98] ${
+                    className={`w-full py-2.5 px-4 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.98] ${
                       paymentType === 'vip'
                         ? 'bg-amber-50 hover:bg-amber-600 text-[#0A100D]'
                         : 'bg-[#5B8A78] hover:bg-[#4A7364] text-[#0A100D]'
@@ -786,7 +786,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
                   <button
                     onClick={executePaymentSimulation}
-                    className={`w-full py-2 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
+                    className={`w-full py-2 px-4 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
                       isDark
                         ? 'bg-[#18231E] border-[#253A30] text-[#D0D7D3] hover:bg-[#1F2E27]'
                         : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#2C3B34] hover:bg-[#E2E9E4]'
@@ -808,7 +808,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                   </p>
                 </div>
                 {/* Progress bar */}
-                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#18231E]' : 'bg-[#EBF0EC]'}`}>
+                <div className={`w-full h-1.5 rounded-lg overflow-hidden ${isDark ? 'bg-[#18231E]' : 'bg-[#EBF0EC]'}`}>
                   <div
                     className={`h-full transition-all duration-300 ${paymentType === 'vip' ? 'bg-amber-500' : 'bg-[#5B8A78]'}`}
                     style={{ width: `${paymentProgress}%` }}
@@ -819,7 +819,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
             {paymentStep === 'success' && (
               <div className="py-4 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                   <Check className="w-6 h-6 stroke-[3]" />
                 </div>
                 <div>
@@ -830,7 +830,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
                 </div>
                 <button
                   onClick={() => setShowPaymentModal(false)}
-                  className="w-full py-2 px-4 rounded-xl bg-emerald-500 text-[#0A100D] font-bold text-xs transition active:scale-[0.98]"
+                  className="w-full py-2 px-4 rounded-lg bg-emerald-500 text-[#0A100D] font-bold text-xs transition active:scale-[0.98]"
                 >
                   Отлично, вернуться
                 </button>

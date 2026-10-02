@@ -897,7 +897,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     <div className="space-y-4">
       {/* Sticky Accent Header Bar with Distinct Trainer Space Recognition */}
       <div
-        className={`sticky top-0 z-30 p-3.5 rounded-xl border flex items-center justify-between transition-colors shadow-md backdrop-blur-md ${
+        className={`sticky top-0 z-30 p-3.5 rounded-lg border flex items-center justify-between transition-colors shadow-md backdrop-blur-md ${
           isDark
             ? 'bg-[#15231D]/95 border-[#253A30] text-[#E8ECE9]'
             : 'bg-[#E3ECE7]/95 border-[#C8D6CF] text-[#141F1A]'
@@ -946,7 +946,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('kb')}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'kb'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -976,7 +976,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('categories')}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'categories'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1006,7 +1006,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('gaps')}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'gaps'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1044,7 +1044,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('escalations')}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'escalations'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1087,7 +1087,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             setActiveTab('clients');
             fetchClients();
           }}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'clients'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1120,7 +1120,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             setActiveTab('analytics');
             fetchAnalytics();
           }}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'analytics'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1150,7 +1150,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('deploy')}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'deploy'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1184,7 +1184,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             fetchLlmStatus();
             fetchSecrets();
           }}
-          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-lg border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'llm'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1244,7 +1244,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {activeTab === 'kb' && (
         <div className="space-y-3.5">
           <div
-            className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-xl border ${
+            className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 rounded-lg border ${
               isDark
                 ? 'bg-[#121B17] border-[#1F2E27]'
                 : 'bg-white border-[#D8E0DB]'
@@ -1296,7 +1296,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 setKbStatus('approved');
                 setShowKbModal(true);
               }}
-              className={`w-full sm:w-auto text-xs font-medium px-3.5 py-2 rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm ${
+              className={`w-full sm:w-auto text-xs font-medium px-3.5 py-2 rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm ${
                 isDark
                   ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                   : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -1312,7 +1312,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
               return (
                 <div
                   key={`kb-${item.id}-${idx}`}
-                  className={`rounded-xl p-4 border shadow-sm flex flex-col justify-between transition-colors ${
+                  className={`rounded-lg p-4 border shadow-sm flex flex-col justify-between transition-colors ${
                     isDark
                       ? 'bg-[#121B17] border-[#1F2E27]'
                       : 'bg-white border-[#D8E0DB]'
@@ -1384,7 +1384,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {/* TAB 2: CATEGORIES TREE MANAGER */}
       {activeTab === 'categories' && (
         <div
-          className={`border rounded-xl p-4 sm:p-5 space-y-4 ${
+          className={`border rounded-lg p-4 sm:p-5 space-y-4 ${
             isDark
               ? 'bg-[#121B17] border-[#1F2E27]'
               : 'bg-white border-[#D8E0DB]'
@@ -1403,7 +1403,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             </div>
             <button
               onClick={() => setShowCatModal(true)}
-              className={`text-xs font-medium px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition ${
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition ${
                 isDark
                   ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                   : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -1419,7 +1419,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
               return (
                 <div
                   key={`parent-cat-${parent.id}-${pIdx}`}
-                  className={`border rounded-xl p-3.5 ${
+                  className={`border rounded-lg p-3.5 ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB]'
@@ -1470,7 +1470,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {/* TAB 3: CONTENT GAPS ANALYTICS */}
       {activeTab === 'gaps' && (
         <div
-          className={`border rounded-xl p-4 sm:p-5 space-y-4 ${
+          className={`border rounded-lg p-4 sm:p-5 space-y-4 ${
             isDark
               ? 'bg-[#121B17] border-[#1F2E27]'
               : 'bg-white border-[#D8E0DB]'
@@ -1491,7 +1491,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             {contentGaps.map((gap, gIdx) => (
               <div
                 key={`gap-${gap.id}-${gIdx}`}
-                className={`border rounded-xl p-3.5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 ${
+                className={`border rounded-lg p-3.5 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 ${
                   isDark
                     ? 'bg-[#18231E] border-[#1F2E27]'
                     : 'bg-[#F4F6F4] border-[#D8E0DB]'
@@ -1530,7 +1530,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                 <button
                   onClick={() => handleApproveContentGap(gap)}
-                  className={`text-xs font-medium px-3.5 py-2 rounded-xl shrink-0 transition flex items-center gap-1.5 shadow-sm ${
+                  className={`text-xs font-medium px-3.5 py-2 rounded-lg shrink-0 transition flex items-center gap-1.5 shadow-sm ${
                     isDark
                       ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                       : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -1557,7 +1557,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
               <div
                 key={`esc-${e.id}-${eIdx}`}
                 onClick={() => { setSelectedEscalation(e); setTrainerAnswerText(e.trainer_answer || ''); }}
-                className={`p-3 rounded-xl border cursor-pointer transition ${
+                className={`p-3 rounded-lg border cursor-pointer transition ${
                   selectedEscalation?.id === e.id
                     ? isDark
                       ? 'bg-[#182820] border-[#5B8A78]'
@@ -1583,7 +1583,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           <div className="md:col-span-2">
             {selectedEscalation ? (
               <div
-                className={`border rounded-xl p-4 sm:p-5 space-y-3.5 ${
+                className={`border rounded-lg p-4 sm:p-5 space-y-3.5 ${
                   isDark
                     ? 'bg-[#121B17] border-[#1F2E27]'
                     : 'bg-white border-[#D8E0DB]'
@@ -1593,7 +1593,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   Запрос: {selectedEscalation.client_name}
                 </h3>
                 <div
-                  className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                  className={`p-3 rounded-lg border text-xs leading-relaxed ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A]'
@@ -1608,7 +1608,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                     value={trainerAnswerText}
                     onChange={e => setTrainerAnswerText(e.target.value)}
                     placeholder="Напишите ответ тренера клиенту..."
-                    className={`w-full border rounded-xl p-3 text-xs outline-none ${
+                    className={`w-full border rounded-lg p-3 text-xs outline-none ${
                       isDark
                         ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                         : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -1617,7 +1617,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   />
                   <button
                     type="submit"
-                    className={`w-full font-medium py-2.5 rounded-xl text-xs transition shadow-sm ${
+                    className={`w-full font-medium py-2.5 rounded-lg text-xs transition shadow-sm ${
                       isDark
                         ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                         : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -1629,7 +1629,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
               </div>
             ) : (
               <div
-                className={`border rounded-xl p-10 text-center text-xs ${
+                className={`border rounded-lg p-10 text-center text-xs ${
                   isDark
                     ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96]'
                     : 'bg-white border-[#D8E0DB] text-[#7E9187]'
@@ -1645,7 +1645,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {/* TAB 5: CLIENTS */}
       {activeTab === 'clients' && (
         <div
-          className={`border rounded-xl p-4 sm:p-5 space-y-4 ${
+          className={`border rounded-lg p-4 sm:p-5 space-y-4 ${
             isDark
               ? 'bg-[#121B17] border-[#1F2E27]'
               : 'bg-white border-[#D8E0DB]'
@@ -1700,7 +1700,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
           {/* Telegram Action Toast Feedback */}
           {tgActionToast && (
-            <div className={`p-3 rounded-xl border flex items-center justify-between gap-2.5 animate-in fade-in slide-in-from-top-1 ${
+            <div className={`p-3 rounded-lg border flex items-center justify-between gap-2.5 animate-in fade-in slide-in-from-top-1 ${
               isDark ? 'bg-sky-950/40 border-sky-500/40 text-sky-200' : 'bg-sky-50 border-sky-300 text-sky-900'
             }`}>
               <div className="flex items-center gap-2.5">
@@ -1808,7 +1808,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             if (clientFilterStatus === 'admin') return !!c.is_admin;
             return true;
           }).length === 0 ? (
-            <div className={`p-8 text-center rounded-xl border text-xs ${
+            <div className={`p-8 text-center rounded-lg border text-xs ${
               isDark ? 'border-[#1F2E27] text-[#8E9E96]' : 'border-[#D8E0DB] text-[#53665C]'
             }`}>
               Пользователи по заданным критериям не найдены.
@@ -1834,7 +1834,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   return (
                     <div
                       key={`client-${c.id}-${c.telegram_user_id || cIdx}-${cIdx}`}
-                      className={`border rounded-xl p-3.5 space-y-2.5 text-xs transition relative ${
+                      className={`border rounded-lg p-3.5 space-y-2.5 text-xs transition relative ${
                         isDark
                           ? 'bg-[#18231E] border-[#1F2E27]'
                           : 'bg-[#F4F6F4] border-[#D8E0DB]'
@@ -2028,14 +2028,14 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           {selectedClientDossier && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
               <div
-                className={`w-full max-w-xl max-h-[90vh] rounded-2xl border flex flex-col shadow-2xl overflow-hidden ${
+                className={`w-full max-w-xl max-h-[90vh] rounded-lg border flex flex-col shadow-2xl overflow-hidden ${
                   isDark ? 'bg-[#121B17] border-[#1F2E27] text-white' : 'bg-white border-[#D8E0DB] text-[#0A100D]'
                 }`}
               >
                 {/* Modal Header */}
                 <div className="p-4 border-b border-inherit flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className={`p-2 rounded-xl border ${
+                    <div className={`p-2 rounded-lg border ${
                       isDark ? 'bg-[#18231E] border-[#253A30] text-[#7DA295]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
                     }`}>
                       <User className="w-5 h-5" />
@@ -2076,7 +2076,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 {/* Modal Scrollable Body */}
                 <div className="p-4 overflow-y-auto space-y-4 text-xs">
                   {/* Physical Parameters Card */}
-                  <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                  <div className={`p-3.5 rounded-lg border space-y-2.5 ${
                     isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
                   }`}>
                     <div className="flex items-center gap-1.5 font-semibold text-xs border-b border-inherit pb-1.5">
@@ -2144,7 +2144,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   </div>
 
                   {/* AI Conversation History Log */}
-                  <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                  <div className={`p-3.5 rounded-lg border space-y-2.5 ${
                     isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
                   }`}>
                     <div className="flex items-center justify-between border-b border-inherit pb-1.5">
@@ -2171,7 +2171,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         {clientMessages.map((m: any, idx: number) => (
                           <div
                             key={`dash-msg-${m.id || idx}-${idx}`}
-                            className={`p-2.5 rounded-xl text-xs space-y-1 ${
+                            className={`p-2.5 rounded-lg text-xs space-y-1 ${
                               m.role === 'user'
                                 ? isDark
                                   ? 'bg-[#121B17] border border-[#1F2E27] ml-4'
@@ -2222,7 +2222,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   <button
                     type="button"
                     onClick={() => handleOpenTelegramChat(selectedClientDossier.telegram_user_id, selectedClientDossier.telegram_username || selectedClientDossier.profile?.telegram_username)}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition"
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-lg font-bold text-xs bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20 flex items-center justify-center gap-2 transition"
                   >
                     <Send className="w-4 h-4" />
                     <span>Открыть диалог в Telegram</span>
@@ -2239,7 +2239,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <div className="space-y-4">
           {/* Header Card */}
           <div
-            className={`p-4 rounded-xl border space-y-2 ${
+            className={`p-4 rounded-lg border space-y-2 ${
               isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
             }`}
           >
@@ -2269,7 +2269,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {/* VIP Card */}
             <div
-              className={`p-4 rounded-xl border space-y-3 ${
+              className={`p-4 rounded-lg border space-y-3 ${
                 isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
               }`}
             >
@@ -2312,7 +2312,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
             {/* Basic Card */}
             <div
-              className={`p-4 rounded-xl border space-y-3 ${
+              className={`p-4 rounded-lg border space-y-3 ${
                 isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
               }`}
             >
@@ -2356,7 +2356,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
           {/* Weekly Intent Digest Ranked Table */}
           <div
-            className={`p-4 rounded-xl border space-y-3 ${
+            className={`p-4 rounded-lg border space-y-3 ${
               isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
             }`}
           >
@@ -2408,7 +2408,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {activeTab === 'deploy' && (
         <div className="space-y-4 animate-fade-in">
           {/* Accordion 1: Tariff prices and statistics */}
-          <div className={`rounded-xl border overflow-hidden ${
+          <div className={`rounded-lg border overflow-hidden ${
             isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
           }`}>
             <button
@@ -2444,7 +2444,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Sub price setting */}
-                  <div className={`p-3 rounded-xl border space-y-2 ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                  <div className={`p-3 rounded-lg border space-y-2 ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
                     <label className="block text-xs font-semibold">Цена подписки на ИИ (в месяц)</label>
                     <div className="flex items-center gap-2">
                       <input
@@ -2452,7 +2452,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         min="0"
                         value={subscriberPriceSetting}
                         onChange={e => setSubscriberPriceSetting(Math.max(0, parseInt(e.target.value || '0', 10)))}
-                        className={`w-full text-xs py-2 px-3 rounded-xl border font-mono outline-none ${
+                        className={`w-full text-xs py-2 px-3 rounded-lg border font-mono outline-none ${
                           isDark ? 'bg-[#121B17] border-[#1F2E27] text-white focus:border-[#5B8A78]' : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
                         }`}
                       />
@@ -2461,7 +2461,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   </div>
 
                   {/* VIP price setting */}
-                  <div className={`p-3 rounded-xl border space-y-2 ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                  <div className={`p-3 rounded-lg border space-y-2 ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
                     <label className="block text-xs font-semibold">Цена VIP-ведения (в месяц)</label>
                     <div className="flex items-center gap-2">
                       <input
@@ -2469,7 +2469,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         min="0"
                         value={vipPriceSetting}
                         onChange={e => setVipPriceSetting(Math.max(0, parseInt(e.target.value || '0', 10)))}
-                        className={`w-full text-xs py-2 px-3 rounded-xl border font-mono outline-none ${
+                        className={`w-full text-xs py-2 px-3 rounded-lg border font-mono outline-none ${
                           isDark ? 'bg-[#121B17] border-[#1F2E27] text-white focus:border-[#5B8A78]' : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
                         }`}
                       />
@@ -2483,7 +2483,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                     type="button"
                     disabled={savingTariffPrices}
                     onClick={() => handleSaveTariffPrices(subscriberPriceSetting, vipPriceSetting)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2 ${
                       isDark ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]' : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
                     }`}
                   >
@@ -2493,7 +2493,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 </div>
 
                 {/* Revenue stats card */}
-                <div className={`p-4 rounded-xl border space-y-2.5 ${
+                <div className={`p-4 rounded-lg border space-y-2.5 ${
                   isDark ? 'bg-[#15231D] border-[#253A30]' : 'bg-[#EDF2EE] border-[#C8D6CF]'
                 }`}>
                   <h4 className="font-semibold text-xs uppercase tracking-wider text-inherit">Текущая статистика по тарифам</h4>
@@ -2531,7 +2531,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           </div>
 
           {/* Accordion 2: Backups and exports */}
-          <div className={`rounded-xl border overflow-hidden ${
+          <div className={`rounded-lg border overflow-hidden ${
             isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
           }`}>
             <button
@@ -2560,7 +2560,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Archive 1: Client dist */}
-                  <div className={`p-4 rounded-xl border space-y-3 flex flex-col justify-between ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                  <div className={`p-4 rounded-lg border space-y-3 flex flex-col justify-between ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 font-semibold text-xs">
                         <Package className="w-4 h-4 text-[#5B8A78]" />
@@ -2603,7 +2603,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   </div>
 
                   {/* Archive 2: Full Project */}
-                  <div className={`p-4 rounded-xl border space-y-3 flex flex-col justify-between ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                  <div className={`p-4 rounded-lg border space-y-3 flex flex-col justify-between ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2 font-semibold text-xs">
                         <Server className="w-4 h-4 text-[#5B8A78]" />
@@ -2655,7 +2655,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {activeTab === 'llm' && (
         <div className="space-y-4">
           {/* RATE LIMIT CONTROL CARD FOR TRAINER */}
-          <div className={`rounded-xl border overflow-hidden ${
+          <div className={`rounded-lg border overflow-hidden ${
             isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
           }`}>
             <button
@@ -2744,7 +2744,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           </div>
 
           {/* CONNECTIONS & DATABASE ACCORDION */}
-          <div className={`rounded-xl border overflow-hidden ${
+          <div className={`rounded-lg border overflow-hidden ${
             isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
           }`}>
             <button
@@ -2769,7 +2769,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
               <div className="p-4 space-y-4 animate-in fade-in">
                 {/* Status Alert Banner */}
                 <div
-                  className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                  className={`p-4 rounded-lg border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                     llmStatus?.is_ready
                       ? isDark
                         ? 'bg-[#15271F]/40 border-[#254637] text-[#A3E0C1]'
@@ -2835,7 +2835,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
                     {/* GitHub */}
-                    <div className={`p-3 rounded-xl border flex flex-col justify-between space-y-1.5 ${isDark ? 'bg-[#18231E]/60 border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
+                    <div className={`p-3 rounded-lg border flex flex-col justify-between space-y-1.5 ${isDark ? 'bg-[#18231E]/60 border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
                       <div className="flex items-center gap-1.5 text-[#5B8A78] font-bold">
                         <RefreshCw className="w-3.5 h-3.5" />
                         <span>GitHub Token</span>
@@ -2844,7 +2844,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                     </div>
 
                     {/* AI Tunnel Key card with connection indicator based on llmStatus.is_ready */}
-                    <div className={`p-3 rounded-xl border flex flex-col justify-between space-y-1.5 ${isDark ? 'bg-[#18231E]/60 border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
+                    <div className={`p-3 rounded-lg border flex flex-col justify-between space-y-1.5 ${isDark ? 'bg-[#18231E]/60 border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
                       <div className="flex items-center justify-between font-bold">
                         <div className="flex items-center gap-1.5 text-[#5B8A78] font-bold">
                           <Server className="w-3.5 h-3.5" />
@@ -2866,7 +2866,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                       onClick={() => !isCheckingDb && fetchSecrets(true)}
                       role="button"
                       tabIndex={0}
-                      className={`p-3 rounded-xl border flex flex-col justify-between space-y-1.5 transition cursor-pointer select-none ${
+                      className={`p-3 rounded-lg border flex flex-col justify-between space-y-1.5 transition cursor-pointer select-none ${
                         isDark
                           ? 'bg-[#18231E]/80 border-[#253A30] hover:border-[#5B8A78] hover:bg-[#1E2E26]'
                           : 'bg-[#F4F6F4] border-[#E1E8E4] hover:border-[#2B4A3D] hover:bg-[#EDF2EE]'
@@ -2893,7 +2893,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   </div>
 
                   {secretsStatus?.database_error && !secretsStatus?.database_connected && (
-                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs space-y-1">
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs space-y-1">
                       <div className="font-medium flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                         <span>Статус подключения к PostgreSQL:</span>
@@ -2907,7 +2907,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                       type="button"
                       onClick={() => fetchSecrets(true)}
                       disabled={isCheckingDb}
-                      className={`w-full sm:w-auto py-2 px-4 rounded-xl text-xs font-semibold border transition flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none active:scale-[0.99] ${
+                      className={`w-full sm:w-auto py-2 px-4 rounded-lg text-xs font-semibold border transition flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none active:scale-[0.99] ${
                         isDark
                           ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:border-[#5B8A78] hover:bg-[#1E2E26]'
                           : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] hover:border-[#2B4A3D] hover:bg-[#EBEFEA]'
@@ -2928,7 +2928,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   </div>
 
                   {dbCheckMessage && (
-                    <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2.5 mt-2 animate-in fade-in slide-in-from-top-1 ${
+                    <div className={`p-3 rounded-lg border text-xs flex items-center justify-between gap-2.5 mt-2 animate-in fade-in slide-in-from-top-1 ${
                       dbCheckMessage.type === 'success'
                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                         : dbCheckMessage.type === 'warning'
@@ -2956,7 +2956,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
                 {/* Mobile-Friendly Raw .env Editor */}
                 <div
-                  className={`p-4 rounded-xl border space-y-3 ${
+                  className={`p-4 rounded-lg border space-y-3 ${
                     isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
                   }`}
                 >
@@ -2996,7 +2996,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         onChange={e => setEnvContent(e.target.value)}
                         rows={10}
                         spellCheck={false}
-                        className={`w-full font-mono text-xs p-3 rounded-xl border outline-none transition ${
+                        className={`w-full font-mono text-xs p-3 rounded-lg border outline-none transition ${
                           isDark
                             ? 'bg-[#0D1411] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                             : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3010,7 +3010,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                             type="button"
                             onClick={handleSaveEnvRaw}
                             disabled={savingEnv}
-                            className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-4 py-2 rounded-lg text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer ${
                               savingEnv
                                 ? 'bg-[#5B8A78]/50 cursor-wait'
                                 : 'bg-[#2B4A3D] hover:bg-[#3D6B58]'
@@ -3035,7 +3035,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                               setEnvSavedMessage('Текст .env скопирован в буфер обмена!');
                               setTimeout(() => setEnvSavedMessage(null), 3000);
                             }}
-                            className={`px-3 py-2 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-3 py-2 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer ${
                               isDark
                                 ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:border-[#5B8A78]'
                                 : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] hover:border-[#2B4A3D]'
@@ -3060,7 +3060,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
           </div>
 
           {/* MODEL SELECTOR ACCORDION */}
-          <div className={`rounded-xl border overflow-hidden ${
+          <div className={`rounded-lg border overflow-hidden ${
             isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
           }`}>
             <button
@@ -3104,7 +3104,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                       <select
                         value={selectedModel}
                         onChange={e => setSelectedModel(e.target.value)}
-                        className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                        className={`w-full border rounded-lg p-2.5 outline-none transition ${
                           isDark
                             ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                             : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3131,7 +3131,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         placeholder="Вставьте новый ключ для обновления..."
                         value={inputApiKey}
                         onChange={e => setInputApiKey(e.target.value)}
-                        className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                        className={`w-full border rounded-lg p-2.5 outline-none transition ${
                           isDark
                             ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                             : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3151,7 +3151,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         placeholder="Например: claude-3-opus, llama-3.3-70b-instruct..."
                         value={customModel}
                         onChange={e => setCustomModel(e.target.value)}
-                        className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                        className={`w-full border rounded-lg p-2.5 outline-none transition ${
                           isDark
                             ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                             : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3164,7 +3164,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                     <button
                       type="submit"
                       disabled={savingConfig}
-                      className={`w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
+                      className={`w-full sm:w-auto py-2.5 px-5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
                         isDark
                           ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                           : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -3190,7 +3190,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
           {/* Interactive Test Console */}
           <div
-            className={`p-4 rounded-xl border space-y-3 ${
+            className={`p-4 rounded-lg border space-y-3 ${
               isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
             }`}
           >
@@ -3208,7 +3208,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   rows={2}
                   value={testPrompt}
                   onChange={e => setTestPrompt(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 text-xs outline-none ${
+                  className={`w-full border rounded-lg p-2.5 text-xs outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3221,7 +3221,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 <button
                   type="submit"
                   disabled={testingLlm || !testPrompt.trim()}
-                  className={`py-2 px-4 rounded-xl text-xs font-medium transition flex items-center gap-2 shadow-sm ${
+                  className={`py-2 px-4 rounded-lg text-xs font-medium transition flex items-center gap-2 shadow-sm ${
                     isDark
                       ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                       : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -3249,7 +3249,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             {/* Test Result View */}
             {testResult && (
               <div
-                className={`mt-3 p-3.5 rounded-xl border text-xs space-y-2 transition-all ${
+                className={`mt-3 p-3.5 rounded-lg border text-xs space-y-2 transition-all ${
                   testResult.success
                     ? isDark
                       ? 'bg-[#15231D] border-[#253A30] text-[#E8ECE9]'
@@ -3328,7 +3328,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
           {/* Quick Render Configuration Guide */}
           <div
-            className={`p-3.5 rounded-xl border space-y-2 text-xs ${
+            className={`p-3.5 rounded-lg border space-y-2 text-xs ${
               isDark ? 'bg-[#18231E]/50 border-[#253A30]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
             }`}
           >
@@ -3353,7 +3353,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {showKbModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div
-            className={`border rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl ${
+            className={`border rounded-lg max-w-lg w-full p-5 space-y-4 shadow-2xl ${
               isDark
                 ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]'
                 : 'bg-white border-[#D8E0DB] text-[#141F1A]'
@@ -3369,7 +3369,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   type="text"
                   value={kbTitle}
                   onChange={e => setKbTitle(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                  className={`w-full border rounded-lg p-2.5 outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3385,7 +3385,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 <select
                   value={kbCategoryId}
                   onChange={e => setKbCategoryId(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                  className={`w-full border rounded-lg p-2.5 outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3405,7 +3405,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   rows={4}
                   value={kbContent}
                   onChange={e => setKbContent(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                  className={`w-full border rounded-lg p-2.5 outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3418,7 +3418,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 <button
                   type="button"
                   onClick={() => setShowKbModal(false)}
-                  className={`flex-1 py-2 rounded-xl border transition ${
+                  className={`flex-1 py-2 rounded-lg border transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#7E9187]'
@@ -3428,7 +3428,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 </button>
                 <button
                   type="submit"
-                  className={`flex-1 py-2 rounded-xl font-medium transition ${
+                  className={`flex-1 py-2 rounded-lg font-medium transition ${
                     isDark
                       ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                       : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -3446,7 +3446,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {showCatModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div
-            className={`border rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl ${
+            className={`border rounded-lg max-w-md w-full p-5 space-y-4 shadow-2xl ${
               isDark
                 ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]'
                 : 'bg-white border-[#D8E0DB] text-[#141F1A]'
@@ -3462,7 +3462,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   type="text"
                   value={newCatName}
                   onChange={e => setNewCatName(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                  className={`w-full border rounded-lg p-2.5 outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3478,7 +3478,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 <select
                   value={newCatParentId}
                   onChange={e => setNewCatParentId(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                  className={`w-full border rounded-lg p-2.5 outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3499,7 +3499,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   type="text"
                   value={newCatDesc}
                   onChange={e => setNewCatDesc(e.target.value)}
-                  className={`w-full border rounded-xl p-2.5 outline-none ${
+                  className={`w-full border rounded-lg p-2.5 outline-none ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
@@ -3511,7 +3511,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 <button
                   type="button"
                   onClick={() => setShowCatModal(false)}
-                  className={`flex-1 py-2 rounded-xl border transition ${
+                  className={`flex-1 py-2 rounded-lg border transition ${
                     isDark
                       ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]'
                       : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#7E9187]'
@@ -3521,7 +3521,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 </button>
                 <button
                   type="submit"
-                  className={`flex-1 py-2 rounded-xl font-medium transition ${
+                  className={`flex-1 py-2 rounded-lg font-medium transition ${
                     isDark
                       ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                       : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'

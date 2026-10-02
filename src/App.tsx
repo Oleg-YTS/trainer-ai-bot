@@ -344,7 +344,7 @@ export const App: React.FC = () => {
         >
           {/* Left: App Title */}
           <div className="flex items-center gap-2">
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+            <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${
               isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'
             }`}>
               <Bot className="w-4 h-4" />
@@ -369,7 +369,7 @@ export const App: React.FC = () => {
             <button
               onClick={toggleTheme}
               aria-label="Переключить тему"
-              className="p-1 rounded-md text-inherit opacity-60 hover:opacity-100 transition"
+              className="p-1 rounded-lg text-inherit opacity-60 hover:opacity-100 transition"
             >
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
@@ -414,7 +414,7 @@ export const App: React.FC = () => {
                     <button
                       key={role}
                       onClick={() => setUserRole(role)}
-                      className={`text-[10px] py-1 px-2.5 rounded font-bold transition-all duration-150 ${
+                      className={`text-[10px] py-1 px-2.5 rounded-lg font-bold transition-all duration-150 ${
                         isSelected
                           ? 'bg-[#5B8A78] text-white shadow-sm'
                           : isDark
@@ -488,7 +488,7 @@ export const App: React.FC = () => {
                   onBackToClient={() => setActiveTab('profile')}
                 />
               ) : (
-                <div className={`m-4 p-6 rounded-2xl border text-center space-y-3 ${
+                <div className={`m-4 p-6 rounded-lg border text-center space-y-3 ${
                   isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
                 }`}>
                   <p className="text-sm font-semibold">Доступ ограничен</p>
@@ -515,7 +515,7 @@ export const App: React.FC = () => {
           >
             {/* Floating Pure Glass Capsule Navigation Container */}
             <nav
-              className={`relative pointer-events-auto rounded-full h-14 px-3 flex items-center transition-all ${
+              className={`relative pointer-events-auto rounded-lg h-14 px-3 flex items-center transition-all ${
                 isDark ? 'glass-nav-dark text-[#E8ECE9]' : 'glass-nav-light text-[#141F1A]'
               }`}
             >
@@ -543,7 +543,7 @@ export const App: React.FC = () => {
                   className="flex flex-col items-center justify-center -translate-y-3 transition group relative"
                 >
                   <div
-                    className={`w-11 h-11 rounded-full flex items-center justify-center shadow-xl border transition-transform group-active:scale-95 ${
+                    className={`w-11 h-11 rounded-lg flex items-center justify-center shadow-xl border transition-transform group-active:scale-95 ${
                       activeTab === 'chat'
                         ? isDark
                           ? 'bg-[#5B8A78] text-[#0A100D] border-[#7DA295]/50 ring-2 ring-[#5B8A78]/30'

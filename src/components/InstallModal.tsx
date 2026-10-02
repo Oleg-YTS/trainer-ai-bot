@@ -13,7 +13,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({ isOpen, onClose, isD
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
       <div
-        className={`w-full max-w-md rounded-t-2xl sm:rounded-2xl border p-5 shadow-2xl transition-all ${
+        className={`w-full max-w-md rounded-t-lg sm:rounded-lg border p-5 shadow-2xl transition-all ${
           isDark
             ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]'
             : 'bg-white border-[#D8E0DB] text-[#141F1A]'
@@ -27,7 +27,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({ isOpen, onClose, isD
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-inherit opacity-60 hover:opacity-100 transition"
+            className="p-1 rounded-lg text-inherit opacity-60 hover:opacity-100 transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -39,7 +39,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({ isOpen, onClose, isD
           </p>
 
           {/* iOS Safari Instruction */}
-          <div className={`p-3.5 rounded-xl border ${
+          <div className={`p-3.5 rounded-lg border ${
             isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
           }`}>
             <div className="font-semibold text-xs mb-2 flex items-center gap-1.5">
@@ -64,7 +64,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({ isOpen, onClose, isD
           </div>
 
           {/* Android Chrome / Telegram Instruction */}
-          <div className={`p-3.5 rounded-xl border ${
+          <div className={`p-3.5 rounded-lg border ${
             isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#D8E0DB]'
           }`}>
             <div className="font-semibold text-xs mb-2 flex items-center gap-1.5">
@@ -86,7 +86,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({ isOpen, onClose, isD
 
           <button
             onClick={onClose}
-            className={`w-full py-2.5 rounded-xl font-medium text-xs transition ${
+            className={`w-full py-2.5 rounded-lg font-medium text-xs transition ${
               isDark
                 ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                 : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'

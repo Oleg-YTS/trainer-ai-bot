@@ -123,17 +123,17 @@ export const TelegramSimulator: React.FC = () => {
   const subCategories = selectedCatId ? categories.filter(c => c.parent_id === selectedCatId) : [];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-130px)] bg-slate-950 rounded-xl border border-slate-800 shadow-2xl overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-130px)] bg-slate-950 rounded-lg border border-slate-800 shadow-2xl overflow-hidden">
       {/* Telegram Mini App Header */}
       <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
+          <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md">
             <Bot className="w-5 h-5" />
           </div>
           <div>
             <div className="font-semibold text-slate-100 flex items-center gap-2 text-sm">
               AI-Библиотекарь Тренера
-              <span className="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full font-normal">
+              <span className="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-lg font-normal">
                 ver 1.0.0 TMA
               </span>
             </div>
@@ -197,7 +197,7 @@ export const TelegramSimulator: React.FC = () => {
             <button
               key={`sim-subcat-${sub.id}-${idx}`}
               onClick={() => handleSendMessage(`Расскажи подробно про ${sub.name}`)}
-              className="bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-slate-800 px-2 py-0.5 rounded text-[11px] shrink-0 transition flex items-center gap-1"
+              className="bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-slate-800 px-2 py-0.5 rounded-lg text-[11px] shrink-0 transition flex items-center gap-1"
             >
               <BookOpen className="w-3 h-3 text-indigo-400" /> {sub.name}
             </button>
@@ -212,11 +212,11 @@ export const TelegramSimulator: React.FC = () => {
           return (
             <div key={`sim-msg-${msg.id || idx}-${idx}`} className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
               {!isUser && (
-                <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400 text-xs font-bold shrink-0 mt-1">
+                <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400 text-xs font-bold shrink-0 mt-1">
                   <Bot className="w-4 h-4" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-md text-sm whitespace-pre-wrap ${
+              <div className={`max-w-[80%] rounded-lg px-4 py-3 shadow-md text-sm whitespace-pre-wrap ${
                 isUser
                   ? 'bg-indigo-600 text-white rounded-tr-none'
                   : 'bg-slate-900 border border-slate-800 text-slate-100 rounded-tl-none'
@@ -227,11 +227,11 @@ export const TelegramSimulator: React.FC = () => {
                 {!isUser && msg.match_score !== undefined && (
                   <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-2 text-[11px]">
                     {msg.match_score >= 70 ? (
-                      <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/30 font-medium">
+                      <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-lg border border-emerald-800/30 font-medium">
                         <CheckCircle2 className="w-3 h-3" /> Статья из БЗ (Соответствие: {msg.match_score}%)
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-indigo-300 bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-800/30 font-medium">
+                      <span className="inline-flex items-center gap-1 text-indigo-300 bg-indigo-950/40 px-2 py-0.5 rounded-lg border border-indigo-800/30 font-medium">
                         <BookOpen className="w-3 h-3" /> Ответ сформирован по принципам (Зафиксировано в план статей)
                       </span>
                     )}
@@ -243,7 +243,7 @@ export const TelegramSimulator: React.FC = () => {
                 </div>
               </div>
               {isUser && (
-                <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 text-xs font-bold shrink-0 mt-1">
+                <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 text-xs font-bold shrink-0 mt-1">
                   <User className="w-4 h-4" />
                 </div>
               )}
@@ -252,7 +252,7 @@ export const TelegramSimulator: React.FC = () => {
         })}
 
         {loading && (
-          <div className="flex items-center gap-2 text-slate-400 text-xs bg-slate-900 px-3 py-2 rounded-xl w-fit border border-slate-800 animate-pulse">
+          <div className="flex items-center gap-2 text-slate-400 text-xs bg-slate-900 px-3 py-2 rounded-lg w-fit border border-slate-800 animate-pulse">
             <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
             AI-Библиотекарь ищет статьи с высоким соответствием...
           </div>
@@ -290,12 +290,12 @@ export const TelegramSimulator: React.FC = () => {
           onChange={e => setInputText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
           placeholder="Напишите вопрос библиотекарю..."
-          className="flex-1 bg-slate-950 text-slate-100 text-sm rounded-xl px-4 py-2.5 border border-slate-800 focus:outline-none focus:border-indigo-500 transition placeholder:text-slate-500"
+          className="flex-1 bg-slate-950 text-slate-100 text-sm rounded-lg px-4 py-2.5 border border-slate-800 focus:outline-none focus:border-indigo-500 transition placeholder:text-slate-500"
         />
         <button
           onClick={() => handleSendMessage()}
           disabled={!inputText.trim() || loading}
-          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2.5 rounded-xl transition shadow-lg shrink-0"
+          className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white p-2.5 rounded-lg transition shadow-lg shrink-0"
         >
           <Send className="w-4 h-4" />
         </button>

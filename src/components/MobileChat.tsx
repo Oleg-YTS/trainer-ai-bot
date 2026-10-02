@@ -199,7 +199,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         {messages.length > 1 && (
           <button
             onClick={() => setShowClearModal(true)}
-            className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition text-[10px] ${
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition text-[10px] ${
               isDark
                 ? 'text-[#8E9E96] hover:text-red-400 hover:bg-red-500/10'
                 : 'text-[#7E9187] hover:text-red-600 hover:bg-red-50'
@@ -227,11 +227,11 @@ export const MobileChat: React.FC<MobileChatProps> = ({
                     src="/assets/images/trainer_mascot_avatar_icon_1790802380770.jpg"
                     alt="Маскот / Аватар Ассистента"
                     referrerPolicy="no-referrer"
-                    className="w-6 h-6 rounded-full object-cover shrink-0 border border-[#2B4A3D] mb-0.5 shadow-sm"
+                    className="w-6 h-6 rounded-lg object-cover shrink-0 border border-[#2B4A3D] mb-0.5 shadow-sm"
                   />
                 )}
                 <div
-                  className={`rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
+                  className={`rounded-lg px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed shadow-sm ${
                     isUser
                       ? isDark
                         ? 'bg-[#24352D] text-[#E8ECE9] rounded-br-none'
@@ -272,7 +272,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
         })}
 
         {loading && (
-          <div className={`flex items-center gap-2 text-xs py-2 px-3 rounded-xl border w-fit animate-pulse ${
+          <div className={`flex items-center gap-2 text-xs py-2 px-3 rounded-lg border w-fit animate-pulse ${
             isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96]' : 'bg-white border-[#D8E0DB] text-[#53665C]'
           }`}>
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -298,7 +298,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
               key={chip.id}
               onClick={() => handleSendMessage(chip.query)}
               disabled={loading}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap transition shrink-0 active:scale-95 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap transition shrink-0 active:scale-95 ${
                 isDark
                   ? 'bg-[#121B17] border border-[#1F2E27] text-[#C2D1C9] hover:border-[#5B8A78] hover:text-[#E8ECE9]'
                   : 'bg-white border border-[#D8E0DB] text-[#2B4A3D] hover:border-[#2B4A3D]'
@@ -313,7 +313,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
 
       {/* Seamless Floating Input Capsule (NO border-t) */}
       <div className="pt-2 shrink-0">
-        <div className={`flex items-center gap-2 rounded-full p-1 pl-4 transition shadow-sm ${
+        <div className={`flex items-center gap-2 rounded-lg p-1 pl-4 transition shadow-sm ${
           isDark
             ? 'bg-[#121B17] border border-[#1F2E27] focus-within:border-[#5B8A78]'
             : 'bg-white border border-[#D8E0DB] focus-within:border-[#2B4A3D]'
@@ -338,7 +338,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
           <button
             onClick={() => handleSendMessage()}
             disabled={!inputText.trim() || loading}
-            className={`p-2.5 rounded-full transition disabled:opacity-30 disabled:cursor-not-allowed ${
+            className={`p-2.5 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed ${
               isDark
                 ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
                 : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
@@ -352,11 +352,11 @@ export const MobileChat: React.FC<MobileChatProps> = ({
       {/* Telegram-styled Confirmation Modal for Chat Clear */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl transform transition-all ${
+          <div className={`w-full max-w-sm rounded-lg border p-5 shadow-2xl transform transition-all ${
             isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]' : 'bg-white border-[#D8E0DB] text-[#141F1A]'
           }`}>
             <div className="flex flex-col items-center text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
+              <div className="w-12 h-12 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
                 <Trash2 className="w-6 h-6" />
               </div>
               <div>
@@ -372,7 +372,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
                 type="button"
                 onClick={() => setShowClearModal(false)}
                 disabled={clearing}
-                className={`py-2 px-3 rounded-xl border text-xs font-semibold transition ${
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold transition ${
                   isDark
                     ? 'border-[#1F2E27] bg-[#18231E] text-[#C2D1C9] hover:bg-[#202E27]'
                     : 'border-[#D8E0DB] bg-[#F4F7F5] text-[#2B4A3D] hover:bg-[#EBF0EC]'
@@ -384,7 +384,7 @@ export const MobileChat: React.FC<MobileChatProps> = ({
                 type="button"
                 onClick={handleClearHistory}
                 disabled={clearing}
-                className="py-2 px-3 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
+                className="py-2 px-3 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white flex items-center justify-center gap-1.5 transition shadow-sm disabled:opacity-50"
               >
                 {clearing ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

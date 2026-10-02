@@ -96,7 +96,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
   return (
     <div className="space-y-4 pb-24">
       {/* Search Input */}
-      <div className={`relative rounded-xl border transition ${
+      <div className={`relative rounded-lg border transition ${
         isDark
           ? 'bg-[#121B17] border-[#1F2E27] focus-within:border-[#5B8A78]'
           : 'bg-white border-[#D8E0DB] focus-within:border-[#2B4A3D]'
@@ -109,7 +109,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Поиск по статьям и методике..."
-          className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-xl bg-transparent outline-none ${
+          className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-lg bg-transparent outline-none ${
             isDark
               ? 'text-[#E8ECE9] placeholder-[#5E7068]'
               : 'text-[#141F1A] placeholder-[#8E9E96]'
@@ -132,7 +132,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
             Найдено материалов: {filteredArticles.length}
           </div>
           {filteredArticles.length === 0 ? (
-            <div className={`p-6 rounded-xl border text-center text-xs ${
+            <div className={`p-6 rounded-lg border text-center text-xs ${
               isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96]' : 'bg-white border-[#D8E0DB] text-[#53665C]'
             }`}>
               В базе пока нет статьи по этому запросу. Спросите у AI Библиотекаря в чате — ответ будет зафиксирован для включения тренером.
@@ -141,7 +141,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
             filteredArticles.map((item, idx) => (
               <div
                 key={`cat-art-${item.id}-${idx}`}
-                className={`p-4 rounded-xl border transition space-y-2 ${
+                className={`p-4 rounded-lg border transition space-y-2 ${
                   isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
                 }`}
               >
@@ -180,7 +180,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
             return (
               <div
                 key={`topcat-${cat.id}-${cIdx}`}
-                className={`rounded-xl border transition overflow-hidden ${
+                className={`rounded-lg border transition overflow-hidden ${
                   isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
                 }`}
               >
@@ -226,7 +226,7 @@ export const MobileKnowledgeCatalog: React.FC<MobileKnowledgeCatalogProps> = ({
                         {subs.map((s, sIdx) => (
                           <span
                             key={`subcat-${s.id}-${sIdx}`}
-                            className={`text-[10px] px-2 py-1 rounded-md border ${
+                            className={`text-[10px] px-2 py-1 rounded-lg border ${
                               isDark
                                 ? 'bg-[#121B17] border-[#1F2E27] text-[#8E9E96]'
                                 : 'bg-white border-[#D8E0DB] text-[#53665C]'

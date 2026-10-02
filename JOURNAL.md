@@ -1,5 +1,37 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #55: Global Border Radius Unification to 8px (rounded-lg) across all Components
+
+### TASK
+1. **Global Radius Standardization**: Replaced all instances of larger rounded corners (`rounded-xl`, `rounded-2xl`, `rounded-3xl`) and circular elements (buttons/badges that were `rounded-full`) with a uniform rectangular style with a border radius of exactly `8px` (`rounded-lg` or `rounded-[8px]`).
+2. **Component Sweep**: Applied this standardized rule uniformly across buttons, frames, cards, input fields, modals, textareas, select dropdowns, and even the main navigation bar.
+3. **Strict Compliance**: No changes were made to AI Agent logic.
+
+### DISCUSSION SUMMARY
+- **Context**: Establish complete typographic and structural geometric uniformity across all visual parts of the PWA applet.
+- **Problem**: Non-uniform rounded corners (some blocks had 12px or 16px radius, others had pill shapes, others had smaller radius) created geometric incoherence.
+- **Decision**: Standardized all buttons, input fields, containers, dropdowns, and modals to a sleek, expensive-looking rectangular shape with an exact 8px (`rounded-lg`) border radius.
+
+### GOAL
+Create complete structural unity and geometrical coherence by standardizing all component shapes to exactly `8px` rounded rectangular corners.
+
+### CHANGES
+- `src/App.tsx`: Converted main container wrapper, sandbox tools, and the floating navigation capsule bar (plus the center librarian toggle button) to use clean, modern rectangular `rounded-lg` borders.
+- `src/components/InstallModal.tsx`: Changed modal corners, buttons, and sub-card borders to `rounded-lg`.
+- `src/components/MobileChat.tsx`: Updated dialogue bubbles, input boxes, send buttons, and interactive topic chips to `rounded-lg`.
+- `src/components/MobileKnowledgeCatalog.tsx`: Aligned search bar, article listings, and nested category directories to `rounded-lg`.
+- `src/components/MobileProfile.tsx`: Aligned tariff options, profile parameters form inputs, save buttons, and payment gateway simulator cards to `rounded-lg`.
+- `src/components/TelegramSimulator.tsx`: Standardized preview shell, message feed headers, and interactive text bubbles to `rounded-lg`.
+- `src/components/TrainerDashboard.tsx`: Unified administrative dashboard tab selectors, database metric cards, and collapsible setting blocks to `rounded-lg`.
+
+### VERIFICATION
+- `compile_applet`: SUCCESS (0 errors).
+
+### RESULT
+The entire application has a beautifully unified, cohesive geometric rhythm with exactly 8px rectangular rounded corners.
+
+---
+
 ## 2026-10-02 — Task #54: Navigation Hub Streamlining, Accordion Toggle Badges, and Border Cleansing
 
 ### TASK
