@@ -18,8 +18,8 @@ RUN pip install --no-cache-dir .
 COPY package.json ./
 RUN npm install --omit=dev
 
-COPY --from=frontend-builder /app/dist ./dist
 COPY . .
+COPY --from=frontend-builder /app/dist ./dist
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=10000

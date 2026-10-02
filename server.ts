@@ -1244,89 +1244,7 @@ const TARGET_BOT_URL = (
   'http://127.0.0.1:8000'
 ).trim().replace(/\/+$/, '');
 
-if (TARGET_BOT_URL) {
-  console.log(`[Proxy] Python Bot upstream target configured: ${TARGET_BOT_URL}`);
-
-    app.use('/api', async (req: Request, res: Response, next) => {
-      // List of API paths that MUST be handled by Node.js, not proxied to Python
-      const localOnlyPaths = [
-        '/api/admin',
-        '/api/secrets',
-        '/api/env-raw',
-        '/api/llm/status',
-        '/api/llm/test',
-        '/api/llm/config',
-        '/api/stats',
-        '/api/client/status/update',
-        '/api/client/vip/toggle',
-        '/api/client/resolve',
-        '/api/trainer/settings',
-        '/api/knowledge',
-        '/api/categories',
-        '/api/content-gaps',
-        '/api/clients',
-        '/api/escalations',
-        '/api/client/profile',
-        '/api/chat/clear'
-      ];
-
-      if (localOnlyPaths.some(p => req.originalUrl.startsWith(p))) {
-        return next();
-      }
-
-    const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
-
-    try {
-      const forbiddenHeaders = ['host', 'content-length', 'connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'accept-encoding'];
-      const headers: Record<string, string> = {};
-      for (const [key, value] of Object.entries(req.headers)) {
-        const lowerKey = key.toLowerCase();
-        if (!forbiddenHeaders.includes(lowerKey) && typeof value === 'string') {
-          headers[key] = value;
-        }
-      }
-      if (!headers['content-type'] && (req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH')) {
-        headers['content-type'] = 'application/json';
-      }
-
-      const fetchOptions: RequestInit = {
-        method: req.method,
-        headers,
-      };
-
-      if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
-        fetchOptions.body = JSON.stringify(req.body);
-      }
-
-      const upstreamRes = await fetch(targetUrl, fetchOptions);
-
-      if (upstreamRes.status === 404 || upstreamRes.status === 405) {
-        // Fallback to local Express route if upstream does not implement this route or method
-        return next();
-      }
-
-      res.status(upstreamRes.status);
-      upstreamRes.headers.forEach((val, key) => {
-        const lowerKey = key.toLowerCase();
-        if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
-          res.setHeader(key, val);
-        }
-      });
-
-      const buffer = await upstreamRes.arrayBuffer();
-      res.send(Buffer.from(buffer));
-    } catch (err: any) {
-      console.error(`[Proxy Error] Failed to proxy ${req.method} ${req.originalUrl} -> ${targetUrl}:`, err);
-      // Fallback to local routes if upstream fails
-      next();
-    }
-  });
-}
-
-// Health Check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// Health Check (Moved to startServer)
 
 // LLM Diagnostics and Status API
 app.get('/api/llm/status', (_req: Request, res: Response) => {
@@ -2408,6 +2326,7 @@ async function startServer() {
                        process.env.RENDER === 'true';
 
   console.log(`[Server] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  console.log(`[Server] Working directory: ${__dirname}`);
 
   if (isProduction) {
     app.use((req, res, next) => {
@@ -2415,6 +2334,95 @@ async function startServer() {
         console.log(`[Request] ${req.method} ${req.url}`);
       }
       next();
+    });
+  }
+
+  // Health Check (Fastest response)
+  app.get('/health', (_req: Request, res: Response) => {
+    res.json({ status: 'ok', environment: isProduction ? 'production' : 'development' });
+  });
+
+  // Local-only API paths handled by Node.js
+  const localOnlyPaths = [
+    '/api/admin',
+    '/api/secrets',
+    '/api/env-raw',
+    '/api/llm/status',
+    '/api/llm/test',
+    '/api/llm/config',
+    '/api/stats',
+    '/api/client/status/update',
+    '/api/client/vip/toggle',
+    '/api/client/resolve',
+    '/api/trainer/settings',
+    '/api/knowledge',
+    '/api/categories',
+    '/api/content-gaps',
+    '/api/clients',
+    '/api/escalations',
+    '/api/client/profile',
+    '/api/chat/clear'
+  ];
+
+  // Static Assets Priority (Only in Production)
+  if (isProduction) {
+    const distPath = path.resolve(__dirname, 'dist');
+    if (fs.existsSync(distPath)) {
+      console.log(`[Server] Serving static files from: ${distPath}`);
+      app.use(express.static(distPath, {
+        maxAge: '1d',
+        index: false
+      }));
+    } else {
+      console.warn(`[Server Warning] Static dist folder NOT found at: ${distPath}`);
+    }
+  }
+
+  // Proxy layer (Only for non-local /api paths)
+  if (TARGET_BOT_URL) {
+    app.use('/api', async (req: Request, res: Response, next) => {
+      if (localOnlyPaths.some(p => req.originalUrl.startsWith(p))) {
+        return next();
+      }
+
+      const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
+      try {
+        const forbiddenHeaders = ['host', 'content-length', 'connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'accept-encoding'];
+        const headers: Record<string, string> = {};
+        for (const [key, value] of Object.entries(req.headers)) {
+          const lowerKey = key.toLowerCase();
+          if (!forbiddenHeaders.includes(lowerKey) && typeof value === 'string') {
+            headers[key] = value;
+          }
+        }
+
+        const fetchOptions: RequestInit = {
+          method: req.method,
+          headers,
+        };
+
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body && Object.keys(req.body).length > 0) {
+          fetchOptions.body = JSON.stringify(req.body);
+        }
+
+        const upstreamRes = await fetch(targetUrl, fetchOptions);
+        if (upstreamRes.status === 404 || upstreamRes.status === 405) {
+          return next();
+        }
+
+        res.status(upstreamRes.status);
+        upstreamRes.headers.forEach((val, key) => {
+          const lowerKey = key.toLowerCase();
+          if (lowerKey !== 'transfer-encoding' && lowerKey !== 'content-encoding' && lowerKey !== 'content-length') {
+            res.setHeader(key, val);
+          }
+        });
+        const buffer = await upstreamRes.arrayBuffer();
+        res.send(Buffer.from(buffer));
+      } catch (err: any) {
+        console.error(`[Proxy Error] ${req.method} ${req.originalUrl} -> ${targetUrl}:`, err.message);
+        next();
+      }
     });
   }
 
@@ -2463,12 +2471,24 @@ async function startServer() {
   }
 
   if (!useViteDev) {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
+    const distPath = path.resolve(__dirname, 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      // Don't serve index.html for missing /api routes
+      if (req.originalUrl.startsWith('/api')) {
+        return res.status(404).json({ error: 'API route not found' });
+      }
+      
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      
+      const indexPath = path.resolve(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Not Found: Frontend bundle missing. Please build the app first.');
+      }
     });
   }
 
