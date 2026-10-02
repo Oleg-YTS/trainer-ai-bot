@@ -440,18 +440,22 @@ async def resolve_client_endpoint(
     session: AsyncSession = Depends(get_db_session)
 ):
     """
-    Resolves client identity based strictly on Telegram User ID.
-    If client exists in PostgreSQL, returns their profile and role.
-    If client is new, registers them in PostgreSQL.
+    Resolves client identity based strictly on Telegram User ID or unique Device ID.
+    Guarantees strict isolation between different Telegram accounts and browser sessions.
     """
     settings = get_settings()
     tg_id = (payload.telegram_user_id if payload else None) or telegram_user_id
     client_name = (payload.name if payload else None) or name
     tg_username = (payload.username if payload else None) or username
+    dev_id = (payload.device_id if payload else None) or device_id
 
     if not tg_id:
-        # Browser preview without Telegram context defaults to Trainer profile
-        tg_id = settings.trainer_telegram_id or 435297513
+        if dev_id:
+            import hashlib
+            hash_int = int(hashlib.md5(str(dev_id).encode("utf-8")).hexdigest()[:8], 16)
+            tg_id = 900000000 + (hash_int % 90000000)
+        else:
+            tg_id = 900000001
 
     # 1. Search existing client by Telegram User ID
     stmt = select(Client).where(Client.telegram_user_id == tg_id)
@@ -721,11 +725,6 @@ async def update_client_profile_endpoint(
         res = await session.execute(stmt)
         client_obj = res.scalar_one_or_none()
         
-        if not client_obj:
-            stmt_first = select(Client).order_by(Client.id.asc()).limit(1)
-            res_first = await session.execute(stmt_first)
-            client_obj = res_first.scalar_one_or_none()
-            
         if not client_obj:
             initial_name = payload.name or f"Пользователь {target_id}"
             is_admin = settings.is_admin_telegram_id(target_id) or bool(payload.is_admin)
@@ -1017,18 +1016,23 @@ async def update_secrets_endpoint(payload: SecretsUpdateRequest):
 @router.get("/llm/status")
 async def get_llm_status_endpoint():
     """
-    Returns LLM status and active model for AI Tunnel.
+    Returns LLM status and active model for AI Tunnel with full frontend schema support.
     """
     settings = get_settings()
     api_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
     base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
     model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
+    is_ready = bool(api_key and str(api_key).strip())
 
     return {
         "provider": "ai_tunnel",
+        "effective_provider": "AI Tunnel",
+        "effective_model": model,
         "active_model": model,
         "base_url": base_url,
-        "api_key_configured": bool(api_key and str(api_key).strip()),
+        "is_ready": is_ready,
+        "api_key_configured": is_ready,
+        "status_message": "AI Tunnel подключен и готов к генерации" if is_ready else "AITUNNEL_API_KEY не обнаружен в Environment",
         "masked_api_key": mask_secret(api_key)["masked"] if api_key else "",
         "supported_models": [
             "gpt-6-luna-pro",
@@ -1039,6 +1043,56 @@ async def get_llm_status_endpoint():
             "claude-3-7-sonnet"
         ]
     }
+
+
+class LLMTestRequest(BaseModel):
+    prompt: str
+
+
+@router.post("/llm/test")
+async def test_llm_generation_endpoint(payload: LLMTestRequest):
+    """
+    Directly tests LLM generation via AI Tunnel client with latency and token diagnostics.
+    """
+    import time
+    from app.ai.client import AIClient
+    start_time = time.time()
+    prompt = payload.prompt.strip() if payload.prompt else "Привет! Проверь связь."
+    ai = AIClient()
+
+    if not ai.is_configured:
+        return {
+            "success": False,
+            "error": "AITUNNEL_API_KEY не настроен в Environment переменных сервиса на Render.",
+            "provider": "ai_tunnel",
+            "model": ai.model
+        }
+
+    try:
+        response_text = await ai.text(
+            system="Ты профессиональный фитнес-методист и ассистент тренера. Ответь кратко и четко.",
+            user=prompt
+        )
+        duration_ms = round((time.time() - start_time) * 1000)
+        return {
+            "success": True,
+            "answer": response_text,
+            "response": response_text,
+            "latency_ms": duration_ms,
+            "provider": "ai_tunnel",
+            "model": ai.model,
+            "prompt": prompt
+        }
+    except Exception as exc:
+        duration_ms = round((time.time() - start_time) * 1000)
+        logger.error("LLM test generation failed: %s", exc, exc_info=True)
+        return {
+            "success": False,
+            "error": str(exc),
+            "latency_ms": duration_ms,
+            "provider": "ai_tunnel",
+            "model": ai.model
+        }
 
 
 class LLMConfigRequest(BaseModel):

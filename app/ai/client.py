@@ -1,3 +1,4 @@
+import os
 from openai import AsyncOpenAI, OpenAIError
 
 from app.config.settings import (
@@ -19,24 +20,32 @@ class AIClient:
     """Minimal OpenAI-compatible client used for the AI Tunnel provider."""
 
     def __init__(self) -> None:
-        settings = get_settings()
-        self.provider = settings.ai_provider
-        self.model = settings.aitunnel_model or DEFAULT_AI_TUNNEL_MODEL
-        self.base_url = normalize_base_url(settings.aitunnel_base_url)
-        self._api_key = settings.aitunnel_api_key
         self._client: AsyncOpenAI | None = None
 
     @property
+    def api_key(self) -> str | None:
+        settings = get_settings()
+        return os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
+
+    @property
+    def model(self) -> str:
+        settings = get_settings()
+        return os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or DEFAULT_AI_TUNNEL_MODEL
+
+    @property
+    def base_url(self) -> str:
+        settings = get_settings()
+        return normalize_base_url(os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url)
+
+    @property
     def is_configured(self) -> bool:
-        return bool(self._api_key and self.model)
+        return bool(self.api_key and str(self.api_key).strip())
 
     def _connect(self) -> AsyncOpenAI:
-        # the key is only required for a real request, not for building the settings
-        if not self._api_key:
-            raise AIRequestError("AI provider API key is not configured")
-        if self._client is None:
-            self._client = AsyncOpenAI(api_key=self._api_key, base_url=self.base_url)
-        return self._client
+        key = self.api_key
+        if not key or not str(key).strip():
+            raise AIRequestError("AITUNNEL_API_KEY не настроен в Environment сервиса")
+        return AsyncOpenAI(api_key=str(key).strip(), base_url=self.base_url)
 
     async def text(self, system: str, user: str) -> str:
         client = self._connect()
@@ -49,7 +58,7 @@ class AIClient:
                 ],
             )
         except OpenAIError as exc:
-            raise AIRequestError("AI provider request failed") from exc
+            raise AIRequestError(f"AI provider request failed: {exc}") from exc
         choices = response.choices or []
         if not choices:
             return ""

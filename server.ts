@@ -1671,10 +1671,28 @@ app.get('/api/clients/:id', async (req: Request, res: Response) => {
   res.json({ ...client, messages: clientMessages, escalations: clientEscalations });
 });
 
-// Resolve Client by Telegram User ID Endpoint
+// Resolve Client by Telegram User ID or Device ID Endpoint
 app.all('/api/client/resolve', async (req: Request, res: Response) => {
-  const tg_id = Number(req.body?.telegram_user_id || req.query?.telegram_user_id);
+  const bodyTgId = req.body?.telegram_user_id ? Number(req.body.telegram_user_id) : undefined;
+  const queryTgId = req.query?.telegram_user_id ? Number(req.query.telegram_user_id) : undefined;
+  const rawDeviceId = req.body?.device_id || req.query?.device_id;
   const name = req.body?.name || req.query?.name;
+
+  let tg_id = bodyTgId || queryTgId;
+
+  if (!tg_id) {
+    if (rawDeviceId) {
+      let hash = 0;
+      const str = String(rawDeviceId);
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      tg_id = 900000000 + (Math.abs(hash) % 90000000);
+    } else {
+      tg_id = 900000001;
+    }
+  }
 
   const adminIds = [
     '747600306',
@@ -1686,39 +1704,8 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
     ...(process.env.TRAINER_TELEGRAM_ID || '').split(',')
   ].map(s => s.trim()).filter(Boolean);
 
-  const isBrowserSynthetic = !tg_id || tg_id >= 900000000;
-
-  if (isBrowserSynthetic) {
-    // Default fallback for browser sandbox preview -> Always resolve as Main Trainer Admin (ID #1 / Denis)
-    const pgData = await pgService.getClientById(435297513) || await pgService.getClientById(747600306);
-    if (pgData) {
-      return res.json({
-        ok: true,
-        id: pgData.client.id,
-        client_id: pgData.client.id,
-        telegram_user_id: pgData.client.telegram_user_id,
-        name: pgData.client.name,
-        is_admin: true,
-        is_vip: true,
-        profile: pgData.client.profile
-      });
-    }
-
-    const defaultAdmin = db.clients.find(c => c.id === 1) || db.clients[0];
-    return res.json({
-      ok: true,
-      id: defaultAdmin.id,
-      client_id: defaultAdmin.id,
-      telegram_user_id: defaultAdmin.telegram_user_id,
-      name: defaultAdmin.name,
-      is_admin: true,
-      is_vip: true,
-      profile: defaultAdmin.profile
-    });
-  }
-
   const isAdmin = adminIds.includes(String(tg_id));
-  const displayName = name ? String(name) : `User ${tg_id}`;
+  const displayName = name ? String(name) : (isAdmin ? 'Администратор' : `Пользователь ${tg_id}`);
 
   const pgClient = await pgService.upsertClientProfile({
     telegram_user_id: tg_id,
@@ -1749,7 +1736,7 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
       name: displayName,
       is_vip: isAdmin,
       is_admin: isAdmin,
-      profile: { name: displayName, goal: 'Общая физическая подготовка' },
+      profile: { name: displayName, is_admin: isAdmin, is_vip: isAdmin, goal: 'Общая физическая подготовка' },
       created_at: new Date().toISOString()
     };
     db.clients.push(client);

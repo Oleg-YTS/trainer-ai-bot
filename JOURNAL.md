@@ -501,6 +501,36 @@ Client database completely cleansed and normalized. Exactly 4 canonical profiles
 ### RESULT
 Драйвер PostgreSQL и движок SQLAlchemy полностью адаптированы под строки подключения Render с SSL-режимом.
 
+---
+
+## 2026-10-02 — Task #25: User Isolation, LLM Diagnostics & Direct Live Test Endpoint
+
+### TASK
+1. Устранена проблема смешивания данных пользователей: удален принудительный сброс всех пользователей в Администратора #1 в `server.ts` и `app/api/web.py`.
+2. Внедрена строгая изоляция сессий: каждый пользователь (по `telegram_user_id` или уникальному `device_id`) получает отдельную запись клиента, изолированный чат и персональную анкету.
+3. В `app/api/web.py` добавлен эндпоинт `POST /api/llm/test` для проверки ответа нейросети в реальном времени с замером latency.
+4. Обновлен `GET /api/llm/status` с поддержкой флагов `is_ready`, `effective_provider`, `effective_model` для интерфейса панели тренера.
+5. Убран статический mock `getLocalUsers()` из `MobileProfile.tsx`, исключающий предзаполнение чужих профилей.
+
+### GOAL
+Гарантировать полную изоляцию разных аккаунтов клиентов, исключить пересечение чатов/анкет и обеспечить работу тестирования LLM в реальном времени.
+
+### CHANGES
+- `/app/api/web.py`: Изоляция по device_id, удаление fallback на Client #1, добавление `POST /api/llm/test`, расширение `GET /api/llm/status`.
+- `/app/ai/client.py`: Динамическое чтение переменных `AITUNNEL_API_KEY`, `AITUNNEL_MODEL`, `AITUNNEL_BASE_URL`.
+- `/server.ts`: Изоляция пользователей и устройств в `POST /api/client/resolve`.
+- `/src/components/MobileProfile.tsx`: Прямая загрузка только профиля текущего пользователя.
+- `/webapp/`: Синхронизация фронтенда.
+
+### VERIFICATION
+- `python3 -m compileall -q app/`: 0 ошибок.
+- `tsc --noEmit`: 0 ошибок.
+- `compile_applet`: Сборка успешна.
+
+### RESULT
+Каждый Telegram-аккаунт и браузер теперь строго изолированы со своей историей и анкетой; в веб-панели тренера работает тест LLM и отображается актуальный статус подключения.
+
+
 
 
 

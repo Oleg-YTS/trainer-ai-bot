@@ -73,26 +73,12 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
   useEffect(() => {
     const loadProfile = async () => {
-      const targetId = clientId || 1;
+      if (!clientId) {
+        setProfileLoading(false);
+        return;
+      }
+      const targetId = clientId;
       setProfileLoading(true);
-      // Instant local load fallback
-      try {
-        const localUsers = getLocalUsers();
-        const found = localUsers.find((u: UserProfile) => u.id === targetId || u.telegram_user_id === targetId);
-        if (found) {
-          if (found.name) setFormName(found.name);
-          const p = found.profile || {};
-          if (p.name) setFormName(p.name);
-          if (p.age !== undefined && p.age !== null) setFormAge(String(p.age));
-          if (p.height !== undefined && p.height !== null) setFormHeight(String(p.height));
-          if (p.weight !== undefined && p.weight !== null) setFormWeight(String(p.weight));
-          if (p.goal) setFormGoal(p.goal);
-          if (p.activity_level) setFormActivityLevel(p.activity_level);
-          if (p.training_frequency) setFormFrequency(p.training_frequency);
-          if (p.restrictions) setFormRestrictions(p.restrictions);
-          if (p.diet_preferences) setFormDietPreferences(p.diet_preferences);
-        }
-      } catch {}
 
       try {
         const response = await apiFetch(`/api/client/profile?client_id=${encodeURIComponent(targetId)}`);
