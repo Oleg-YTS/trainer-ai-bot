@@ -11,7 +11,7 @@ from app.trainers.service import get_or_create_trainer
 
 def build_default_profile(
     name: str,
-    gender: str = "male",
+    gender: str | None = None,
     is_admin: bool = False,
     is_vip: bool = False,
     role: str | None = None
@@ -39,7 +39,7 @@ async def get_or_create_client(
     trainer_id: int,
     telegram_user_id: int,
     name: str,
-    gender: str = "male"
+    gender: str | None = None
 ) -> Client:
     settings = get_settings()
     is_admin = settings.is_admin_telegram_id(telegram_user_id)
@@ -51,7 +51,9 @@ async def get_or_create_client(
     client = result.scalar_one_or_none()
 
     if client is None:
-        default_prof = build_default_profile(name=name, gender=gender, is_admin=is_admin, is_vip=is_vip)
+        # For administrators, if gender is None, default to "male" so they are immediately fully registered
+        final_gender = "male" if (is_admin and gender is None) else gender
+        default_prof = build_default_profile(name=name, gender=final_gender, is_admin=is_admin, is_vip=is_vip)
         client = Client(
             trainer_id=trainer_id,
             telegram_user_id=telegram_user_id,
@@ -69,7 +71,7 @@ async def get_or_create_client(
     return client
 
 
-async def register_telegram_client(telegram_user_id: int, name: str, gender: str = "male") -> Client:
+async def register_telegram_client(telegram_user_id: int, name: str, gender: str | None = None) -> Client:
     settings = get_settings()
     async with get_session_factory()() as session:
         trainer = await get_or_create_trainer(session, settings.trainer_id)

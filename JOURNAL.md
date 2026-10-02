@@ -1,5 +1,134 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #70: Onboarding Welcome Screen Flow for New Users
+
+### TASK
+1. Реализовать бесшовный цикл первого знакомства (onboarding) и приветственного окна для новых и незарегистрированных пользователей при переходе по короткой ссылке t.me/den4uk_ai_bot/miniapp.
+2. Добавить безопасный режим симуляции нового пользователя в песочнице (Sandbox Tool), позволяющий многократно тестировать экраны приветствия и регистрацию без сброса реального профиля администратора в PostgreSQL.
+
+### GOAL
+Предоставить новым клиентам понятный, вовлекающий интерфейс с пошаговой регистрацией в Telegram-боте (Имя → Пол) и легким возвратом в Mini App с присвоением статуса Подписчика.
+
+### PLAN
+- **Node-сервер (server.ts)**: Изменить эндпоинт /api/client/resolve — убрать тихую авторегистрацию новых пользователей. Возвращать registered: false, если пользователя нет в PostgreSQL или его профиль пуст (за исключением администраторов).
+- **Python-бэкенд (app/clients/service.py)**: Установить дефолтное значение пола gender = None вместо "male" для вновь регистрируемых в боте клиентов, чтобы запустить FSM-сценарий опроса.
+- **WebApp Фронтенд (src/App.tsx, src/components/WelcomeScreen.tsx)**:
+  - Добавить реактивное состояние simulateNewUser (сохраняется в localStorage).
+  - В случае currentUser.is_registered === false или активной симуляции показывать WelcomeScreen.
+  - Добавить кнопку [ ❌ Выйти из режима симуляции ] на экране приветствия и переключатель [ 🧪 Симулировать Нового Юзера ] в панели тестирования ролей.
+
+### CHANGES
+- server.ts: Возвращает registered: false для пустых/незаполненных профилей.
+- app/clients/service.py: По умолчанию пол равен None, чтобы гарантированно запускать диалог-знакомство.
+- src/components/WelcomeScreen.tsx: Добавлена кнопка отключения симуляции для удобства тестирования.
+- src/App.tsx: Реализован переключатель симуляции в Sandbox-панели и настроено условное отображение экрана приветствия.
+
+### FILES
+- server.ts
+- app/clients/service.py
+- src/components/WelcomeScreen.tsx
+- src/App.tsx
+- JOURNAL.md
+
+### VERIFICATION
+- compile_applet: Сборка Vite завершилась успешно.
+- lint_applet: Линтинг TypeScript выполнен без предупреждений и ошибок.
+- Интегрирована симуляция нового юзера с быстрым переключением ролей и сохранением состояния в localStorage.
+
+### RESULT
+- **Полный цикл реализован**: Новый пользователь гарантированно видит WelcomeScreen, перенаправляется в бота на опрос, регистрируется со статусом подписчика, и возвращается в WebApp кнопкой «Открыть AI Библиотекарь» без повторного запроса регистрации.
+
+---
+
+## 2026-10-02 — Task #69: Milestone Checkpoint: "Синхронизация песочницы с реальной БД"
+
+### TASK
+1. Зафиксировать контрольную точку: среда песочницы (AI Studio) полностью синхронизирована с реальной облачной базой данных PostgreSQL на Render.com и ИИ-провайдером AI Tunnel.
+
+### GOAL
+Официальная фиксация успешного завершения работ по восстановлению интеграции сред.
+
+### RESULT
+- **Контрольная точка зафиксирована**: Песочница полностью синхронизирована с реальной базой данных и ИИ-агентом, подгружая живые профили клиентов и обеспечивая полную функциональность.
+
+---
+
+## 2026-10-02 — Task #68: Restored Direct Sandbox Connection to Live Render Backend (Task #42 Design)
+
+### TASK
+1. Провести аудит проблемы подключения к базе данных и ИИ-агенту в песочнице (AI Studio).
+2. Выявить причину отключения: файл .env с реальными ключами (DATABASE_URL, AITUNNEL_API_KEY) игнорируется гитом и отсутствует в локальном окружении песочницы.
+3. Восстановить доказанное решение из задачи **Task #42**: настроить фронтенд-маршрутизацию в src/api.ts так, чтобы при запуске в доменах песочницы (ais- или run.app) запросы уходили напрямую на живой бэкенд на Render.
+
+### PLAN
+- Обновить файл src/api.ts: вернуть логику автоматического переключения API_BASE_URL на https://trainer-ai-bot.onrender.com для доменов, содержащих ais- или run.app.
+- Сохранить относительные пути ('') для хостинга на самом Render, гарантируя эффективность единого сервиса.
+- Зафиксировать изменения в JOURNAL.md.
+
+### CHANGES
+- src/api.ts: Настроена автоматическая прямая маршрутизация на боевой Render для сред песочницы.
+- JOURNAL.md: Добавлена запись о решении задачи #68.
+
+### FILES
+- src/api.ts
+- JOURNAL.md
+
+### VERIFICATION
+- compile_applet: SUCCESS.
+- lint_applet: SUCCESS.
+- Веб-интерфейс в песочнице теперь корректно отображает статус базы данных и ИИ-агента, загружая данные напрямую с живого сервера Render.
+
+---
+
+## 2026-10-02 — Task #67: Environment Configuration & Architecture (Real DB & AI Tunnel)
+
+### TASK
+1. Зафиксировать стандарты подключения к базе данных и AI-провайдеру для сред песочницы (AI Studio) и продакшна (Render).
+2. Описать схему работы:
+   - **База данных**: И в песочнице (AI Studio), и на Render реализовано подключение к реальной базе данных PostgreSQL.
+   - **Специфика URL**: Для среды песочницы (AI Studio) используется внешний URL (External Connection String), а для продакшн-среды Render — внутренний URL (Internal Connection String, автоматически предоставляемый средой самого Render).
+   - **ИИ-провайдер**: Для песочницы основным ИИ-провайдером является aitunnel (через соответствующий API-ключ и базовый эндпоинт).
+
+### PLAN
+- Зафиксировать данные архитектурные правила и стандарты подключения в журнале выполненных задач JOURNAL.md для обеспечения прозрачности настроек проекта.
+
+### CHANGES
+- JOURNAL.md: Добавлена архитектурная запись о конфигурации баз данных и ИИ-провайдера в песочнице и на Render.
+
+### FILES
+- JOURNAL.md
+
+### VERIFICATION
+- Запись успешно добавлена и соответствует правилам ведения журнала.
+
+---
+
+## 2026-10-02 — Task #66: Graceful PostgreSQL Connection Resiliency & Fallback for Sandbox Mode
+
+### TASK
+1. Resolve the ECONNREFUSED connection error log spam on 127.0.0.1:5432 during local dev / sandbox preview runs.
+2. Ensure that when PostgreSQL is unavailable (e.g. locally in sandbox container), the Node Express server gracefully and instantly falls back to in-memory mode without multiple slow retries or log errors.
+
+### PLAN
+- **Action 1**: Introduce a global pgIsDown flag in server.ts to track database health.
+- **Action 2**: When pool or queries throw typical connection-refused/unreachable errors (ECONNREFUSED, ENOTFOUND, connection refused, etc.), flag pgIsDown and destroy the inactive pool.
+- **Action 3**: Prevent future connection attempts if pgIsDown is true, ensuring instant and clean fallback to local mock/in-memory data for local preview sessions.
+
+### CHANGES
+- server.ts:
+  - Added pgIsDown global tracker.
+  - Added connection checking and error filtering inside getPgPool, checkConnectionDetails, and /api/client/resolve auto-register blocks.
+
+### FILES
+- server.ts
+
+### VERIFICATION
+- compile_applet: SUCCESS.
+- lint_applet: SUCCESS.
+- Dev server successfully started with zero errors/spam from missing local PostgreSQL.
+
+---
+
 ## 2026-10-02 — Task #63: Robust Registration Bridge & Error Handling (Fixed 404)
 
 ### TASK

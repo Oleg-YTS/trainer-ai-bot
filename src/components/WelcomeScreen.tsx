@@ -3,9 +3,10 @@ import { Bot, ArrowRight, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 
 interface WelcomeScreenProps {
   isDark: boolean;
+  onDisableSimulation?: () => void;
 }
 
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ isDark }) => {
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ isDark, onDisableSimulation }) => {
   const handleGoToBot = () => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg) {
@@ -75,6 +76,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ isDark }) => {
           Начать регистрацию
           <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </button>
+
+        {onDisableSimulation && (
+          <button
+            onClick={onDisableSimulation}
+            className={`mt-4 w-full py-2.5 px-6 rounded-xl font-semibold text-xs border transition-all active:scale-95 ${
+              isDark 
+                ? 'bg-red-500/15 text-red-400 border-red-500/25 hover:bg-red-500/25' 
+                : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+            }`}
+          >
+            ❌ Выйти из режима симуляции (Dev)
+          </button>
+        )}
 
         <p className={`mt-6 text-xs uppercase tracking-widest font-bold opacity-40 ${
           isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'

@@ -1,20 +1,27 @@
 // Centralized API Helper for connecting the Web App interface to backend
-// Relative paths ('') work seamlessly on both local dev (AI Studio preview) and single-service production (Render)
+// Relative paths ('') work seamlessly on both local dev and single-service production (Render)
 const RENDER_EXTERNAL_API = 'https://trainer-ai-bot.onrender.com';
 const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || RENDER_EXTERNAL_API;
 
 const API_BASE_URL = (() => {
   if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // In AI Studio sandbox preview (ais-dev-... or ais-pre-...),
+    // connect directly to the live Render backend database and AI Tunnel
+    if (hostname.includes('ais-') || hostname.includes('run.app')) {
+      return RENDER_EXTERNAL_API;
+    }
+    
     // Use relative paths if we are on the same origin (standard for Render and AI Studio proxy)
     // or if we want to hit the local server that proxies to the real backend.
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
     
     if (isLocal) {
       return rawEnvUrl.replace(/\/$/, '');
     }
     
-    // In all other cases (including AI Studio preview and production Render), 
-    // use relative paths to ensure requests go through the local server/proxy.
+    // In production Render, use relative paths to ensure single-service efficiency
     return '';
   }
   return rawEnvUrl.replace(/\/$/, '');

@@ -25,6 +25,20 @@ export const App: React.FC = () => {
     return saved ? saved === 'dark' : true;
   });
 
+  const isSandbox = typeof window !== 'undefined' && (
+    window.location.hostname.includes('ais-') || 
+    window.location.hostname.includes('localhost') || 
+    window.location.hostname.includes('127.0.0.1')
+  );
+
+  const [simulateNewUser, setSimulateNewUser] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('trainer_simulate_new_user') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   // Active navigation tab: 'catalog' (База), 'chat' (Библиотекарь), 'profile' (Профиль), or 'trainer' (Панель тренера)
   const [activeTab, setActiveTab] = useState<'catalog' | 'chat' | 'profile' | 'trainer'>('chat');
   const [chatInitialQuery, setChatInitialQuery] = useState<string>('');
@@ -370,9 +384,17 @@ export const App: React.FC = () => {
     );
   }
 
-  // If user is not registered, show the Welcome/Onboarding bridge
-  if (currentUser.is_registered === false) {
-    return <WelcomeScreen isDark={isDark} />;
+  // If user is not registered or we are simulating a new user, show the Welcome/Onboarding bridge
+  if (currentUser.is_registered === false || (simulateNewUser && isSandbox)) {
+    return (
+      <WelcomeScreen 
+        isDark={isDark} 
+        onDisableSimulation={simulateNewUser ? () => {
+          setSimulateNewUser(false);
+          try { localStorage.setItem('trainer_simulate_new_user', 'false'); } catch {}
+        } : undefined} 
+      />
+    );
   }
 
   return (
@@ -449,38 +471,62 @@ export const App: React.FC = () => {
           if (!isSandbox) return null;
 
           return (
-            <div className={`shrink-0 px-4 py-2 border-b flex items-center justify-between gap-1.5 ${
+            <div className={`shrink-0 px-4 py-2 border-b flex flex-wrap items-center justify-between gap-2 ${
               isDark ? 'bg-[#18231E]/95 border-[#253A30]' : 'bg-[#EDF2EE]/95 border-[#C8D6CF]'
             }`}>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#4A5E52]'}`}>
-                Тест Роли:
-              </span>
-              <div className="flex items-center gap-1">
-                {(['user', 'subscriber', 'vip', 'admin'] as const).map(role => {
-                  const isSelected = activeRole === role;
-                  const labels: Record<string, string> = {
-                    user: 'User',
-                    subscriber: 'Sub',
-                    vip: 'VIP',
-                    admin: 'Admin'
-                  };
-                  return (
-                    <button
-                      key={role}
-                      onClick={() => setUserRole(role)}
-                      className={`text-[10px] py-1 px-2.5 rounded-lg font-bold transition-all duration-150 ${
-                        isSelected
-                          ? 'bg-[#5B8A78] text-white shadow-sm'
-                          : isDark
-                            ? 'bg-[#121B17] text-[#8E9E96] border border-[#1F2E27] hover:bg-[#1C2C24]'
-                            : 'bg-white text-[#4A5E52] border border-[#D8E0DB] hover:bg-[#F4F6F4]'
-                      }`}
-                    >
-                      {labels[role]}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#4A5E52]'}`}>
+                  Тест Роли:
+                </span>
+                <div className="flex items-center gap-1">
+                  {(['user', 'subscriber', 'vip', 'admin'] as const).map(role => {
+                    const isSelected = activeRole === role && !simulateNewUser;
+                    const labels: Record<string, string> = {
+                      user: 'User',
+                      subscriber: 'Sub',
+                      vip: 'VIP',
+                      admin: 'Admin'
+                    };
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => {
+                          setSimulateNewUser(false);
+                          try { localStorage.setItem('trainer_simulate_new_user', 'false'); } catch {}
+                          setUserRole(role);
+                        }}
+                        className={`text-[10px] py-1 px-2 rounded-lg font-bold transition-all duration-150 ${
+                          isSelected
+                            ? 'bg-[#5B8A78] text-white shadow-sm'
+                            : isDark
+                              ? 'bg-[#121B17] text-[#8E9E96] border border-[#1F2E27] hover:bg-[#1C2C24]'
+                              : 'bg-white text-[#4A5E52] border border-[#D8E0DB] hover:bg-[#F4F6F4]'
+                        }`}
+                      >
+                        {labels[role]}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              {/* Simulation toggle button */}
+              <button
+                onClick={() => {
+                  const nextVal = !simulateNewUser;
+                  setSimulateNewUser(nextVal);
+                  try { localStorage.setItem('trainer_simulate_new_user', String(nextVal)); } catch {}
+                }}
+                className={`text-[10px] py-1 px-2.5 rounded-lg font-bold transition-all duration-150 ${
+                  simulateNewUser
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : isDark
+                      ? 'bg-[#121B17] text-[#8E9E96] border border-[#1F2E27] hover:bg-[#1C2C24]'
+                      : 'bg-white text-[#4A5E52] border border-[#D8E0DB] hover:bg-[#F4F6F4]'
+                }`}
+              >
+                🧪 {simulateNewUser ? 'Симуляция: Вкл' : 'Симулировать Нового Юзера'}
+              </button>
             </div>
           );
         })()}

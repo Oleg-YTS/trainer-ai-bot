@@ -192,8 +192,10 @@ export interface Message {
 
 // PostgreSQL Database Connection & Service
 let pgPoolInstance: pg.Pool | null = null;
+let pgIsDown = false;
 
 function getPgPool(): pg.Pool | null {
+  if (pgIsDown) return null;
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl || !dbUrl.trim()) return null;
   const cleanUrl = dbUrl.trim().replace(/^postgres:\/\//, 'postgresql://');
@@ -215,7 +217,6 @@ function getPgPool(): pg.Pool | null {
   } catch {
     return null;
   }
-
   if (!pgPoolInstance) {
     const requiresSsl = cleanUrl.includes('render.com') || cleanUrl.includes('dpg-') || (!cleanUrl.includes('localhost') && !cleanUrl.includes('127.0.0.1'));
     pgPoolInstance = new Pool({
@@ -227,7 +228,8 @@ function getPgPool(): pg.Pool | null {
     
     pgPoolInstance.on('error', (err) => {
       console.warn('[PostgreSQL Pool Warning]:', err.message);
-      if (err.message.includes('EAI_AGAIN') || err.message.includes('ENOTFOUND') || err.message.includes('ECONNREFUSED') || err.message.includes('password authentication failed')) {
+      if (err.message.includes('EAI_AGAIN') || err.message.includes('ENOTFOUND') || err.message.includes('ECONNREFUSED') || err.message.includes('password authentication failed') || err.message.includes('connection refused')) {
+        pgIsDown = true;
         if (pgPoolInstance) {
           pgPoolInstance.end().catch(() => {});
           pgPoolInstance = null;
@@ -262,7 +264,19 @@ export const pgService = {
       }
       return { connected: false, error: 'База данных не ответила на запрос' };
     } catch (err: any) {
-      console.warn('[PostgreSQL Connection Check Failed]:', err.message);
+      const isLocalHost = cleanUrl.includes('localhost') || cleanUrl.includes('127.0.0.1');
+      if (isLocalHost && (err.message.includes('ECONNREFUSED') || err.message.includes('connection refused'))) {
+        console.log('[PostgreSQL Connection]: Local PostgreSQL is not running. Using local in-memory fallbacks.');
+      } else {
+        console.warn('[PostgreSQL Connection Check Failed]:', err.message);
+      }
+      if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND') || err.message.includes('connection refused') || err.message.includes('ETIMEDOUT')) {
+        pgIsDown = true;
+        if (pgPoolInstance) {
+          pgPoolInstance.end().catch(() => {});
+          pgPoolInstance = null;
+        }
+      }
       return { connected: false, error: err.message || String(err) };
     }
   },
@@ -1649,42 +1663,68 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
   // Check if client already exists in PostgreSQL
   let existingClient = await pgService.getClientById(tg_id);
   
-  if (!existingClient) {
-    // If user doesn't exist, we auto-register them as VIP now
-    const initialName = displayName;
-    const defaultProf = { 
-        name: initialName, 
-        is_admin: effectiveIsAdmin, 
-        is_vip: true,
-        gender: 'male',
-        goal: 'Общая физическая подготовка'
-    };
-    
-    // Create in PostgreSQL
-    const pool = getPgPool();
-    if (pool) {
-        try {
-            await pool.query(
-                'INSERT INTO clients (trainer_id, telegram_user_id, name, profile_json) VALUES ($1, $2, $3, $4) ON CONFLICT (telegram_user_id) DO NOTHING',
-                [1, tg_id, initialName, JSON.stringify(defaultProf)]
-            );
-            existingClient = await pgService.getClientById(tg_id);
-        } catch (err) {
-            console.error('[Auto-Register Error]:', err);
-        }
+  const isProfileComplete = (prof: any) => {
+    return Boolean(prof && prof.name && (prof.gender === 'male' || prof.gender === 'female'));
+  };
+
+  const isComplete = existingClient ? isProfileComplete(existingClient.client.profile) : false;
+
+  if (!existingClient || (!isComplete && !isAdmin)) {
+    // If they are an administrator, we can auto-register them
+    if (isAdmin) {
+      const initialName = displayName;
+      const defaultProf = { 
+          name: initialName, 
+          is_admin: true, 
+          is_vip: true,
+          gender: 'male',
+          goal: 'Общая физическая подготовка'
+      };
+      
+      const pool = getPgPool();
+      if (pool) {
+          try {
+              await pool.query(
+                  'INSERT INTO clients (trainer_id, telegram_user_id, name, profile_json) VALUES ($1, $2, $3, $4) ON CONFLICT (telegram_user_id) DO NOTHING',
+                  [1, tg_id, initialName, JSON.stringify(defaultProf)]
+              );
+              existingClient = await pgService.getClientById(tg_id);
+          } catch (err: any) {
+              console.error('[Admin Auto-Register Error]:', err.message || err);
+          }
+      }
+    } else {
+      // For a regular new/incomplete user, DO NOT auto-register, return registered: false
+      return res.json({
+          ok: true,
+          registered: false,
+          telegram_user_id: tg_id,
+          name: displayName
+      });
     }
   }
 
   if (existingClient) {
+    const isHardcodedAdmin = isAdmin;
+    const finalAdmin = Boolean(existingClient.client.is_admin || isHardcodedAdmin);
+    // Respect the real VIP and role status of the user!
+    const isVip = Boolean(existingClient.client.is_vip || existingClient.client.profile?.is_vip || finalAdmin);
+    const role = existingClient.client.profile?.role || (finalAdmin ? 'admin' : (isVip ? 'vip' : 'subscriber'));
+
     return res.json({
         ok: true,
         registered: true,
         id: existingClient.client.id,
         telegram_user_id: tg_id,
         name: existingClient.client.name,
-        is_admin: effectiveIsAdmin || existingClient.client.is_admin,
-        is_vip: true, // Force true
-        profile: { ...existingClient.client.profile, is_vip: true }
+        is_admin: finalAdmin,
+        is_vip: isVip,
+        profile: { 
+          ...existingClient.client.profile, 
+          is_admin: finalAdmin,
+          is_vip: isVip,
+          role: role
+        }
     });
   }
 
@@ -2471,6 +2511,9 @@ async function startServer() {
       }
     });
   }
+
+  // Pre-check database connection on startup to determine pgIsDown state instantly
+  pgService.checkConnectionDetails().catch(() => {});
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Trainer AI Bot ver 1.0.0] Listening on http://0.0.0.0:${PORT}`);
