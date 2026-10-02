@@ -160,14 +160,28 @@ export const App: React.FC = () => {
         } catch {}
       }
 
-      // 5. Local Device Fallback for Telegram ID (Default to Admin Robert 747600306 in Sandbox / Browser preview)
-      if (!tgId) {
+      // 5. Local Device Fallback for Telegram ID (ONLY for Sandbox/Dev environments)
+      const isSandbox = typeof window !== 'undefined' && (
+        window.location.hostname.includes('ais-') || 
+        window.location.hostname.includes('localhost') || 
+        window.location.hostname.includes('127.0.0.1')
+      );
+
+      if (!tgId && isSandbox) {
         tgId = 747600306; // Default to Admin Robert for Sandbox Preview
         tgName = 'Robert (Администратор)';
         try {
           localStorage.setItem('trainer_user_tg_id', String(tgId));
           localStorage.setItem('trainer_user_tg_name', tgName);
         } catch {}
+      }
+
+      if (!tgId) {
+        // If we still don't have a TG ID and we are NOT in sandbox, 
+        // it means we can't identify the user at all. Show Welcome/Reg screen.
+        setCurrentUser(prev => ({ ...prev, is_registered: false }));
+        setIsResolving(false);
+        return;
       }
 
       if (tgId) {
@@ -225,9 +239,14 @@ export const App: React.FC = () => {
             role: activeRole
           });
         }
+      } else {
+        // Handle API errors (like 404, 500) by showing the Welcome Screen
+        setCurrentUser(prev => ({ ...prev, is_registered: false }));
       }
     } catch (err) {
       console.warn('Failed to resolve current user identity:', err);
+      // Fallback to Welcome screen on network/fetch errors
+      setCurrentUser(prev => ({ ...prev, is_registered: false }));
     } finally {
       clearTimeout(timeoutTimer);
       setIsResolving(false);

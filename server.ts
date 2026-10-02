@@ -1259,6 +1259,7 @@ if (TARGET_BOT_URL) {
       '/api/stats',
       '/api/client/status/update',
       '/api/client/vip/toggle',
+      '/api/client/resolve',
       '/api/trainer/settings'
     ];
 

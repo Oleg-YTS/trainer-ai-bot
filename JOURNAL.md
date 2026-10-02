@@ -1,6 +1,45 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
-## 2026-10-02 — Task #62: Registration Bridge and Welcome Screen
+## 2026-10-02 — Task #63: Robust Registration Bridge & Error Handling (Fixed 404)
+
+### TASK
+1. Fix 404 error when resolving user identity via proxy.
+2. Implement a multi-stage registration bridge (TMA -> Bot -> TMA).
+3. Ensure "White Screen" is impossible by handling all auth failure cases.
+
+### PLAN
+- **Stage 1**: Add `/api/client/resolve` to `localOnlyPaths` in `server.ts` (Fixes 404).
+- **Stage 2**: Update `App.tsx` to handle missing TG ID or API errors by falling back to `WelcomeScreen`.
+- **Stage 3**: Verify/Refine `WelcomeScreen.tsx` UI and deep link behavior.
+- **Stage 4**: Verify Bot onboarding flow (Name -> Gender -> Open App).
+
+### CHANGES
+- `server.ts`: Added `/api/client/resolve` to proxy exclusions.
+- `src/App.tsx`: 
+  - Modified `resolveCurrentUser` to explicitly check for `isSandbox`.
+  - Added error catch and fallback to `is_registered: false` for all identification failures.
+  - Added early return if `tgId` is missing in non-sandbox environments.
+- `src/components/WelcomeScreen.tsx`: UI component for onboarding bridge.
+- `app/bot/router.py`: Verified 2-step onboarding flow.
+
+### FILES
+- `server.ts`
+- `src/App.tsx`
+- `src/components/WelcomeScreen.tsx`
+- `app/bot/router.py`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+- Fix: Requesting `/api/client/resolve` no longer proxies to Python (avoiding 404).
+- UI: Direct web access without TG parameters now shows `WelcomeScreen` instead of a loading hang.
+
+### RESULT
+The registration bridge is now robust. Technical 404 errors are resolved, and the user journey from short-link to bot-onboarding is complete.
+
+---
+
+## 2026-10-02 — Task #62: Registration Bridge and Welcome Screen (Initial Attempt)
 
 ### TASK
 1. Implement a welcome/onboarding bridge for new users who open the Mini App without prior registration in the bot.
