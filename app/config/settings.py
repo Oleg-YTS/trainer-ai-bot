@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     telegram_bot_token: str = ""
-    port: int = int(os.getenv("PORT", "10000"))
+    port: int = int(os.getenv("PORT", "8000"))
     webhook_path: str = "/telegram/webhook"
     webhook_base_url: str | None = None
     webhook_secret_token: str | None = None

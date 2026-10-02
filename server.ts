@@ -1241,31 +1241,38 @@ const TARGET_BOT_URL = (
   process.env.BOT_API_URL ||
   process.env.PYTHON_BACKEND_URL ||
   process.env.RENDER_BOT_URL ||
-  'https://trainer-ai-bot.onrender.com'
+  'http://127.0.0.1:8000'
 ).trim().replace(/\/+$/, '');
 
 if (TARGET_BOT_URL) {
   console.log(`[Proxy] Python Bot upstream target configured: ${TARGET_BOT_URL}`);
 
-  app.use('/api', async (req: Request, res: Response, next) => {
-    // Admin, secrets, llm configuration, trainer settings and status endpoints MUST be handled locally by Node.js
-    const localOnlyPaths = [
-      '/api/admin',
-      '/api/secrets',
-      '/api/env-raw',
-      '/api/llm/status',
-      '/api/llm/test',
-      '/api/llm/config',
-      '/api/stats',
-      '/api/client/status/update',
-      '/api/client/vip/toggle',
-      '/api/client/resolve',
-      '/api/trainer/settings'
-    ];
+    app.use('/api', async (req: Request, res: Response, next) => {
+      // List of API paths that MUST be handled by Node.js, not proxied to Python
+      const localOnlyPaths = [
+        '/api/admin',
+        '/api/secrets',
+        '/api/env-raw',
+        '/api/llm/status',
+        '/api/llm/test',
+        '/api/llm/config',
+        '/api/stats',
+        '/api/client/status/update',
+        '/api/client/vip/toggle',
+        '/api/client/resolve',
+        '/api/trainer/settings',
+        '/api/knowledge',
+        '/api/categories',
+        '/api/content-gaps',
+        '/api/clients',
+        '/api/escalations',
+        '/api/client/profile',
+        '/api/chat/clear'
+      ];
 
-    if (localOnlyPaths.some(p => req.path.startsWith(p) || req.originalUrl.startsWith(p))) {
-      return next();
-    }
+      if (localOnlyPaths.some(p => req.originalUrl.startsWith(p))) {
+        return next();
+      }
 
     const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
 
@@ -2396,7 +2403,20 @@ app.get(['/project.zip', '/project-full.zip', '/download/project'], (_req: Reque
 // Server Launcher with Vite Integration
 async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production' || fs.existsSync(path.resolve(__dirname, 'dist', 'index.html'));
+  const isProduction = process.env.NODE_ENV === 'production' || 
+                       process.env.APP_ENV === 'production' || 
+                       process.env.RENDER === 'true';
+
+  console.log(`[Server] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+
+  if (isProduction) {
+    app.use((req, res, next) => {
+      if (!req.url.startsWith('/assets')) {
+        console.log(`[Request] ${req.method} ${req.url}`);
+      }
+      next();
+    });
+  }
 
   let useViteDev = false;
   if (!isProduction) {
@@ -2461,7 +2481,7 @@ async function startServer() {
         console.log('[Trainer AI Bot] Launching Python Telegram Bot process (python -m app.main)...');
         const pyBot = spawn('python3', ['-m', 'app.main'], {
           stdio: 'inherit',
-          env: { ...process.env }
+          env: { ...process.env, PORT: '8000' }
         });
         pyBot.on('error', (err) => {
           console.warn('[Python Bot Launcher Notice]:', err.message);
