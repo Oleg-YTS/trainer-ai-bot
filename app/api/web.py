@@ -801,64 +801,7 @@ async def update_client_profile_endpoint(
         }
     except Exception as exc:
         logger.error("Failed to update client profile: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail=str(exc))"
-        is_admin = settings.is_admin_telegram_id(target_id) or bool(payload.is_admin)
-        is_vip = is_admin or bool(payload.is_vip)
-
-        default_prof = build_default_profile(
-            name=initial_name,
-            gender=payload.gender or "male",
-            is_admin=is_admin,
-            is_vip=is_vip
-        )
-        client_obj = Client(
-            trainer_id=settings.trainer_id,
-            telegram_user_id=target_id,
-            name=initial_name,
-            profile_json=json.dumps(default_prof, ensure_ascii=False)
-        )
-        session.add(client_obj)
-        await session.commit()
-        await session.refresh(client_obj)
-
-    # Parse and update profile fields
-    existing_prof = parse_profile(client_obj.profile_json)
-    if payload.name:
-        client_obj.name = payload.name
-        existing_prof["name"] = payload.name
-    
-    if payload.gender: existing_prof["gender"] = payload.gender
-    if payload.age is not None: existing_prof["age"] = payload.age
-    if payload.height is not None: existing_prof["height"] = payload.height
-    if payload.weight is not None: existing_prof["weight"] = payload.weight
-    if payload.goal: existing_prof["goal"] = payload.goal
-    if payload.restrictions: existing_prof["restrictions"] = payload.restrictions
-    if payload.activity_level: existing_prof["activity_level"] = payload.activity_level
-    if payload.training_frequency: existing_prof["training_frequency"] = payload.training_frequency
-    if payload.diet_preferences: existing_prof["diet_preferences"] = payload.diet_preferences
-
-    if payload.profile and isinstance(payload.profile, dict):
-        existing_prof.update(payload.profile)
-
-    is_admin_val = settings.is_admin_telegram_id(client_obj.telegram_user_id) or bool(existing_prof.get("is_admin", False))
-    if is_admin_val:
-        existing_prof["is_admin"] = True
-        existing_prof["is_vip"] = True
-
-    client_obj.profile_json = json.dumps(existing_prof, ensure_ascii=False)
-    await session.commit()
-    await session.refresh(client_obj)
-
-    return {
-        "ok": True,
-        "success": True,
-        "client_id": client_obj.id,
-        "telegram_user_id": client_obj.telegram_user_id,
-        "name": client_obj.name,
-        "profile": existing_prof,
-        "is_admin": is_admin_val,
-        "is_vip": bool(existing_prof.get("is_vip", False))
-    }
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @router.post("/client/vip/toggle")
 @router.post("/client/status/update")
