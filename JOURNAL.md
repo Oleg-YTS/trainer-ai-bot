@@ -1,5 +1,51 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #37: Mandatory Discussion Summary Logging Rule Added to AGENTS.md
+
+### TASK
+1. Updated `AGENTS.md` with Rule #11: Every task must record a clear summary of discussion context, technical problems, decisions, and takeaways in `JOURNAL.md` for rapid indexing and orientation across chat history.
+2. Re-affirmed Rule #12: Any push to GitHub repository is executed STRICTLY upon explicit user command.
+
+### DISCUSSION SUMMARY
+- **Context**: The user highlighted the loss of time caused by premature pushes and lost context between iterations.
+- **Problem**: Need an explicit mechanism to retain a structured, queryable summary of all discussions, issues, and decisions so the assistant can instantly navigate the conversation history.
+- **Decision**: Added Rule #11 and Rule #12 to `AGENTS.md`. Ensured `JOURNAL.md` serves as a permanent, indexable Knowledge Base for all past discussions and code states.
+
+### GOAL
+Ensure complete transparency, zero lost context, and instant indexing of all user discussions and technical decisions.
+
+### CHANGES
+- `/AGENTS.md`: Added Rules 11 and 12 mandating detailed discussion summaries in `JOURNAL.md` and explicit user authorization for git pushes.
+
+### VERIFICATION
+- `compile_applet`: SUCCESS (0 errors).
+
+### RESULT
+Rule registered in `AGENTS.md`. All future tasks will automatically log discussion context summaries.
+
+---
+
+## 2026-10-02 — Task #36: Fix Render Startup Script (Moved tsx to production dependencies)
+
+### TASK
+1. Analyzed Render deploy log: `TypeError [ERR_UNKNOWN_FILE_EXTENSION]: Unknown file extension ".ts" for /app/server.ts`.
+2. Moved `tsx` package from `devDependencies` to `dependencies` in `package.json`.
+3. Updated `"start"` script in `package.json` from `"node server.ts"` to `"tsx server.ts"`.
+
+### GOAL
+Allow Node.js runtime on Render to execute `server.ts` directly via `tsx` when running `npm start`.
+
+### CHANGES
+- `package.json`: Moved `"tsx"` to `dependencies` and set `"start": "tsx server.ts"`.
+
+### VERIFICATION
+- `compile_applet`: SUCCESS (0 errors).
+
+### RESULT
+`npm start` now executes `tsx server.ts`, resolving `ERR_UNKNOWN_FILE_EXTENSION` on Render.
+
+---
+
 ## 2026-10-02 — Task #35: Fix Local Dev Proxy Fetch Header Error for /api/client/resolve
 
 ### TASK

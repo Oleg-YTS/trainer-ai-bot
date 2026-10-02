@@ -10,3 +10,5 @@
 8. Telegram handlers stay thin; business logic belongs in services.
 9. Keep the LLM provider behind an abstraction.
 10. Do not add unnecessary infrastructure before the MVP requires it.
+11. Каждая задача обязана фиксировать выжимку обсуждения, контекста, проблем и принятых решений (в JOURNAL.md), чтобы обеспечивать быстрое обращение к массиву данных из диалогов и точную ориентацию в истории проекта.
+12. Любой push в репозиторий выполняется СТРОГО по явной команде пользователя.
