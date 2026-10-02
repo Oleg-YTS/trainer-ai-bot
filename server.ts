@@ -1642,19 +1642,63 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
   const isAdmin = adminIds.includes(String(tg_id));
   const displayName = name ? String(name) : (isAdmin ? 'Администратор' : `Пользователь ${tg_id}`);
 
+  // DEALS: Unlimited VIP status for everyone by default
+  const effectiveIsAdmin = isAdmin;
+  const effectiveIsVip = true;
+
   // Check if client already exists in PostgreSQL
-  const existingClient = await pgService.getClientById(tg_id);
+  let existingClient = await pgService.getClientById(tg_id);
   
-  if (!existingClient && !isAdmin) {
-    // If user doesn't exist and is not an admin, we don't auto-register them here.
-    // They must go through the bot onboarding first.
+  if (!existingClient) {
+    // If user doesn't exist, we auto-register them as VIP now
+    const initialName = displayName;
+    const defaultProf = { 
+        name: initialName, 
+        is_admin: effectiveIsAdmin, 
+        is_vip: true,
+        gender: 'male',
+        goal: 'Общая физическая подготовка'
+    };
+    
+    // Create in PostgreSQL
+    const pool = getPgPool();
+    if (pool) {
+        try {
+            await pool.query(
+                'INSERT INTO clients (trainer_id, telegram_user_id, name, profile_json) VALUES ($1, $2, $3, $4) ON CONFLICT (telegram_user_id) DO NOTHING',
+                [1, tg_id, initialName, JSON.stringify(defaultProf)]
+            );
+            existingClient = await pgService.getClientById(tg_id);
+        } catch (err) {
+            console.error('[Auto-Register Error]:', err);
+        }
+    }
+  }
+
+  if (existingClient) {
     return res.json({
-      ok: true,
-      registered: false,
-      telegram_user_id: tg_id,
-      name: displayName
+        ok: true,
+        registered: true,
+        id: existingClient.client.id,
+        telegram_user_id: tg_id,
+        name: existingClient.client.name,
+        is_admin: effectiveIsAdmin || existingClient.client.is_admin,
+        is_vip: true, // Force true
+        profile: { ...existingClient.client.profile, is_vip: true }
     });
   }
+
+  // Fallback
+  return res.json({
+    ok: true,
+    registered: true,
+    id: tg_id,
+    telegram_user_id: tg_id,
+    name: displayName,
+    is_admin: effectiveIsAdmin,
+    is_vip: true
+  });
+});
 
   // If user exists, check if profile is complete (has gender)
   if (existingClient && !isAdmin) {
@@ -1968,7 +2012,7 @@ app.get('/api/trainer/settings', (req: Request, res: Response) => {
   const vipPrice = parseInt(process.env.VIP_PRICE || '4990', 10);
   res.json({
     ok: true,
-    hourly_rate_limit: isNaN(hourlyLimit) ? 5 : hourlyLimit,
+    hourly_rate_limit: 1000000,
     subscriber_price: isNaN(subscriberPrice) ? 490 : subscriberPrice,
     vip_price: isNaN(vipPrice) ? 4990 : vipPrice
   });
