@@ -458,23 +458,25 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
 
   const [isResettingDb, setIsResettingDb] = useState(false);
 
+  const [isRefreshingClients, setIsRefreshingClients] = useState(false);
+  const [refreshSuccessBadge, setRefreshSuccessBadge] = useState(false);
+
   const fetchClients = async () => {
+    setIsRefreshingClients(true);
+    setRefreshSuccessBadge(false);
     try {
       const res = await apiFetch('/api/clients');
       const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setClients(data);
-        return;
+        setRefreshSuccessBadge(true);
+        setTimeout(() => setRefreshSuccessBadge(false), 2500);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Ошибка при загрузке клиентов из БД:', e);
+    } finally {
+      setIsRefreshingClients(false);
     }
-    const local = getLocalUsers();
-    setClients(local.map(u => ({
-      ...u,
-      trainer_id: 1,
-      created_at: u.created_at || new Date().toISOString()
-    })) as any);
   };
 
   const [resetDbSuccess, setResetDbSuccess] = useState(false);
@@ -1650,15 +1652,32 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
               <button
                 type="button"
                 onClick={fetchClients}
-                className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition flex items-center gap-1.5 shadow-sm cursor-pointer select-none ${
+                disabled={isRefreshingClients}
+                className={`text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition flex items-center gap-1.5 shadow-sm select-none ${
+                  isRefreshingClients ? 'opacity-70 cursor-wait' : 'cursor-pointer'
+                } ${
                   isDark
                     ? 'bg-[#18231E] border-[#2A3E34] text-[#E8ECE9] hover:bg-[#203028]'
                     : 'bg-white border-[#D8E0DB] text-[#141F1A] hover:bg-[#F4F6F4]'
                 }`}
                 title="Обновить список клиентов из базы данных"
               >
-                <RefreshCw className="w-3 h-3 text-[#22C55E]" />
-                <span>Обновить из БД</span>
+                {isRefreshingClients ? (
+                  <>
+                    <Loader2 className="w-3 h-3 text-[#22C55E] animate-spin shrink-0" />
+                    <span>Загрузка из БД...</span>
+                  </>
+                ) : refreshSuccessBadge ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                    <span className="text-emerald-500 font-semibold">Обновлено!</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3 h-3 text-[#22C55E] shrink-0" />
+                    <span>Обновить из БД</span>
+                  </>
+                )}
               </button>
               <span className={`text-[11px] font-mono px-2 py-0.5 rounded border ${
                 isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#7DA295]' : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#2B4A3D]'

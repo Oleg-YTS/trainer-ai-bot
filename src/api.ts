@@ -1,8 +1,22 @@
-// Centralized API Helper for connecting the Web App interface to any backend (e.g. Render.com)
-
-const DEFAULT_BACKEND_URL = '';
+// Centralized API Helper for connecting the Web App interface to backend
+// Relative paths ('') work seamlessly on both local dev (AI Studio preview) and single-service production (Render)
 const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || '';
-const API_BASE_URL = (rawEnvUrl ? rawEnvUrl : DEFAULT_BACKEND_URL).replace(/\/$/, '');
+
+const API_BASE_URL = (() => {
+  if (!rawEnvUrl) return '';
+  if (typeof window !== 'undefined') {
+    // If running in local AI Studio sandbox or on localhost, or if rawEnvUrl matches current origin, use relative paths
+    if (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('ais-') ||
+      rawEnvUrl === window.location.origin
+    ) {
+      return '';
+    }
+  }
+  return rawEnvUrl.replace(/\/$/, '');
+})();
 
 export function getApiUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;

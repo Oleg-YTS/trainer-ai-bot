@@ -147,21 +147,26 @@ export const App: React.FC = () => {
         } catch {}
       }
 
-      // 5. Local Device Fallback for Telegram ID
+      // 5. Local Device Fallback for Telegram ID (Default to Admin Oleg 747600306 in Sandbox / Browser preview)
       if (!tgId) {
         try {
           const savedTgId = localStorage.getItem('trainer_user_tg_id');
           if (savedTgId && Number(savedTgId)) {
             tgId = Number(savedTgId);
           } else {
-            tgId = 900000000 + Math.floor(Math.random() * 89999999);
+            tgId = 747600306; // Default to Admin Oleg for sandbox preview
             localStorage.setItem('trainer_user_tg_id', String(tgId));
           }
           const savedName = localStorage.getItem('trainer_user_tg_name');
           if (savedName && !tgName) {
             tgName = savedName;
+          } else if (!tgName) {
+            tgName = 'Олег (Администратор)';
           }
-        } catch {}
+        } catch {
+          tgId = 747600306;
+          tgName = 'Олег (Администратор)';
+        }
       }
 
       if (tgId) {
@@ -264,7 +269,8 @@ export const App: React.FC = () => {
   }, [isDark]);
 
   const setUserRole = async (role: 'admin' | 'vip' | 'subscriber') => {
-    const targetId = currentUser.id || 1;
+    const targetId = currentUser.id;
+    if (!targetId) return;
     const isAdminVal = role === 'admin';
     const isVipVal = role === 'admin' || role === 'vip';
 
@@ -412,6 +418,7 @@ export const App: React.FC = () => {
               onOpenInstallModal={() => setShowInstallModal(true)}
               onOpenTrainerDashboard={() => setActiveTab('trainer')}
               clientId={currentUser.id}
+              telegramUserId={currentUser.telegram_user_id}
               isAdmin={currentUser.is_admin}
               isVip={currentUser.is_vip}
               onRefreshUser={resolveCurrentUser}

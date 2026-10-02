@@ -25,6 +25,7 @@ interface MobileProfileProps {
   onOpenInstallModal: () => void;
   onOpenTrainerDashboard: () => void;
   clientId?: number;
+  telegramUserId?: number | null;
   isAdmin?: boolean;
   isVip?: boolean;
   onRefreshUser?: () => void;
@@ -38,6 +39,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   onOpenInstallModal,
   onOpenTrainerDashboard,
   clientId,
+  telegramUserId,
   isAdmin: userIsAdmin = false,
   isVip: userIsVip = false,
   onRefreshUser,
@@ -81,7 +83,10 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       setProfileLoading(true);
 
       try {
-        const response = await apiFetch(`/api/client/profile?client_id=${encodeURIComponent(targetId)}`);
+        const url = telegramUserId
+          ? `/api/client/profile?telegram_user_id=${encodeURIComponent(telegramUserId)}`
+          : `/api/client/profile?client_id=${encodeURIComponent(targetId)}`;
+        const response = await apiFetch(url);
         if (response.ok) {
           const text = await response.text();
           if (text && text.trim().startsWith('{')) {
@@ -111,7 +116,12 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    const targetId = clientId || 1;
+    const targetId = clientId;
+    if (!targetId) {
+      setSaveErrorMsg("Невозможно сохранить профиль: отсутствует Telegram ID.");
+      setProfileSaving(false);
+      return;
+    }
     setProfileSaving(true);
     setSaveSuccess(false);
     setSaveErrorMsg(null);
@@ -121,6 +131,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           client_id: targetId,
+          telegram_user_id: telegramUserId || undefined,
           name: formName,
           age: formAge ? Number(formAge) : undefined,
           height: formHeight ? Number(formHeight) : undefined,

@@ -30,7 +30,6 @@ def to_async_url(url: str) -> str:
     return url
 
 
-@lru_cache
 def get_engine() -> AsyncEngine:
     settings = get_settings()
     url = os.getenv("DATABASE_URL") or settings.database_url
@@ -41,7 +40,12 @@ def get_engine() -> AsyncEngine:
     if "sqlite" in async_url:
         return create_async_engine(async_url, pool_pre_ping=True)
     
-    return create_async_engine(async_url, pool_pre_ping=True, pool_recycle=300)
+    # Enable SSL for asyncpg when connecting to Render or remote PostgreSQL
+    connect_args = {}
+    if "render.com" in async_url or "dpg-" in async_url or "ssl=require" in async_url or "sslmode=" in url:
+        connect_args["ssl"] = True
+
+    return create_async_engine(async_url, pool_pre_ping=True, pool_recycle=300, connect_args=connect_args)
 
 
 @lru_cache

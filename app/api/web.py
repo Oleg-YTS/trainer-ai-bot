@@ -450,12 +450,10 @@ async def resolve_client_endpoint(
     dev_id = (payload.device_id if payload else None) or device_id
 
     if not tg_id:
-        if dev_id:
-            import hashlib
-            hash_int = int(hashlib.md5(str(dev_id).encode("utf-8")).hexdigest()[:8], 16)
-            tg_id = 900000000 + (hash_int % 90000000)
-        else:
-            tg_id = 900000001
+        raise HTTPException(
+            status_code=400,
+            detail="Идентификация отклонена: Отсутствует telegram_user_id. Пожалуйста, откройте сервис через Telegram."
+        )
 
     # 1. Search existing client by Telegram User ID
     stmt = select(Client).where(Client.telegram_user_id == tg_id)
@@ -611,7 +609,9 @@ async def clear_client_messages_endpoint(
     """
     Clears message history for a specific client in PostgreSQL.
     """
-    target_id = client_id or (payload.client_id if payload else None) or 1
+    target_id = client_id or (payload.client_id if payload else None)
+    if not target_id:
+        raise HTTPException(status_code=400, detail="Укажите telegram_user_id или client_id")
     try:
         from sqlalchemy import delete
         await session.execute(delete(Message).where(Message.client_id == target_id))
@@ -719,7 +719,9 @@ async def update_client_profile_endpoint(
     Updates client profile in PostgreSQL by ID or Telegram User ID.
     """
     try:
-        target_id = payload.client_id or 1
+        target_id = payload.client_id
+        if not target_id:
+            raise HTTPException(status_code=400, detail="Укажите telegram_user_id или client_id")
         settings = get_settings()
         stmt = select(Client).where((Client.id == target_id) | (Client.telegram_user_id == target_id))
         res = await session.execute(stmt)
@@ -854,7 +856,9 @@ async def upgrade_client_vip_endpoint(payload: VIPUpgradeRequest):
     """
     Endpoint to request or self-upgrade VIP status.
     """
-    client_id = payload.client_id or 1
+    client_id = payload.client_id
+    if not client_id:
+        raise HTTPException(status_code=400, detail="Укажите telegram_user_id или client_id")
     try:
         existing_profile = await read_profile(client_id)
     except Exception:

@@ -26,6 +26,9 @@ try {
         // Remove surrounding quotes if present
         val = val.replace(/^['"]|['"]$/g, '');
         if (key && val) {
+          if (key === 'AITUNNEL_BASE_URL') {
+            val = val.replace('iatunnel.ru', 'aitunnel.ru');
+          }
           process.env[key] = val;
         }
       }
@@ -239,7 +242,7 @@ export const pgService = {
   async checkConnectionDetails(): Promise<{ connected: boolean; error?: string }> {
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl || !dbUrl.trim()) {
-      return { connected: false, error: 'DATABASE_URL не настроен в файле .env на сервере' };
+      return { connected: false, error: 'DATABASE_URL не настроен в .env файле сервера.' };
     }
     const cleanUrl = dbUrl.trim().replace(/^postgres:\/\//, 'postgresql://');
     if (cleanUrl.includes('//user:password@') || cleanUrl.includes('//username:password@')) {
@@ -250,7 +253,7 @@ export const pgService = {
     }
     const pool = getPgPool();
     if (!pool) {
-      return { connected: false, error: 'DATABASE_URL имеет невалидный формат или не занесен в .env' };
+      return { connected: false, error: 'Не удалось инициализировать пул подключений к PostgreSQL.' };
     }
     try {
       const res = await pool.query('SELECT 1');
@@ -387,19 +390,18 @@ export const pgService = {
       const numClientId = data.client_id !== undefined ? Number(data.client_id) : undefined;
       const numTgId = data.telegram_user_id !== undefined ? Number(data.telegram_user_id) : undefined;
 
-      let existing;
-      if (numClientId !== undefined) {
-        existing = await pool.query(
-          'SELECT id, trainer_id, telegram_user_id, name, profile_json FROM clients WHERE id = $1 LIMIT 1',
-          [numClientId]
-        );
-      } else if (numTgId !== undefined) {
+      let existing: any = { rows: [] };
+      if (numTgId !== undefined) {
         existing = await pool.query(
           'SELECT id, trainer_id, telegram_user_id, name, profile_json FROM clients WHERE telegram_user_id = $1 LIMIT 1',
           [numTgId]
         );
-      } else {
-        return null;
+      }
+      if (existing.rows.length === 0 && numClientId !== undefined) {
+        existing = await pool.query(
+          'SELECT id, trainer_id, telegram_user_id, name, profile_json FROM clients WHERE id = $1 LIMIT 1',
+          [numClientId]
+        );
       }
 
       let currentP: any = {};
@@ -929,7 +931,7 @@ export class LLMProviderService {
     return {
       provider: 'ai_tunnel',
       aitunnelApiKey: cleanApiKey(process.env.AITUNNEL_API_KEY || process.env.AI_TUNNEL_API_KEY),
-      aitunnelBaseUrl: (process.env.AITUNNEL_BASE_URL || process.env.AI_TUNNEL_BASE_URL || 'https://api.aitunnel.ru/v1').replace(/\/+$/, ''),
+      aitunnelBaseUrl: (process.env.AITUNNEL_BASE_URL || process.env.AI_TUNNEL_BASE_URL || 'https://api.aitunnel.ru/v1').replace('iatunnel.ru', 'aitunnel.ru').replace(/\/+$/, ''),
       aitunnelModel: process.env.AITUNNEL_MODEL || process.env.AI_TUNNEL_MODEL || 'gpt-6-luna-pro'
     };
   }
@@ -996,21 +998,26 @@ export class LLMProviderService {
     const cleanBase = baseUrl.replace(/\/+$/, '');
     const url = `${cleanBase}/chat/completions`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3
-      })
-    });
+    let res: globalThis.Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.3
+        })
+      });
+    } catch (fetchErr: any) {
+      throw new Error(`Не удалось связаться с сервером AI Tunnel (${url}). Проверьте AITUNNEL_API_KEY в .env или доступность сети. Причина: ${fetchErr?.message || String(fetchErr)}`);
+    }
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
@@ -1659,10 +1666,10 @@ function deduplicateClients(list: Client[]): Client[] {
 // Clients API (Live PostgreSQL Integration with Deduplication)
 app.get('/api/clients', async (_req: Request, res: Response) => {
   const pgClients = await pgService.getClients();
-  if (pgClients && pgClients.length > 0) {
+  if (pgClients && Array.isArray(pgClients)) {
     return res.json(deduplicateClients(pgClients));
   }
-  res.json(deduplicateClients(db.clients));
+  res.json([]);
 });
 
 app.get('/api/clients/:id', async (req: Request, res: Response) => {
@@ -1689,17 +1696,9 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
   let tg_id = bodyTgId || queryTgId;
 
   if (!tg_id) {
-    if (rawDeviceId) {
-      let hash = 0;
-      const str = String(rawDeviceId);
-      for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
-      }
-      tg_id = 900000000 + (Math.abs(hash) % 90000000);
-    } else {
-      tg_id = 900000001;
-    }
+    return res.status(400).json({
+      error: 'Идентификация отклонена: Отсутствует telegram_user_id. Пожалуйста, откройте сервис через Telegram.'
+    });
   }
 
   const adminIds = [
@@ -1797,15 +1796,35 @@ app.put('/api/escalations/:id/resolve', async (req: Request, res: Response) => {
 });
 
 // Get Client Profile Endpoint
-app.get(['/api/client/profile', '/api/client/:id/profile'], (req: Request, res: Response) => {
-  const clientId = Number(req.params.id || req.query.client_id || 1);
-  const client = db.clients.find(c => c.id === clientId) || db.clients[0];
+app.get(['/api/client/profile', '/api/client/:id/profile'], async (req: Request, res: Response) => {
+  const queryTgId = req.query.telegram_user_id ? Number(req.query.telegram_user_id) : undefined;
+  const paramId = req.params.id ? Number(req.params.id) : undefined;
+  const queryClientId = req.query.client_id ? Number(req.query.client_id) : undefined;
+
+  const targetId = queryTgId || paramId || queryClientId;
+
+  if (targetId) {
+    const pgData = await pgService.getClientById(targetId);
+    if (pgData) {
+      return res.json({
+        client_id: pgData.client.id,
+        telegram_user_id: pgData.client.telegram_user_id,
+        name: pgData.client.name,
+        profile: pgData.client.profile || {},
+        is_vip: Boolean(pgData.client.is_vip),
+        is_admin: Boolean(pgData.client.is_admin)
+      });
+    }
+  }
+
+  const client = db.clients.find(c => (targetId && (c.id === targetId || c.telegram_user_id === targetId))) || db.clients[0];
   if (!client) {
     return res.status(404).json({ error: 'Client not found' });
   }
 
   res.json({
     client_id: client.id,
+    telegram_user_id: client.telegram_user_id,
     name: client.name || client.profile?.name || 'Пользователь',
     profile: client.profile || {},
     is_vip: Boolean(client.is_vip),
@@ -1816,10 +1835,12 @@ app.get(['/api/client/profile', '/api/client/:id/profile'], (req: Request, res: 
 // Update Client Profile Endpoint
 app.post('/api/client/profile', async (req: Request, res: Response) => {
   const { client_id, name, age, height, weight, goal, activity_level, training_frequency, restrictions, diet_preferences, is_admin, telegram_user_id } = req.body;
-  const tgId = Number(telegram_user_id || client_id || 1);
+  const numClientId = client_id ? Number(client_id) : undefined;
+  const numTgId = telegram_user_id ? Number(telegram_user_id) : undefined;
 
   const updatedPg = await pgService.upsertClientProfile({
-    telegram_user_id: tgId,
+    client_id: numClientId,
+    telegram_user_id: numTgId,
     name,
     is_admin: is_admin !== undefined ? !!is_admin : undefined,
     profile: {
@@ -1834,7 +1855,8 @@ app.post('/api/client/profile', async (req: Request, res: Response) => {
     }
   });
 
-  const client = db.clients.find(c => c.id === tgId || c.telegram_user_id === tgId);
+  const targetTgOrId = numTgId || numClientId;
+  const client = db.clients.find(c => targetTgOrId && (c.id === targetTgOrId || c.telegram_user_id === targetTgOrId));
   if (client) {
     if (!client.profile) client.profile = { name: client.name, goal: 'Общая физическая подготовка' };
     if (name) { client.name = stripEmojis(name); client.profile.name = stripEmojis(name); }
@@ -2283,6 +2305,22 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Trainer AI Bot ver 1.0.0] Listening on http://0.0.0.0:${PORT}`);
+
+    // Spawn Python Telegram Bot process alongside Express server if Python is available
+    if (process.env.TELEGRAM_BOT_TOKEN || process.env.NODE_ENV === 'production') {
+      import('child_process').then(({ spawn }) => {
+        console.log('[Trainer AI Bot] Launching Python Telegram Bot process (python -m app.main)...');
+        const pyBot = spawn('python3', ['-m', 'app.main'], {
+          stdio: 'inherit',
+          env: { ...process.env }
+        });
+        pyBot.on('error', (err) => {
+          console.warn('[Python Bot Launcher Notice]:', err.message);
+        });
+      }).catch((err) => {
+        console.warn('[Python Bot Launcher Warning]: Could not launch Python process:', err);
+      });
+    }
   });
 }
 

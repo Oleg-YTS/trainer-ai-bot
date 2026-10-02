@@ -103,7 +103,7 @@ async def read_profile(client_id: int | None, telegram_user_id: int | None = Non
                 save_profile_to_json_file(client.id, prof)
                 return prof
         
-        json_file_prof = load_profile_from_json_file(client_id or 1)
+        json_file_prof = load_profile_from_json_file(client_id)
         if json_file_prof:
             return json_file_prof
         return {}

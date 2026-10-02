@@ -132,7 +132,10 @@ export function saveLocalUsers(users: UserProfile[]): void {
 
 export function saveLocalUser(profileData: Partial<UserProfile>): UserProfile {
   const users = getLocalUsers();
-  const id = profileData.id || profileData.telegram_user_id || 1;
+  const id = profileData.id || profileData.telegram_user_id || 0;
+  if (!id) {
+    throw new Error("Нельзя сохранить пользователя без id или telegram_user_id");
+  }
   const existingIdx = users.findIndex(u => u.id === id || (profileData.telegram_user_id && u.telegram_user_id === profileData.telegram_user_id));
   
   const updatedUser: UserProfile = {
