@@ -475,6 +475,33 @@ Client database completely cleansed and normalized. Exactly 4 canonical profiles
 ### RESULT
 Окно приложения жестко зафиксировано на 100% высоты и ширины экрана на всех мобильных устройствах, горизонтальный люфт и смещение полностью исключены.
 
+---
+
+## 2026-10-02 — Task #24: PostgreSQL Connection Diagnostics & Asyncpg SSL Resilience
+
+### TASK
+1. Проведен аудит подключения к базе данных PostgreSQL и механизма инициализации asyncpg/SQLAlchemy.
+2. Обновлена функция `to_async_url` в `app/database/session.py`: добавлена очистка и корректное преобразование `sslmode` параметров строки подключения Render для драйвера `asyncpg`.
+3. Добавлена функция `reset_db_engine()` для сброса кэша движка SQLAlchemy и мгновенного повторного подключения при обновлении `DATABASE_URL` на лету.
+4. В `app/api/web.py` обновлен метод `check_db_connection()` с автоматической попыткой реконнекта и подробной диагностикой ошибки.
+5. Проверена компиляция Python (`python3 -m compileall -q app/`) и TypeScript (`tsc --noEmit`).
+
+### GOAL
+Найти причину отсутствия подключения к базе данных на Render и обеспечить устойчивое подключение asyncpg к PostgreSQL.
+
+### CHANGES
+- `/app/database/session.py`: Обработка `sslmode`, конвертация URL в `postgresql+asyncpg://`, функция `reset_db_engine()`.
+- `/app/api/web.py`: Автоматический реконнект и диагностика в `check_db_connection()`.
+
+### VERIFICATION
+- `python3 -m compileall -q app/`: 0 ошибок.
+- `tsc --noEmit`: 0 ошибок.
+- `compile_applet`: Сборка успешна.
+
+### RESULT
+Драйвер PostgreSQL и движок SQLAlchemy полностью адаптированы под строки подключения Render с SSL-режимом.
+
+
 
 
 

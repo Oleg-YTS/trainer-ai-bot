@@ -19,7 +19,7 @@ from app.clients.messages import (
 from app.clients.service import build_default_profile, parse_profile, read_profile, update_profile
 from app.config.settings import get_settings
 from app.database.models import Client, Escalation, KnowledgeItem, Message
-from app.database.session import get_session_factory
+from app.database.session import get_engine, get_session_factory, reset_db_engine
 from app.knowledge.retrieval import search_knowledge
 from app.knowledge.service import CATEGORIES, PUBLISHED_STATUS
 
@@ -898,7 +898,16 @@ async def check_db_connection() -> dict:
             await conn.execute(text("SELECT 1"))
         return {"connected": True, "error": None}
     except Exception as e:
-        return {"connected": False, "error": str(e)}
+        # Retry once after clearing cached engine in case connection parameters changed
+        try:
+            reset_db_engine()
+            engine = get_engine()
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            return {"connected": True, "error": None}
+        except Exception as retry_err:
+            logger.warning("Database connection check failed: %s", retry_err)
+            return {"connected": False, "error": str(retry_err)}
 
 
 @router.get("/secrets")
@@ -957,8 +966,7 @@ async def update_secrets_endpoint(payload: SecretsUpdateRequest):
         os.environ["DATABASE_URL"] = payload.DATABASE_URL
         updates["DATABASE_URL"] = payload.DATABASE_URL
         # Reset cached engine to reconnect
-        get_engine.cache_clear()
-        get_session_factory.cache_clear()
+        reset_db_engine()
 
     try:
         env_path = ".env"
