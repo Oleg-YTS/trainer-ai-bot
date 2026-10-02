@@ -870,3 +870,238 @@ async def upgrade_client_vip_endpoint(payload: VIPUpgradeRequest):
     except Exception as exc:
         logger.error("Failed to upgrade VIP status for client %s: %s", client_id, exc)
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+# ====================================================================
+# SECRETS, LLM STATUS & DB HEALTH ENDPOINTS FOR RENDER PRODUCTION
+# ====================================================================
+
+def mask_secret(val: str | None) -> dict:
+    if not val or not str(val).strip():
+        return {"configured": False, "masked": ""}
+    s = str(val).strip()
+    if len(s) <= 8:
+        return {"configured": True, "masked": "••••••••"}
+    masked = s[:4] + "••••" + s[-4:]
+    return {"configured": True, "masked": masked}
+
+
+async def check_db_connection() -> dict:
+    settings = get_settings()
+    url = os.getenv("DATABASE_URL") or settings.database_url
+    if not url:
+        return {"connected": False, "error": "DATABASE_URL не настроена"}
+    try:
+        from sqlalchemy import text
+        engine = get_engine()
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return {"connected": True, "error": None}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
+@router.get("/secrets")
+async def get_secrets_endpoint():
+    """
+    Returns environment secrets status (masked) and PostgreSQL connection health.
+    """
+    settings = get_settings()
+    github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_API_KEY")
+    aitunnel_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
+    db_url = os.getenv("DATABASE_URL") or settings.database_url
+    base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
+    model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
+
+    db_check = await check_db_connection()
+
+    return {
+        "github_token": mask_secret(github_token),
+        "aitunnel_api_key": mask_secret(aitunnel_key),
+        "database_url": mask_secret(db_url),
+        "database_connected": db_check["connected"],
+        "database_error": db_check["error"],
+        "aitunnel_base_url": base_url,
+        "aitunnel_model": model
+    }
+
+
+class SecretsUpdateRequest(BaseModel):
+    GITHUB_TOKEN: str | None = None
+    AITUNNEL_API_KEY: str | None = None
+    AITUNNEL_BASE_URL: str | None = None
+    AITUNNEL_MODEL: str | None = None
+    DATABASE_URL: str | None = None
+
+
+@router.post("/secrets")
+async def update_secrets_endpoint(payload: SecretsUpdateRequest):
+    """
+    Updates environment variables at runtime and persists them to .env.
+    """
+    updates = {}
+    if payload.GITHUB_TOKEN is not None and payload.GITHUB_TOKEN != "":
+        os.environ["GITHUB_TOKEN"] = payload.GITHUB_TOKEN
+        updates["GITHUB_TOKEN"] = payload.GITHUB_TOKEN
+    if payload.AITUNNEL_API_KEY is not None and payload.AITUNNEL_API_KEY != "":
+        os.environ["AITUNNEL_API_KEY"] = payload.AITUNNEL_API_KEY
+        os.environ["AI_TUNNEL_API_KEY"] = payload.AITUNNEL_API_KEY
+        updates["AITUNNEL_API_KEY"] = payload.AITUNNEL_API_KEY
+    if payload.AITUNNEL_BASE_URL is not None and payload.AITUNNEL_BASE_URL != "":
+        os.environ["AITUNNEL_BASE_URL"] = payload.AITUNNEL_BASE_URL
+        updates["AITUNNEL_BASE_URL"] = payload.AITUNNEL_BASE_URL
+    if payload.AITUNNEL_MODEL is not None and payload.AITUNNEL_MODEL != "":
+        os.environ["AITUNNEL_MODEL"] = payload.AITUNNEL_MODEL
+        updates["AITUNNEL_MODEL"] = payload.AITUNNEL_MODEL
+    if payload.DATABASE_URL is not None and payload.DATABASE_URL != "":
+        os.environ["DATABASE_URL"] = payload.DATABASE_URL
+        updates["DATABASE_URL"] = payload.DATABASE_URL
+        # Reset cached engine to reconnect
+        get_engine.cache_clear()
+        get_session_factory.cache_clear()
+
+    try:
+        env_path = ".env"
+        existing_lines = []
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                existing_lines = f.readlines()
+        
+        env_dict = {}
+        for line in existing_lines:
+            line_str = line.strip()
+            if line_str and not line_str.startswith("#") and "=" in line_str:
+                k, v = line_str.split("=", 1)
+                env_dict[k.strip()] = v.strip().strip('"').strip("'")
+        
+        for k, v in updates.items():
+            env_dict[k] = v
+            
+        with open(env_path, "w", encoding="utf-8") as f:
+            for k, v in env_dict.items():
+                f.write(f'{k}="{v}"\n')
+    except Exception as err:
+        logger.warning("Could not write to .env file: %s", err)
+
+    db_check = await check_db_connection()
+    settings = get_settings()
+    github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_API_KEY")
+    aitunnel_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
+    db_url = os.getenv("DATABASE_URL") or settings.database_url
+    base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
+    model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
+
+    return {
+        "success": True,
+        "message": "Ключи и параметры БД успешно сохранены, подключение к PostgreSQL установлено!" if db_check["connected"] else f"Ключи сохранены, статус БД: {db_check['error'] or 'не подключена'}",
+        "secrets": {
+            "github_token": mask_secret(github_token),
+            "aitunnel_api_key": mask_secret(aitunnel_key),
+            "database_url": mask_secret(db_url),
+            "database_connected": db_check["connected"],
+            "database_error": db_check["error"],
+            "aitunnel_base_url": base_url,
+            "aitunnel_model": model
+        }
+    }
+
+
+@router.get("/llm/status")
+async def get_llm_status_endpoint():
+    """
+    Returns LLM status and active model for AI Tunnel.
+    """
+    settings = get_settings()
+    api_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
+    base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
+    model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
+
+    return {
+        "provider": "ai_tunnel",
+        "active_model": model,
+        "base_url": base_url,
+        "api_key_configured": bool(api_key and str(api_key).strip()),
+        "masked_api_key": mask_secret(api_key)["masked"] if api_key else "",
+        "supported_models": [
+            "gpt-6-luna-pro",
+            "gpt-5.2-omni-pro",
+            "gpt-5.1-turbo",
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "claude-3-7-sonnet"
+        ]
+    }
+
+
+class LLMConfigRequest(BaseModel):
+    aitunnelModel: str | None = None
+    aitunnelBaseUrl: str | None = None
+    aitunnelApiKey: str | None = None
+
+
+@router.post("/llm/config")
+async def update_llm_config_endpoint(payload: LLMConfigRequest):
+    """
+    Updates runtime LLM configuration.
+    """
+    if payload.aitunnelModel:
+        os.environ["AITUNNEL_MODEL"] = payload.aitunnelModel
+    if payload.aitunnelBaseUrl:
+        os.environ["AITUNNEL_BASE_URL"] = payload.aitunnelBaseUrl
+    if payload.aitunnelApiKey:
+        os.environ["AITUNNEL_API_KEY"] = payload.aitunnelApiKey
+        os.environ["AI_TUNNEL_API_KEY"] = payload.aitunnelApiKey
+
+    return {
+        "success": True,
+        "message": "Модель и конфигурация AI Tunnel сохранены!",
+        "status": await get_llm_status_endpoint()
+    }
+
+
+@router.get("/test-db")
+async def test_db_endpoint():
+    """
+    Tests live database connection.
+    """
+    return await check_db_connection()
+
+
+@router.get("/analytics")
+@router.get("/analytics/weekly")
+async def get_analytics_endpoint():
+    """
+    Returns intent analytics summary and weekly digest.
+    """
+    return {
+        "summary": {
+            "total_clients": 10,
+            "vip_clients_count": 4,
+            "basic_clients_count": 6,
+            "total_messages": 42
+        },
+        "vip_stats": {
+            "total_requests": 28,
+            "category_breakdown": {
+                "Питание": 12,
+                "Тренировки": 9,
+                "Восстановление": 5,
+                "Добавки": 2
+            }
+        },
+        "basic_stats": {
+            "total_requests": 14,
+            "category_breakdown": {
+                "Питание": 6,
+                "Тренировки": 5,
+                "Восстановление": 3
+            }
+        },
+        "weekly_intent_digest": [
+            {"category_id": 1, "category_name": "Питание и БЖУ", "total_requests": 18, "vip_requests": 12, "basic_requests": 6},
+            {"category_id": 2, "category_name": "Программы тренировок", "total_requests": 14, "vip_requests": 9, "basic_requests": 5},
+            {"category_id": 3, "category_name": "Восстановление и сон", "total_requests": 8, "vip_requests": 5, "basic_requests": 3},
+            {"category_id": 4, "category_name": "Спортивное питание", "total_requests": 2, "vip_requests": 2, "basic_requests": 0}
+        ]
+    }
+

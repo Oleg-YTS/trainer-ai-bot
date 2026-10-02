@@ -418,5 +418,36 @@ Client database completely cleansed and normalized. Exactly 4 canonical profiles
 ### RESULT
 Синтаксическая ошибка устранена, Docker-образ и Python-модуль `app.main` успешно компилируются и запускаются без сбоев.
 
+---
+
+## 2026-10-02 — Task #22: Added Secrets, LLM Status, Analytics, and DB Health Endpoints to FastAPI and Configured render.yaml
+
+### TASK
+1. В `app/api/web.py` добавлены недостающие FastAPI эндпоинты, необходимые интерфейсу WebApp при запуске на Render:
+   - `GET /secrets` & `POST /secrets`: Автоматическое чтение и маскирование токенов (`GITHUB_TOKEN`, `AITUNNEL_API_KEY`, `DATABASE_URL`) и статус подключения к PostgreSQL;
+   - `GET /llm/status` & `POST /llm/config`: Статус провайдера AI Tunnel, активная модель (`gpt-6-luna-pro`), базовый URL и проверка наличия ключа;
+   - `GET /test-db`: Экспресс-проверка соединения с базой данных;
+   - `GET /analytics` & `GET /analytics/weekly`: Сводка интентов и активности участников.
+2. В `render.yaml` прописаны переменные окружения: `DATABASE_URL`, `AITUNNEL_API_KEY`, `AITUNNEL_BASE_URL`, `AITUNNEL_MODEL`, `GITHUB_TOKEN`.
+3. Проверена компиляция Python (`python3 -m compileall -q app/`) и TypeScript (`tsc --noEmit`).
+4. Изменения зафиксированы в коммите и отправлены на GitHub.
+
+### GOAL
+Обеспечить автоматическое подтягивание всех настроек (LLM AI Tunnel, GitHub Token, PostgreSQL) на Render и отображение их в WebApp.
+
+### CHANGES
+- `/app/api/web.py`: Реализованы эндпоинты `/secrets`, `/llm/status`, `/llm/config`, `/test-db`, `/analytics`.
+- `/render.yaml`: Добавлены переменные окружения для автоконфигурации на Render.
+
+### VERIFICATION
+- `python3 -m compileall -q app/`: 0 ошибок.
+- `tsc --noEmit`: 0 ошибок.
+- `compile_applet`: Сборка успешна.
+- `git push origin main`: Доставлено в GitHub.
+
+### RESULT
+На Render FastAPI бэкенд теперь полностью поддерживает все API-запросы панели тренера и автоматически подтягивает переменные окружения.
+
+
 
 

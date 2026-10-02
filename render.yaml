@@ -11,3 +11,13 @@ services:
         sync: false
       - key: WEBHOOK_SECRET_TOKEN
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: AITUNNEL_API_KEY
+        sync: false
+      - key: AITUNNEL_BASE_URL
+        value: https://api.aitunnel.ru/v1
+      - key: AITUNNEL_MODEL
+        value: gpt-6-luna-pro
+      - key: GITHUB_TOKEN
+        sync: false
