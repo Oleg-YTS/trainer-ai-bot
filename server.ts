@@ -1244,15 +1244,25 @@ app.use((_req, res, next) => {
 });
 
 // Proxy layer to Python Telegram Bot backend (PostgreSQL) when target URL is configured in environment
-const TARGET_BOT_URL = (
-  process.env.VITE_API_BASE_URL ||
-  process.env.API_BASE_URL ||
-  process.env.BOT_URL ||
-  process.env.BOT_API_URL ||
-  process.env.PYTHON_BACKEND_URL ||
-  process.env.RENDER_BOT_URL ||
-  'http://127.0.0.1:8000'
-).trim().replace(/\/+$/, '');
+const TARGET_BOT_URL = (() => {
+  const urls = [
+    process.env.BOT_URL,
+    process.env.BOT_API_URL,
+    process.env.PYTHON_BACKEND_URL,
+    process.env.RENDER_BOT_URL,
+    process.env.API_BASE_URL,
+    process.env.VITE_API_BASE_URL
+  ];
+  for (const url of urls) {
+    if (url && url.trim()) {
+      const trimmed = url.trim().replace(/\/+$/, '');
+      if (!trimmed.includes('onrender.com') && !trimmed.includes('trainer-ai-bot')) {
+        return trimmed;
+      }
+    }
+  }
+  return 'http://127.0.0.1:8000';
+})();
 
 // Health Check (Moved to startServer)
 

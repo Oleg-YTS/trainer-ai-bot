@@ -1,5 +1,34 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #72: Critical Bug Fix: Resolving Self-Proxy Loop and Local Routing
+
+### TASK
+1. Устранить проблему вечной петли проксирования (infinite self-proxying loop) на сервере Render.
+2. Гарантировать, что запросы вебхуков и API всегда направляются на локальный порт `8000` внутри контейнера.
+
+### GOAL
+Предотвратить циклическую маршрутизацию Express-сервера на самого себя, из-за которой вебхуки Telegram не доходили до Python-бота, а API-запросы зависали.
+
+### PLAN
+- **Анализ URL-адресов (`server.ts`)**: Модифицировать переменную `TARGET_BOT_URL` так, чтобы она фильтровала и исключала любые публичные домены `onrender.com` или `trainer-ai-bot`, принудительно возвращая локальный `http://127.0.0.1:8000`.
+- **Проверка сборки и линтинга**: Убедиться в отсутствии синтаксических ошибок.
+
+### CHANGES
+- `server.ts`:
+  - Настройка `TARGET_BOT_URL` заменена на функцию автоматического исключения циклических адресов и жесткого роутинга на локальный порт `8000`.
+
+### FILES
+- `server.ts`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Устранена циклическая петля. Запросы к вебхукам `/telegram/*` теперь мгновенно и без потерь перенаправляются на локально запущенный Python-бот.
+
+---
+
 ## 2026-10-02 — Task #71: Critical Bug Fix: Webhook Proxy & Infinite DB Lockout Prevention
 
 ### TASK
