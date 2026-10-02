@@ -378,7 +378,7 @@ export const App: React.FC = () => {
                 isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'
               }`}
             >
-              ver 1.0.0
+              ver 2.0.0
             </span>
           </div>
         </header>

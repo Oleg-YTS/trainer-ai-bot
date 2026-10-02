@@ -134,12 +134,12 @@ export const TelegramSimulator: React.FC = () => {
             <div className="font-semibold text-slate-100 flex items-center gap-2 text-sm">
               AI-Библиотекарь Тренера
               <span className="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-lg font-normal">
-                ver 1.0.0 TMA
+                ver 2.0.0 TMA
               </span>
             </div>
             <div className="text-[11px] text-slate-400 flex items-center gap-1">
               <Zap className="w-3 h-3 text-emerald-400" />
-              {activeClient?.is_vip ? 'Персональное ведение (VIP)' : 'Подписчик канала'}
+              {activeClient?.is_vip ? 'VIP' : 'Подписка'}
             </div>
           </div>
         </div>
@@ -154,7 +154,7 @@ export const TelegramSimulator: React.FC = () => {
           >
             {clients.map((c, idx) => (
               <option key={`sim-client-${c.id}-${idx}`} value={c.id}>
-                {c.name} ({c.is_vip ? 'VIP' : 'Подписчик'})
+                {c.name} ({c.is_vip ? 'VIP' : 'Подписка'})
               </option>
             ))}
           </select>

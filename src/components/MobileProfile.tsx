@@ -315,12 +315,12 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           ) : isVip ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/40 shadow-sm shadow-amber-500/5">
               <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
-              VIP (Персональное ведение)
+              VIP
             </span>
           ) : userRole === 'subscriber' ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              Подписчик (Безлимит)
+              Подписка
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#18231E] text-[#8E9E96] border border-[#1F2E27]">
@@ -719,7 +719,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           onClick={onOpenInstallModal}
           className="px-3 py-1.5 rounded-lg border text-xs font-medium border-inherit hover:opacity-80 transition"
         >
-          Установить
+          Гайд
         </button>
       </div>
 

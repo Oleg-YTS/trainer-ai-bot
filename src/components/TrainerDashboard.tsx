@@ -1778,7 +1778,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 }`}
               >
                 <UserCheck className="w-3 h-3" />
-                <span>Подписчики ({clients.filter(c => !c.is_vip && !c.is_admin).length})</span>
+                <span>Подписка ({clients.filter(c => !c.is_vip && !c.is_admin).length})</span>
               </button>
               <button
                 onClick={() => setClientFilterStatus('admin')}
@@ -1868,7 +1868,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/40`}
                           >
                             <Crown className="w-3 h-3 text-amber-400 fill-amber-400/10" />
-                            VIP (Ведение)
+                            VIP
                           </span>
                         ) : (
                           <span
@@ -1879,7 +1879,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                             }`}
                           >
                             <UserCheck className="w-3 h-3 text-[#8E9E96]" />
-                            Подписчик
+                            Подписка
                           </span>
                         )}
                       </div>
@@ -1982,7 +1982,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                                 }`}
                               >
                                 <UserCheck className="w-2.5 h-2.5" />
-                                <span>Подписчик</span>
+                                <span>Подписка</span>
                               </button>
 
                               <button
@@ -2056,7 +2056,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-black/10 dark:bg-black/20 text-[#8E9E96] border border-inherit">
                             <UserCheck className="w-3 h-3 text-[#8E9E96]" />
-                            Подписчик
+                            Подписка
                           </span>
                         )}
                       </div>
@@ -2499,7 +2499,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   <h4 className="font-semibold text-xs uppercase tracking-wider text-inherit">Текущая статистика по тарифам</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div className="space-y-0.5">
-                      <span className="opacity-75 block">Подписчики:</span>
+                      <span className="opacity-75 block">Подписка:</span>
                       <span className="font-bold text-sm font-mono">
                         {clients.filter(c => !c.is_vip && !c.is_admin).length} чел.
                       </span>
@@ -2508,7 +2508,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                       </span>
                     </div>
                     <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-inherit/40 pt-2 sm:pt-0 sm:pl-3">
-                      <span className="opacity-75 block">VIP-клиенты:</span>
+                      <span className="opacity-75 block">VIP:</span>
                       <span className="font-bold text-sm font-mono text-amber-400">
                         {clients.filter(c => c.is_vip && !c.is_admin).length} чел.
                       </span>
@@ -2679,7 +2679,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             {isLlmLimitsOpen && (
               <div className="p-4 space-y-3.5 animate-in fade-in">
                 <p className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Установите доступное количество бесплатных вопросов к ИИ-Библиотекарю в час для роли «Пользователь». Подписчики и VIP получают доступ без ограничений.
+                  Установите доступное количество бесплатных вопросов к ИИ-Библиотекарю в час для роли «Пользователь». Подписка и VIP получают доступ без ограничений.
                 </p>
 
                 {rateLimitSaveToast && (

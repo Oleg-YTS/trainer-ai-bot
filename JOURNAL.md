@@ -1,5 +1,91 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #58: Release ver 2.0.0 — Sandbox Stage Complete
+
+### TASK
+1. Increment application version to `ver 2.0.0` in the UI (Header and Telegram Simulator).
+2. Record milestone status: **Рабочая версия**.
+3. **Метка закладки**: В песочнице все работает, следующий этап — реальное тестирование. План — подключение платежных систем.
+
+### DISCUSSION SUMMARY
+- **Context**: The project has reached a stable state within the sandbox environment. All requested UI/UX refinements (geometric unification, terminology updates, feature compacting) are complete.
+- **Decision**: Mark this as a major version milestone to transition from sandbox development to real-world integration testing.
+
+### GOAL
+Formalize the successful completion of the sandbox phase and set the trajectory for the next development sprint.
+
+### CHANGES
+- `src/App.tsx`: Updated version display to `ver 2.0.0`.
+- `src/components/TelegramSimulator.tsx`: Updated version display to `ver 2.0.0 TMA`.
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- Visual check: Version string confirmed in header.
+
+### RESULT
+Milestone reached. Sandbox phase closed. Ready for real-world payment integration.
+
+---
+
+## 2026-10-02 — Task #57: Rename Status Banners (Подписка and VIP)
+
+### TASK
+1. Rename all instances of "Подписчик" / "Подписчики" to "Подписка" in status banners and labels across the app.
+2. Rename "VIP (Персональное ведение)" / "VIP (Ведение)" / "VIP-клиенты" to simply "VIP" in status banners and labels.
+3. Ensure consistency between the client-facing profile and the trainer-facing dashboard.
+
+### DISCUSSION SUMMARY
+- **Context**: The user wants more concise and direct labeling for user statuses.
+- **Decision**: Update labels in `MobileProfile.tsx`, `TelegramSimulator.tsx`, and `TrainerDashboard.tsx`.
+
+### GOAL
+Achieve unified and concise status labeling ("Подписка" and "VIP") across the entire system.
+
+### CHANGES
+- `src/components/MobileProfile.tsx`: Updated status banners for 'subscriber' and 'vip' roles.
+- `src/components/TelegramSimulator.tsx`: Updated client identity status display.
+- `src/components/TrainerDashboard.tsx`: Updated filter buttons, client cards, dossier modals, and statistics cards.
+
+### FILES
+- `src/components/MobileProfile.tsx`
+- `src/components/TelegramSimulator.tsx`
+- `src/components/TrainerDashboard.tsx`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+
+### RESULT
+All status banners now use the new terminology: "Подписка" and "VIP".
+
+---
+
+## 2026-10-02 — Task #56: Rename PWA Installation Button to 'Гайд'
+
+### TASK
+1. Rename the button for adding the app to the home screen from "Установить" to "Гайд" to better reflect that it opens a guide/modal with instructions.
+2. Maintain existing styles and functionality.
+
+### DISCUSSION SUMMARY
+- **Context**: The user wants to change the text on the PWA installation button in the profile.
+- **Decision**: Update the text in `MobileProfile.tsx`.
+
+### GOAL
+Change the installation button text to "Гайд" for better UX clarity.
+
+### CHANGES
+- `src/components/MobileProfile.tsx`: Updated button text from "Установить" to "Гайд".
+
+### FILES
+- `src/components/MobileProfile.tsx`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+
+### RESULT
+The button now displays "Гайд".
+
+---
+
 ## 2026-10-02 — Task #55: Global Border Radius Unification to 8px (rounded-lg) across all Components
 
 ### TASK
