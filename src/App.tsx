@@ -3,6 +3,7 @@ import { MobileKnowledgeCatalog } from './components/MobileKnowledgeCatalog';
 import { MobileChat } from './components/MobileChat';
 import { MobileProfile } from './components/MobileProfile';
 import { TrainerDashboard } from './components/TrainerDashboard';
+import { WelcomeScreen } from './components/WelcomeScreen';
 import { InstallModal } from './components/InstallModal';
 import { FolderTree, Bot, User, Sun, Moon } from 'lucide-react';
 import { apiFetch } from './api';
@@ -13,6 +14,7 @@ interface CurrentUser {
   name: string;
   is_admin: boolean;
   is_vip: boolean;
+  is_registered?: boolean;
   role?: string;
 }
 
@@ -35,7 +37,8 @@ export const App: React.FC = () => {
     telegram_user_id: null,
     name: 'Пользователь',
     is_admin: false,
-    is_vip: false
+    is_vip: false,
+    is_registered: true // Default to true to prevent flickering before resolution
   });
 
   // Get or create unique browser device_id for web sessions
@@ -187,6 +190,18 @@ export const App: React.FC = () => {
 
       if (res.ok) {
         const data = await res.json();
+        
+        // If the backend says not registered, we must show the welcome screen
+        if (data && data.registered === false) {
+          setCurrentUser(prev => ({
+            ...prev,
+            telegram_user_id: data.telegram_user_id || tgId || null,
+            name: data.name || tgName || 'Новый пользователь',
+            is_registered: false
+          }));
+          return;
+        }
+
         if (data && data.id) {
           const isHardcodedAdmin = (tgId === 747600306 || tgId === 435297513);
           const finalAdmin = Boolean(data.is_admin || isHardcodedAdmin);
@@ -206,6 +221,7 @@ export const App: React.FC = () => {
             name: data.name || tgName || (activeRole === 'admin' ? 'Robert (Администратор)' : 'Пользователь'),
             is_admin: activeRole === 'admin',
             is_vip: activeRole === 'admin' || activeRole === 'vip',
+            is_registered: true,
             role: activeRole
           });
         }
@@ -320,6 +336,25 @@ export const App: React.FC = () => {
   };
 
   const toggleTheme = () => setIsDark(prev => !prev);
+
+  // If still resolving identity, show a smooth loading state
+  if (isResolving) {
+    return (
+      <div className={`fixed inset-0 flex items-center justify-center ${isDark ? 'bg-[#0A100D]' : 'bg-[#F4F6F4]'}`}>
+        <div className="flex flex-col items-center gap-4">
+          <div className={`w-12 h-12 rounded-2xl animate-spin border-4 border-t-indigo-500 ${isDark ? 'border-[#1C2621]' : 'border-[#E2E8E4]'}`} />
+          <span className={`text-xs font-medium uppercase tracking-widest ${isDark ? 'text-[#8E9E96]' : 'text-[#7E9187]'}`}>
+            Идентификация...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not registered, show the Welcome/Onboarding bridge
+  if (currentUser.is_registered === false) {
+    return <WelcomeScreen isDark={isDark} />;
+  }
 
   return (
     <div

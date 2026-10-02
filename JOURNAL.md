@@ -1,5 +1,74 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #62: Registration Bridge and Welcome Screen
+
+### TASK
+1. Implement a welcome/onboarding bridge for new users who open the Mini App without prior registration in the bot.
+2. Prevent "white screen" or loading hangs for unregistered users.
+3. Show a dedicated `WelcomeScreen` with a prominent button to start registration in the bot (`/start reg`).
+4. Ensure the bot onboarding flow (name/gender) ends with a button to return to the Mini App.
+
+### DISCUSSION SUMMARY
+- **Problem**: New users landing directly in the TMA via short links (`t.me/bot/app`) might see a blank screen if they are not in the DB.
+- **Solution**: The backend `/api/client/resolve` now checks for profile completeness (`gender` field). If incomplete or missing, it returns `registered: false`. The frontend handles this by rendering a `WelcomeScreen`.
+
+### GOAL
+Provide a seamless onboarding experience and clear "Call to Action" for new users to register via the bot.
+
+### CHANGES
+- `server.ts`: Updated `/api/client/resolve` to return `registered: false` for missing or incomplete (no gender) profiles.
+- `src/components/WelcomeScreen.tsx`: Created a new high-fidelity onboarding component with a "Start Registration" CTA.
+- `src/App.tsx`: 
+  - Added `is_registered` to `CurrentUser` state.
+  - Implemented logic to render `WelcomeScreen` if registration is incomplete.
+  - Added a smooth loading state during identity resolution.
+- `app/bot/router.py`: Fixed `topics_keyboard` call to include `telegram_user_id`, ensuring the "Open App" button appears after onboarding.
+
+### FILES
+- `server.ts`
+- `src/components/WelcomeScreen.tsx`
+- `src/App.tsx`
+- `app/bot/router.py`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+- Logic: New users (no DB record or no gender) receive `registered: false`. Admins and existing users receive `registered: true`.
+
+### RESULT
+Registration bridge implemented. Users are now guided from the Mini App to the bot for onboarding and back.
+
+---
+
+## 2026-10-02 — Task #61: Unified Global Agent Rules
+
+### TASK
+1. Analyze provided "Global Rules" for web developer agents.
+2. Merge global rules with existing technical/ethical project constraints.
+3. Eliminate duplicate rules and create a single "source of truth" in `AGENTS.md`.
+
+### DISCUSSION SUMMARY
+- **Context**: The user provided a comprehensive set of methodology rules (Planning -> Task -> Logging).
+- **Decision**: Restructure `AGENTS.md` to lead with the methodology, then integrate specific technical rules (LLM abstraction, medical escalation, sandbox constraints).
+
+### GOAL
+Establish a clear, unified methodology and set of constraints for the agent to follow in every subsequent task.
+
+### CHANGES
+- `AGENTS.md`: Completely rewritten to incorporate the 18-point global ruleset and the 13 original technical points into a cohesive 4-section document.
+
+### FILES
+- `AGENTS.md`
+
+### VERIFICATION
+- Content Review: All methodology principles (Minimal change, preservation, recovery) and technical constraints are present.
+- Format: Clean Markdown structure in Russian for consistency with user requirements.
+
+### RESULT
+Unified `AGENTS.md` created. The agent now operates under a single set of methodology and technical rules.
+
+---
+
 ## 2026-10-02 — Task #60: Production Deployment and Milestone Push
 
 ### TASK

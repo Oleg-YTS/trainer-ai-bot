@@ -232,7 +232,7 @@ async def choose_gender(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.answer()
     saved = PROFILE_SAVED_TEXT.format(name=name, gender=gender_label(gender))
-    await reply_from_button(callback, f"{saved}\n\n{TOPICS_TEXT}", topics_keyboard())
+    await reply_from_button(callback, f"{saved}\n\n{TOPICS_TEXT}", topics_keyboard(callback.from_user.id))
 
 
 @router.callback_query(F.data == EDIT_PROFILE_CALLBACK)

@@ -1716,6 +1716,36 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
   const isAdmin = adminIds.includes(String(tg_id));
   const displayName = name ? String(name) : (isAdmin ? 'Администратор' : `Пользователь ${tg_id}`);
 
+  // Check if client already exists in PostgreSQL
+  const existingClient = await pgService.getClientById(tg_id);
+  
+  if (!existingClient && !isAdmin) {
+    // If user doesn't exist and is not an admin, we don't auto-register them here.
+    // They must go through the bot onboarding first.
+    return res.json({
+      ok: true,
+      registered: false,
+      telegram_user_id: tg_id,
+      name: displayName
+    });
+  }
+
+  // If user exists, check if profile is complete (has gender)
+  if (existingClient && !isAdmin) {
+    const profile = existingClient.client.profile || {};
+    const isComplete = !!profile.name && !!profile.gender;
+    if (!isComplete) {
+      return res.json({
+        ok: true,
+        registered: false,
+        id: existingClient.client.id,
+        telegram_user_id: tg_id,
+        name: existingClient.client.name
+      });
+    }
+  }
+
+  // If admin or existing complete user, proceed with upsert (to update name/activity)
   const pgClient = await pgService.upsertClientProfile({
     telegram_user_id: tg_id,
     name: displayName,
@@ -1726,6 +1756,7 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
   if (pgClient) {
     return res.json({
       ok: true,
+      registered: true,
       id: pgClient.id,
       client_id: pgClient.id,
       telegram_user_id: pgClient.telegram_user_id,
