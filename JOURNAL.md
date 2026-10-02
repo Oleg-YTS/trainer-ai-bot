@@ -39,7 +39,40 @@ The registration bridge is now robust. Technical 404 errors are resolved, and th
 
 ---
 
-## 2026-10-02 — Task #62: Registration Bridge and Welcome Screen (Initial Attempt)
+## 2026-10-02 — Task #64: Stage 1 — Synchronizing Frontend with Render Production
+
+### TASK
+1. Ensure frontend communicates with the local proxy in sandbox but remains compatible with Render production.
+2. Fix 404 "Not Found" by aligning API base URLs and backend proxy fallbacks.
+3. Eliminate "White Screen" by ensuring any auth failure triggers the Welcome Screen.
+
+### PLAN
+- **Stage 1**: Update `src/api.ts` to use relative paths (`''`) in the sandbox environment. This forces requests through the local Node.js server instead of hitting the external (un-updated) Render URL.
+- **Stage 1.1**: Add hardcoded fallbacks to `https://trainer-ai-bot.onrender.com` in both `server.ts` (proxy) and `app/config/settings.py` (bot base_url) to ensure functionality if environment variables are missing.
+- **Stage 2**: (Already in code) Handle missing `tgId` in `App.tsx` by defaulting to `is_registered: false`.
+
+### CHANGES
+- `src/api.ts`: Simplified `API_BASE_URL` to use relative paths for AI Studio preview.
+- `server.ts`: Added hardcoded fallback for `TARGET_BOT_URL`.
+- `app/config/settings.py`: Added hardcoded fallback for `base_url`.
+- `src/App.tsx`: Verified robust identity resolution.
+
+### FILES
+- `src/api.ts`
+- `server.ts`
+- `app/config/settings.py`
+- `src/App.tsx`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+- Identification: Opening the app in sandbox without Telegram parameters now correctly shows the `WelcomeScreen` (2.0.0 TMA) because it can no longer hit the external 404.
+
+### RESULT
+Stage 1 complete. The app is now technically aligned with the production server while remaining fully testable and robust in the development environment.
+
+### NEXT
+Wait for user verification and "Push" command.
 
 ### TASK
 1. Implement a welcome/onboarding bridge for new users who open the Mini App without prior registration in the bot.

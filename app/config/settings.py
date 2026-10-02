@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     @property
     def base_url(self) -> str | None:
         # Render provides RENDER_EXTERNAL_URL for web services
-        return self.webhook_base_url or os.getenv("RENDER_EXTERNAL_URL")
+        return self.webhook_base_url or os.getenv("RENDER_EXTERNAL_URL") or "https://trainer-ai-bot.onrender.com"
 
     @property
     def webhook_url(self) -> str | None:

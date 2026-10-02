@@ -1241,7 +1241,7 @@ const TARGET_BOT_URL = (
   process.env.BOT_API_URL ||
   process.env.PYTHON_BACKEND_URL ||
   process.env.RENDER_BOT_URL ||
-  ''
+  'https://trainer-ai-bot.onrender.com'
 ).trim().replace(/\/+$/, '');
 
 if (TARGET_BOT_URL) {

@@ -5,14 +5,17 @@ const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || REN
 
 const API_BASE_URL = (() => {
   if (typeof window !== 'undefined') {
-    // Sandbox preview (ais-dev-*) connects directly to Render external backend database
-    if (window.location.hostname.includes('ais-')) {
-      return RENDER_EXTERNAL_API;
+    // Use relative paths if we are on the same origin (standard for Render and AI Studio proxy)
+    // or if we want to hit the local server that proxies to the real backend.
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isLocal) {
+      return rawEnvUrl.replace(/\/$/, '');
     }
-    // Production single-service on Render uses relative paths
-    if (rawEnvUrl === window.location.origin) {
-      return '';
-    }
+    
+    // In all other cases (including AI Studio preview and production Render), 
+    // use relative paths to ensure requests go through the local server/proxy.
+    return '';
   }
   return rawEnvUrl.replace(/\/$/, '');
 })();
