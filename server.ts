@@ -1218,6 +1218,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Zero-Cache Middleware for fresh WebApp sessions
+app.use((_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // Proxy layer to Python Telegram Bot backend (PostgreSQL) when target URL is configured in environment
 const TARGET_BOT_URL = (
   process.env.VITE_API_BASE_URL ||

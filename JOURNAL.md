@@ -530,6 +530,34 @@ Client database completely cleansed and normalized. Exactly 4 canonical profiles
 ### RESULT
 Каждый Telegram-аккаунт и браузер теперь строго изолированы со своей историей и анкетой; в веб-панели тренера работает тест LLM и отображается актуальный статус подключения.
 
+---
+
+## 2026-10-02 — Task #26: Total Zero-Cache Policy for Telegram WebApp & Backend
+
+### TASK
+1. Внедрен строгий HTTP-middleware на бэкенде FastAPI (`app/main.py`) с отдачей заголовков `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` на все `/api/*` запросы и SPA `index.html`.
+2. В клиенте `src/api.ts` (и `webapp/src/api.ts`) включен режим `cache: 'no-store'` и автоматический cache-buster `_t=timestamp` на GET-запросы.
+3. В `server.ts` добавлен zero-cache middleware для исключения локального кэширования в Express.
+4. Выполнена пересборка клиентского бандла `webapp/dist`.
+
+### GOAL
+Полностью исключить агрессивное кэширование со стороны Telegram WebView и мобильных браузеров, гарантируя всегда актуальные данные и живое подключение к серверу.
+
+### CHANGES
+- `/app/main.py`: Zero-cache HTTP middleware и `NO_CACHE_HEADERS` на отдачу HTML.
+- `/src/api.ts`: `cache: 'no-store'`, заголовки `Cache-Control: no-cache` и cache-buster query parameter.
+- `/server.ts`: Zero-cache Express middleware.
+- `/dist/` & `/webapp/dist/`: Пересобран production-бандл.
+
+### VERIFICATION
+- `python3 -m compileall -q app/`: 0 ошибок.
+- `tsc --noEmit`: 0 ошибок.
+- `compile_applet`: Сборка успешна.
+
+### RESULT
+Любое открытие Telegram Mini App теперь принудительно запрашивает свежий бандл и актуальные данные с сервера, исключая показ старых закэшированных экранов и неактуальных статусов.
+
+
 
 
 

@@ -10,12 +10,23 @@ export function getApiUrl(endpoint: string): string {
 }
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
-  const url = getApiUrl(endpoint);
-  const relativeUrl = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const method = (options.method || 'GET').toUpperCase();
+  // Append anti-cache timestamp query parameter to GET requests
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (method === 'GET') {
+    const separator = cleanEndpoint.includes('?') ? '&' : '?';
+    cleanEndpoint = `${cleanEndpoint}${separator}_t=${Date.now()}`;
+  }
+
+  const url = `${API_BASE_URL}${cleanEndpoint}`;
+  const relativeUrl = cleanEndpoint;
   
   const initData = (window as any).Telegram?.WebApp?.initData || '';
   const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   };
   if (initData) {
     defaultHeaders['X-Telegram-Init-Data'] = initData;
@@ -26,9 +37,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}): Pro
     ...(options.headers as Record<string, string> || {}),
   };
 
-  const fetchOptions = {
+  const fetchOptions: RequestInit = {
     ...options,
     headers: mergedHeaders,
+    cache: 'no-store'
   };
 
   try {

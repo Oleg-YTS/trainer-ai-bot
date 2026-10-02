@@ -107,6 +107,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)
 
+# Zero-Cache Middleware for Telegram WebApp and Mobile Browsers
+@app.middleware("http")
+async def no_cache_middleware(request: Request, call_next):
+    response = await call_next(request)
+    # Ensure fresh content and live API responses across all devices
+    path = request.url.path
+    if path.startswith("/api/") or path == "/" or path.endswith(".html") or path == "/health":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        response.headers["Surrogate-Control"] = "no-store"
+    return response
+
 # Enable CORS for WebApp integration (Mini App / Standalone Web Shell)
 app.add_middleware(
     CORSMiddleware,
@@ -123,6 +136,12 @@ dist_path = Path("webapp/dist")
 if not dist_path.exists():
     dist_path = Path("dist")
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
 if dist_path.exists():
     logger.info("Mounting webapp static files from %s", dist_path.resolve())
     assets_dir = dist_path / "assets"
@@ -135,10 +154,12 @@ if dist_path.exists():
             raise HTTPException(status_code=404, detail="Not Found")
         file_path = dist_path / full_path
         if file_path.exists() and file_path.is_file():
+            if full_path.endswith(".html"):
+                return FileResponse(file_path, headers=NO_CACHE_HEADERS)
             return FileResponse(file_path)
         index_file = dist_path / "index.html"
         if index_file.exists():
-            return FileResponse(index_file)
+            return FileResponse(index_file, headers=NO_CACHE_HEADERS)
         raise HTTPException(status_code=404, detail="index.html not found")
 
 
