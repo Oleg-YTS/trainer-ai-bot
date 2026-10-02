@@ -218,6 +218,43 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Dynamic Viewport Height (--vh) for zero-jump mobile scaling across all devices
+    const updateViewportHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    updateViewportHeight();
+    window.addEventListener('resize', updateViewportHeight);
+    window.addEventListener('orientationchange', updateViewportHeight);
+
+    // Telegram WebApp Full Expansion & Native Lock
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+        if (typeof tg.disableVerticalSwipes === 'function') {
+          tg.disableVerticalSwipes();
+        }
+        if (typeof tg.setHeaderColor === 'function') {
+          tg.setHeaderColor(isDark ? '#121B17' : '#FFFFFF');
+        }
+        if (typeof tg.setBackgroundColor === 'function') {
+          tg.setBackgroundColor(isDark ? '#0A100D' : '#F4F6F4');
+        }
+      } catch (e) {
+        console.debug('Telegram WebApp setup error:', e);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateViewportHeight);
+      window.removeEventListener('orientationchange', updateViewportHeight);
+    };
+  }, [isDark]);
+
+  useEffect(() => {
     resolveCurrentUser();
   }, []);
 
@@ -281,12 +318,13 @@ export const App: React.FC = () => {
 
   return (
     <div
-      className={`h-[100dvh] w-full flex flex-col overflow-hidden relative ${
+      className={`fixed inset-0 h-full w-full flex flex-col overflow-hidden ${
         isDark ? 'theme-obsidian' : 'theme-mineral'
       }`}
       style={{
-        touchAction: 'pan-y',
-        overscrollBehaviorX: 'none'
+        height: 'calc(var(--vh, 1vh) * 100)',
+        touchAction: 'none',
+        overscrollBehavior: 'none'
       }}
     >
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col h-full overflow-hidden relative">

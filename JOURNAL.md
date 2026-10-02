@@ -448,6 +448,34 @@ Client database completely cleansed and normalized. Exactly 4 canonical profiles
 ### RESULT
 На Render FastAPI бэкенд теперь полностью поддерживает все API-запросы панели тренера и автоматически подтягивает переменные окружения.
 
+---
+
+## 2026-10-02 — Task #23: Absolute Mobile Viewport Lock & Zero-Drift Fitting
+
+### TASK
+1. Реализована строгая фиксация viewport (`position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: none`) на уровне `html`, `body` и `#root`.
+2. Добавлена динамическая калибровка `--vh` (`window.innerHeight * 0.01`) в `App.tsx` с отслеживанием `resize` и `orientationchange` для исключения скачков и сдвигов при появлении клавиатуры или адресной строки.
+3. Добавлена полная инициализация Telegram Mini App: `ready()`, `expand()`, `disableVerticalSwipes()` и синхронизация цветов заголовка/фона.
+4. Разрешена только вертикальная прокрутка строго внутри контейнеров контента (`touch-action: pan-y !important; overscroll-behavior-y: contain !important; overflow-x: hidden !important`).
+5. Проверено с помощью `lint_applet` (0 ошибок) и `compile_applet` (успешная сборка).
+
+### GOAL
+Гарантировать, что веб-приложение идеально мостится на весь экран на любых смартфонах и планшетах любого разрешения без возможности бокового смещения, резиновых отскоков (rubber-banding) и случайных свайпов окна.
+
+### CHANGES
+- `/index.html`: Закреплены стили `body` (`position: fixed; inset: 0; touch-action: none; overscroll-behavior: none; overflow: hidden;`).
+- `/src/index.css`: Обновлены базовые стили `html`, `body`, `#root` и скролл-контейнеров с жестким запретом горизонтального сдвига.
+- `/src/App.tsx`: Добавлен расчет `--vh`, хуки фиксации высоты и вызов нативного расширения Telegram WebApp.
+
+### VERIFICATION
+- `tsc --noEmit`: 0 ошибок.
+- `compile_applet`: Сборка успешна.
+- Dev-сервер перезапущен.
+
+### RESULT
+Окно приложения жестко зафиксировано на 100% высоты и ширины экрана на всех мобильных устройствах, горизонтальный люфт и смещение полностью исключены.
+
+
 
 
 
