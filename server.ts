@@ -2256,44 +2256,53 @@ app.get(['/project.zip', '/project-full.zip', '/download/project'], (_req: Reque
 // Server Launcher with Vite Integration
 async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production' || fs.existsSync(path.resolve(__dirname, 'dist', 'index.html'));
 
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true, host: '0.0.0.0', port: PORT },
-      appType: 'custom'
-    });
+  let useViteDev = false;
+  if (!isProduction) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true, host: '0.0.0.0', port: PORT },
+        appType: 'custom'
+      });
 
-    // Serve web app manifest with correct standard Content-Type
-    app.get('/manifest.json', (_req, res) => {
-      res.setHeader('Content-Type', 'application/manifest+json');
-      res.sendFile(path.resolve(__dirname, 'public', 'manifest.json'));
-    });
+      // Serve web app manifest with correct standard Content-Type
+      app.get('/manifest.json', (_req, res) => {
+        res.setHeader('Content-Type', 'application/manifest+json');
+        res.sendFile(path.resolve(__dirname, 'public', 'manifest.json'));
+      });
 
-    // Serve SVG icons and handle favicon
-    app.get(['/icon.svg', '/favicon.svg'], (_req, res) => {
-      res.setHeader('Content-Type', 'image/svg+xml');
-      res.sendFile(path.resolve(__dirname, 'public', 'icon.svg'));
-    });
+      // Serve SVG icons and handle favicon
+      app.get(['/icon.svg', '/favicon.svg'], (_req, res) => {
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.sendFile(path.resolve(__dirname, 'public', 'icon.svg'));
+      });
 
-    app.get('/favicon.ico', (_req, res) => {
-      res.status(204).end();
-    });
+      app.get('/favicon.ico', (_req, res) => {
+        res.status(204).end();
+      });
 
-    app.use(vite.middlewares);
+      app.use(vite.middlewares);
 
-    app.use('*', async (req, res, next) => {
-      const url = req.originalUrl;
-      try {
-        let template = await import('fs').then(fs => fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8'));
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (e) {
-        vite.ssrFixStacktrace(e as Error);
-        next(e);
-      }
-    });
-  } else {
+      app.use('*', async (req, res, next) => {
+        const url = req.originalUrl;
+        try {
+          let template = await import('fs').then(fs => fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8'));
+          template = await vite.transformIndexHtml(url, template);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } catch (e) {
+          vite.ssrFixStacktrace(e as Error);
+          next(e);
+        }
+      });
+      useViteDev = true;
+    } catch (_err) {
+      console.warn('[Server] Vite module not found or failed to load, falling back to static dist bundle serving.');
+    }
+  }
+
+  if (!useViteDev) {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req, res) => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

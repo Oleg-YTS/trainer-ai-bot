@@ -1,5 +1,34 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #38: Fix Production Static Fallback for Vite Dynamic Import
+
+### TASK
+1. Analyzed Render log: `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /app/server.ts`.
+2. Updated `server.ts` `startServer()` function:
+   - Added production detection: checks `process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production' || fs.existsSync(path.resolve(__dirname, 'dist', 'index.html'))`.
+   - Wrapped `import('vite')` in a `try...catch` block. If `vite` is not installed (in `--omit=dev` production environments), it seamlessly falls back to serving static files from `/dist`.
+3. Added `NODE_ENV: production` to `render.yaml`.
+
+### DISCUSSION SUMMARY
+- **Context**: Render environment runs with `APP_ENV=production` and `npm install --omit=dev`, omitting `vite`.
+- **Problem**: `server.ts` previously checked `process.env.NODE_ENV !== 'production'` without checking `APP_ENV` or existence of `/dist`, causing Node to attempt dynamic import of missing `vite` package.
+- **Decision**: Enhanced `isProduction` check in `server.ts` and wrapped `import('vite')` in a `try...catch` fallback block to statically serve `/dist`.
+
+### GOAL
+Guarantee that production environments on Render serve static SPA bundle from `/dist` without requiring `vite` dev package.
+
+### CHANGES
+- `/server.ts`: Updated `startServer()` with robust `isProduction` check and `try...catch` fallback around `import('vite')`.
+- `/render.yaml`: Added `NODE_ENV: production`.
+
+### VERIFICATION
+- `compile_applet`: SUCCESS (0 errors).
+
+### RESULT
+`server.ts` now safely serves static bundle in production without attempting to load `vite`.
+
+---
+
 ## 2026-10-02 — Task #37: Mandatory Discussion Summary Logging Rule Added to AGENTS.md
 
 ### TASK

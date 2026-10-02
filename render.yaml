@@ -7,6 +7,8 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: NODE_ENV
+        value: production
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: WEBHOOK_SECRET_TOKEN
