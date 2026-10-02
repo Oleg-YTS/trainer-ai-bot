@@ -14,7 +14,9 @@ import {
   Heart,
   Target,
   Sparkles,
-  Info
+  Info,
+  CreditCard,
+  Check
 } from 'lucide-react';
 import { apiFetch } from '../api';
 import { getLocalUsers, UserProfile } from '../utils/storage';
@@ -28,9 +30,9 @@ interface MobileProfileProps {
   telegramUserId?: number | null;
   isAdmin?: boolean;
   isVip?: boolean;
+  role?: string;
   onRefreshUser?: () => void;
   onUpdateAdminState?: (adminState: boolean) => void;
-  onSetUserRole?: (role: 'admin' | 'vip' | 'subscriber') => Promise<void>;
 }
 
 export const MobileProfile: React.FC<MobileProfileProps> = ({
@@ -42,11 +44,14 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   telegramUserId,
   isAdmin: userIsAdmin = false,
   isVip: userIsVip = false,
-  onRefreshUser,
-  onSetUserRole
+  role: userRole = 'user',
+  onRefreshUser
 }) => {
   const [isAdmin, setIsAdmin] = useState(userIsAdmin);
   const [isVip, setIsVip] = useState(userIsVip);
+
+  // Profile Accordion state
+  const [isProfileAccordionOpen, setIsProfileAccordionOpen] = useState(false);
 
   // Profile Form States
   const [formName, setFormName] = useState('');
@@ -67,6 +72,69 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
   const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
   const [vipRequestSent, setVipRequestSent] = useState(false);
   const [vipRequestLoading, setVipRequestLoading] = useState(false);
+
+  // Payment Simulator States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentType, setPaymentType] = useState<'subscriber' | 'vip'>('subscriber');
+  const [paymentStep, setPaymentStep] = useState<'checkout' | 'processing' | 'success'>('checkout');
+  const [paymentStatusText, setPaymentStatusText] = useState('');
+  const [paymentProgress, setPaymentProgress] = useState(0);
+
+  const startPaymentFlow = (type: 'subscriber' | 'vip') => {
+    setPaymentType(type);
+    setPaymentStep('checkout');
+    setPaymentProgress(0);
+    setPaymentStatusText('');
+    setShowPaymentModal(true);
+  };
+
+  const executePaymentSimulation = async () => {
+    setPaymentStep('processing');
+    
+    const steps = [
+      { text: 'Инициализация безопасной транзакции...', progress: 15 },
+      { text: 'Проверка платежа банком-эквайером...', progress: 50 },
+      { text: 'Зачисление средств и авторизация статуса...', progress: 85 },
+      { text: 'Оплата успешно проведена! 🎉', progress: 100 }
+    ];
+
+    for (const step of steps) {
+      setPaymentStatusText(step.text);
+      setPaymentProgress(step.progress);
+      await new Promise(res => setTimeout(res, 900));
+    }
+
+    // Call local API to upgrade role dynamically!
+    try {
+      const targetId = clientId || 1;
+      const isAdminVal = false;
+      const isVipVal = paymentType === 'vip';
+      
+      const res = await apiFetch('/api/client/status/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: targetId,
+          role: paymentType,
+          is_admin: isAdminVal,
+          is_vip: isVipVal
+        })
+      });
+
+      if (res.ok) {
+        if (paymentType === 'vip') {
+          setIsVip(true);
+        }
+        if (onRefreshUser) {
+          onRefreshUser();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync updated role from payment simulation:', err);
+    }
+
+    setPaymentStep('success');
+  };
 
   useEffect(() => {
     setIsAdmin(userIsAdmin);
@@ -233,7 +301,7 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
       <div className={`p-4 rounded-2xl border transition shadow-sm ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
-        <div className="flex items-center justify-between border-b pb-3 border-inherit mb-3">
+        <div className="flex items-center justify-between pb-2 mb-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#7DA295]" />
             <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Уровень доступа</h2>
@@ -245,20 +313,37 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
               Администратор (Тренер)
             </span>
           ) : isVip ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#182820] text-[#7DA295] border border-[#253A30]">
-              <Crown className="w-3.5 h-3.5 text-[#7DA295]" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/40 shadow-sm shadow-amber-500/5">
+              <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
               VIP (Персональное ведение)
+            </span>
+          ) : userRole === 'subscriber' ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              Подписчик (Безлимит)
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#18231E] text-[#8E9E96] border border-[#1F2E27]">
               <UserCheck className="w-3.5 h-3.5 text-[#8E9E96]" />
-              Подписчик канала
+              Бесплатный доступ
             </span>
           )}
         </div>
 
         {/* Status description & VIP benefits card */}
-        {isVip || userIsAdmin ? (
+        {userIsAdmin ? (
+          <div className={`p-3 rounded-xl border text-xs leading-relaxed space-y-1 ${
+            isDark ? 'bg-[#182820] border-[#253A30] text-[#C2D1C9]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
+          }`}>
+            <div className="font-semibold flex items-center gap-1.5 text-amber-400">
+              <Star className="w-4 h-4 fill-amber-400/20" />
+              <span>Панель Администратора</span>
+            </div>
+            <p className="text-[11px] opacity-80">
+              Вам доступны все разделы базы знаний, редактирование контента, ответы на сложные вопросы подопечных и управление тарифами.
+            </p>
+          </div>
+        ) : isVip ? (
           <div className={`p-3 rounded-xl border text-xs leading-relaxed space-y-1 ${
             isDark ? 'bg-[#182820] border-[#253A30] text-[#C2D1C9]' : 'bg-[#EBF0EC] border-[#D8E0DB] text-[#2B4A3D]'
           }`}>
@@ -271,136 +356,118 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className={`p-3.5 rounded-xl border text-xs leading-relaxed space-y-2 ${
-              isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#C2D1C9]' : 'bg-[#F4F7F5] border-[#E2E8E4] text-[#2B4A3D]'
+          <div className="space-y-4">
+            {/* Tariff Option 1: Unlimited Search AI */}
+            <div className={`p-3.5 rounded-xl border space-y-2 ${
+              isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
             }`}>
-              <div className="font-semibold flex items-center gap-1.5 text-[#7DA295]">
-                <Sparkles className="w-4 h-4" />
-                <span>Что дает персональное ведение (VIP)?</span>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-semibold text-xs flex items-center gap-1.5 text-inherit">
+                    <Sparkles className="w-4 h-4 text-[#7DA295]" />
+                    <span>Подписка на ИИ-Библиотекаря</span>
+                  </h4>
+                  <p className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Снимает почасовые лимиты на вопросы к базе знаний.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold font-mono">490 ₽</span>
+                  <span className={`text-[9px] block ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>в месяц</span>
+                </div>
               </div>
-              <ul className="space-y-1.5 text-[11px] opacity-90 pl-1">
-                <li className="flex items-start gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7DA295] shrink-0 mt-0.5" />
-                  <span>Индивидуальный план тренировок под ваши цели и оборудование</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7DA295] shrink-0 mt-0.5" />
-                  <span>Персональный расчет КБЖУ и контроль динамики веса</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#7DA295] shrink-0 mt-0.5" />
-                  <span>Еженедельный разбор отчетов и прямой контакт с тренером</span>
-                </li>
-              </ul>
+
+              {userRole === 'subscriber' ? (
+                <div className="flex items-center gap-1 text-[11px] text-emerald-400 font-semibold pt-1">
+                  <Check className="w-4 h-4" />
+                  <span>Подписка активна (Безлимитный доступ)</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => startPaymentFlow('subscriber')}
+                  className="w-full py-1.5 px-3 rounded-lg bg-[#5B8A78] hover:bg-[#4A7364] text-[#0A100D] text-[11px] font-bold transition flex items-center justify-center gap-1"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Подписаться за 490 ₽</span>
+                </button>
+              )}
             </div>
 
-            {vipRequestSent ? (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Заявка отправлена тренеру. Тренер свяжется с вами для уточнения деталей.</span>
+            {/* Tariff Option 2: Personal Coach (VIP) */}
+            <div className={`p-3.5 rounded-xl border space-y-2 ${
+              isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
+            }`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="font-semibold text-xs flex items-center gap-1.5 text-[#7DA295]">
+                    <Crown className="w-4 h-4 text-amber-400 fill-amber-400/10" />
+                    <span>Персональное VIP-ведение</span>
+                  </h4>
+                  <p className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Чат с тренером, разборы отчетов и индивидуальный план.
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-bold font-mono text-amber-400">4 990 ₽</span>
+                  <span className={`text-[9px] block ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>в месяц</span>
+                </div>
               </div>
-            ) : (
+
+              <div className={`p-2.5 rounded-lg border text-[10px] leading-relaxed space-y-1 ${
+                isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#C2D1C9]' : 'bg-white border-[#E2E8E4] text-[#2B4A3D]'
+              }`}>
+                Полный контроль динамики веса, расчет КБЖУ, еженедельный разбор отчетов и прямой контакт.
+              </div>
+
               <button
                 type="button"
-                onClick={handleSendVipRequest}
-                disabled={vipRequestLoading}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.99] shadow-sm ${
-                  isDark
-                    ? 'bg-[#5B8A78] hover:bg-[#7DA295] text-[#0A100D]'
-                    : 'bg-[#2B4A3D] hover:bg-[#3C6150] text-white'
-                }`}
+                onClick={() => startPaymentFlow('vip')}
+                className="w-full py-1.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-[#0A100D] text-[11px] font-bold transition flex items-center justify-center gap-1"
               >
-                {vipRequestLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Crown className="w-4 h-4" />
-                )}
-                <span>Запросить персональное ведение</span>
+                <Crown className="w-3.5 h-3.5" />
+                <span>Оплатить VIP за 4 990 ₽</span>
               </button>
-            )}
+            </div>
           </div>
         )}
-
-        {/* DEV ROLE SWITCHER (Для тестирования прав) */}
-        <div className="mt-4 pt-3 border-t border-inherit">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-[#7DA295] mb-2 flex items-center justify-between">
-            <span>Переключатель прав (Sandbox)</span>
-            <span className="text-[10px] opacity-70 font-normal">ID: {clientId || '—'}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              type="button"
-              onClick={async () => {
-                setIsAdmin(false);
-                setIsVip(false);
-                if (onSetUserRole) await onSetUserRole('subscriber');
-              }}
-              className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
-                !userIsAdmin && !isVip
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-semibold'
-                  : isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]' : 'bg-[#F0F4F1] border-[#D8E0DB] text-[#53665C]'
-              }`}
-            >
-              Пользователь
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                setIsAdmin(false);
-                setIsVip(true);
-                if (onSetUserRole) await onSetUserRole('vip');
-              }}
-              className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
-                !userIsAdmin && isVip
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 font-semibold'
-                  : isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]' : 'bg-[#F0F4F1] border-[#D8E0DB] text-[#53665C]'
-              }`}
-            >
-              VIP
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                setIsAdmin(true);
-                setIsVip(true);
-                if (onSetUserRole) await onSetUserRole('admin');
-              }}
-              className={`py-1.5 px-2 rounded-xl text-xs font-medium border transition ${
-                userIsAdmin
-                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400 font-semibold'
-                  : isDark ? 'bg-[#18231E] border-[#1F2E27] text-[#8E9E96]' : 'bg-[#F0F4F1] border-[#D8E0DB] text-[#53665C]'
-              }`}
-            >
-              ★ Админ
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* ========================================== */}
       {/* БЛОК 2: АНКЕТА ПОДОПЕЧНОГО (Стандарт БД)    */}
       {/* ========================================== */}
-      <div className={`p-4 rounded-2xl border transition shadow-sm ${
+      <div className={`rounded-2xl border transition shadow-sm overflow-hidden ${
         isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
       }`}>
-        <div className="flex items-center justify-between border-b pb-3 border-inherit mb-3">
+        <button
+          type="button"
+          onClick={() => setIsProfileAccordionOpen(!isProfileAccordionOpen)}
+          className="w-full flex items-center justify-between p-4 focus:outline-none cursor-pointer"
+        >
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-[#7DA295]" />
-            <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit">Анкета подопечного</h2>
+            <h2 className="font-semibold text-xs uppercase tracking-wider text-inherit text-left">Профиль</h2>
           </div>
-          <span className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-            Стандарт базы тренера
-          </span>
-        </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] py-0.5 px-2 rounded-full font-semibold border ${
+              isProfileAccordionOpen
+                ? 'bg-[#5B8A78]/25 text-[#5B8A78] border-[#5B8A78]/40'
+                : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+            }`}>
+              {isProfileAccordionOpen ? 'Свернуть' : 'Заполнить анкету'}
+            </span>
+          </div>
+        </button>
 
-        {profileLoading ? (
-          <div className="flex items-center justify-center py-8 gap-2 opacity-60">
-            <Loader2 className="w-4 h-4 animate-spin text-[#7DA295]" />
-            <span className="text-xs">Загрузка параметров анкеты...</span>
-          </div>
-        ) : (
-          <form onSubmit={handleSaveProfile} className="space-y-3.5">
+        {isProfileAccordionOpen && (
+          <div className="p-4 pt-1">
+            {profileLoading ? (
+              <div className="flex items-center justify-center py-8 gap-2 opacity-60">
+                <Loader2 className="w-4 h-4 animate-spin text-[#7DA295]" />
+                <span className="text-xs">Загрузка параметров анкеты...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveProfile} className="space-y-3.5">
             {/* Имя */}
             <div>
               <label className={`block text-[11px] font-medium mb-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
@@ -627,6 +694,8 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
             </div>
           </form>
         )}
+          </div>
+        )}
       </div>
 
       {/* Быстрое добавление на домашний экран */}
@@ -653,6 +722,123 @@ export const MobileProfile: React.FC<MobileProfileProps> = ({
           Установить
         </button>
       </div>
+
+      {/* PAYMENT MODAL SIMULATOR */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl relative ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27] text-[#E8ECE9]' : 'bg-white border-[#D8E0DB] text-[#141F1A]'
+          }`}>
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className={`absolute top-3.5 right-3.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition hover:opacity-80 border ${
+                isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F6F4] border-[#C8D6CF]'
+              }`}
+            >
+              ✕
+            </button>
+
+            {paymentStep === 'checkout' && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2.5 rounded-xl ${paymentType === 'vip' ? 'bg-amber-500/20 text-amber-400' : 'bg-[#5B8A78]/20 text-[#5B8A78]'}`}>
+                    {paymentType === 'vip' ? <Crown className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Оплата заказа №{Math.floor(10000 + Math.random() * 90000)}</h3>
+                    <p className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                      Через защищенный платежный шлюз
+                    </p>
+                  </div>
+                </div>
+
+                <div className={`p-3.5 rounded-xl border space-y-1.5 text-xs ${
+                  isDark ? 'bg-[#18231E] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#E2E8E4]'
+                }`}>
+                  <div className="flex justify-between font-medium">
+                    <span className="opacity-80">Услуга:</span>
+                    <span>{paymentType === 'vip' ? 'Персональное VIP-ведение' : 'Подписка на ИИ-Библиотекаря'}</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span className="opacity-80">Период:</span>
+                    <span>1 месяц</span>
+                  </div>
+                  <div className="border-t border-inherit/40 pt-1.5 flex justify-between font-bold text-sm">
+                    <span>Сумма к оплате:</span>
+                    <span className={paymentType === 'vip' ? 'text-amber-400' : 'text-[#5B8A78]'}>
+                      {paymentType === 'vip' ? '4 990 ₽' : '490 ₽'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={executePaymentSimulation}
+                    className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.98] ${
+                      paymentType === 'vip'
+                        ? 'bg-amber-50 hover:bg-amber-600 text-[#0A100D]'
+                        : 'bg-[#5B8A78] hover:bg-[#4A7364] text-[#0A100D]'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Оплатить картой РФ (Мир / Visa / СБП)</span>
+                  </button>
+
+                  <button
+                    onClick={executePaymentSimulation}
+                    className={`w-full py-2 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition active:scale-[0.98] border ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#253A30] text-[#D0D7D3] hover:bg-[#1F2E27]'
+                        : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#2C3B34] hover:bg-[#E2E9E4]'
+                    }`}
+                  >
+                    <span>🌟 Оплатить Telegram Stars</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {paymentStep === 'processing' && (
+              <div className="py-6 flex flex-col items-center justify-center text-center space-y-4">
+                <Loader2 className={`w-10 h-10 animate-spin ${paymentType === 'vip' ? 'text-amber-400' : 'text-[#5B8A78]'}`} />
+                <div>
+                  <h4 className="font-bold text-sm">Платеж обрабатывается...</h4>
+                  <p className={`text-xs mt-1 h-4 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    {paymentStatusText}
+                  </p>
+                </div>
+                {/* Progress bar */}
+                <div className={`w-full h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#18231E]' : 'bg-[#EBF0EC]'}`}>
+                  <div
+                    className={`h-full transition-all duration-300 ${paymentType === 'vip' ? 'bg-amber-500' : 'bg-[#5B8A78]'}`}
+                    style={{ width: `${paymentProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {paymentStep === 'success' && (
+              <div className="py-4 flex flex-col items-center justify-center text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Оплата прошла успешно!</h4>
+                  <p className={`text-xs mt-1 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Ваш уровень доступа повышен до <b>{paymentType === 'vip' ? 'VIP' : 'Подписчик'}</b>. Все новые функции и безлимит уже активны!
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="w-full py-2 px-4 rounded-xl bg-emerald-500 text-[#0A100D] font-bold text-xs transition active:scale-[0.98]"
+                >
+                  Отлично, вернуться
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

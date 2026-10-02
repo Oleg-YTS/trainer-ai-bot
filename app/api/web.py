@@ -950,6 +950,46 @@ async def get_secrets_endpoint():
         }
 
 
+class TrainerSettingsRequest(BaseModel):
+    hourly_rate_limit: int | None = None
+
+
+@router.get("/trainer/settings")
+async def get_trainer_settings_endpoint():
+    """
+    Returns current trainer settings including hourly rate limit for standard users.
+    """
+    try:
+        raw_limit = os.getenv("HOURLY_RATE_LIMIT", "5")
+        limit = int(raw_limit) if raw_limit.isdigit() else 5
+        return {"ok": True, "hourly_rate_limit": limit}
+    except Exception as exc:
+        logger.error("Error in get_trainer_settings_endpoint: %s", exc)
+        return {"ok": True, "hourly_rate_limit": 5}
+
+
+@router.post("/trainer/settings")
+async def update_trainer_settings_endpoint(payload: TrainerSettingsRequest):
+    """
+    Updates trainer settings (e.g. hourly rate limit) in environment and runtime.
+    """
+    try:
+        if payload.hourly_rate_limit is not None and payload.hourly_rate_limit >= 0:
+            val_str = str(payload.hourly_rate_limit)
+            os.environ["HOURLY_RATE_LIMIT"] = val_str
+            save_to_env_file({"HOURLY_RATE_LIMIT": val_str})
+            return {
+                "ok": True,
+                "success": True,
+                "hourly_rate_limit": payload.hourly_rate_limit,
+                "message": f"Лимит успешно обновлён: {payload.hourly_rate_limit} запросов в час"
+            }
+        raise HTTPException(status_code=400, detail="Укажите корректное число для лимита (>= 0)")
+    except Exception as exc:
+        logger.error("Error in update_trainer_settings_endpoint: %s", exc)
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 class SecretsUpdateRequest(BaseModel):
     GITHUB_TOKEN: str | None = None
     AITUNNEL_API_KEY: str | None = None

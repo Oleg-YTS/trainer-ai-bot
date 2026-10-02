@@ -106,6 +106,113 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState<boolean>(false);
 
+  // Rate Limit Settings State
+  const [hourlyRateLimitSetting, setHourlyRateLimitSetting] = useState<number>(5);
+  const [savingRateLimit, setSavingRateLimit] = useState<boolean>(false);
+  const [rateLimitSaveToast, setRateLimitSaveToast] = useState<string | null>(null);
+
+  const fetchRateLimitSetting = async () => {
+    try {
+      const res = await apiFetch('/api/trainer/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.hourly_rate_limit === 'number') {
+          setHourlyRateLimitSetting(data.hourly_rate_limit);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch rate limit setting:', err);
+    }
+  };
+
+  const handleSaveRateLimitSetting = async (newLimit: number) => {
+    setSavingRateLimit(true);
+    setRateLimitSaveToast(null);
+    try {
+      const res = await apiFetch('/api/trainer/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hourly_rate_limit: newLimit })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHourlyRateLimitSetting(data.hourly_rate_limit);
+        setRateLimitSaveToast(data.message || 'Настройка лимитов успешно сохранена!');
+        setTimeout(() => setRateLimitSaveToast(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save rate limit setting:', err);
+    } finally {
+      setSavingRateLimit(false);
+    }
+  };
+
+  // Tariff Pricing States
+  const [subscriberPriceSetting, setSubscriberPriceSetting] = useState<number>(490);
+  const [vipPriceSetting, setVipPriceSetting] = useState<number>(4990);
+  const [savingTariffPrices, setSavingTariffPrices] = useState<boolean>(false);
+  const [tariffSaveToast, setTariffSaveToast] = useState<string | null>(null);
+
+  // Accordion states for tariffs & backups tab
+  const [isTariffsAccordionOpen, setIsTariffsAccordionOpen] = useState(true);
+  const [isBackupsAccordionOpen, setIsBackupsAccordionOpen] = useState(false);
+
+  // Accordion states for LLM & Connections Tab
+  const [isLlmLimitsOpen, setIsLlmLimitsOpen] = useState(false);
+  const [isLlmConnectionsOpen, setIsLlmConnectionsOpen] = useState(false);
+  const [isLlmModelOpen, setIsLlmModelOpen] = useState(false);
+  const [isLlmTesterOpen, setIsLlmTesterOpen] = useState(false);
+
+  const fetchTariffPrices = async () => {
+    try {
+      const res = await apiFetch('/api/trainer/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.subscriber_price === 'number') {
+          setSubscriberPriceSetting(data.subscriber_price);
+        }
+        if (typeof data.vip_price === 'number') {
+          setVipPriceSetting(data.vip_price);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch tariff prices:', err);
+    }
+  };
+
+  const handleSaveTariffPrices = async (subP: number, vipP: number) => {
+    setSavingTariffPrices(true);
+    setTariffSaveToast(null);
+    try {
+      const res = await apiFetch('/api/trainer/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscriber_price: subP, vip_price: vipP })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubscriberPriceSetting(data.subscriber_price || subP);
+        setVipPriceSetting(data.vip_price || vipP);
+        setTariffSaveToast('Цены тарифов успешно сохранены в .env!');
+        setTimeout(() => setTariffSaveToast(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to save tariff prices:', err);
+    } finally {
+      setSavingTariffPrices(false);
+    }
+  };
+
+  // State to track which client cards are expanded/collapsed
+  const [expandedClients, setExpandedClients] = useState<Record<number, boolean>>({});
+
+  const toggleClientExpanded = (clientId: number) => {
+    setExpandedClients(prev => ({
+      ...prev,
+      [clientId]: !prev[clientId]
+    }));
+  };
+
   const fetchAnalytics = async () => {
     setLoadingAnalytics(true);
     try {
@@ -508,8 +615,16 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   };
 
   useEffect(() => {
+    fetchRateLimitSetting();
+    fetchTariffPrices();
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'clients') {
       fetchClients();
+    } else if (activeTab === 'llm' || activeTab === 'deploy') {
+      fetchRateLimitSetting();
+      fetchTariffPrices();
     }
   }, [activeTab]);
 
@@ -826,12 +941,12 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       </div>
 
       {/* Interactive 8-Card Navigation Hub (Touch-friendly 2x4 / 4x2 Grid) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         {/* 1. База Знаний */}
         <button
           type="button"
           onClick={() => setActiveTab('kb')}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'kb'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -841,31 +956,19 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'kb'
-                  ? isDark
-                    ? 'bg-[#253A30] text-[#7DA295]'
-                    : 'bg-[#D2E2D8] text-[#2B4A3D]'
-                  : isDark
-                    ? 'bg-[#18231E] text-[#7DA295]'
-                    : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className={activeTab === 'kb' ? 'text-[#5B8A78] dark:text-[#7DA295]' : 'text-[#7DA295] dark:text-[#5B8A78]'}>
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              База Знаний
+            </span>
             {activeTab === 'kb' && (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             )}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              База Знаний
-            </div>
-            <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              {knowledge.length} {knowledge.length === 1 ? 'статья' : knowledge.length > 4 ? 'статей' : 'статьи'}
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            {knowledge.length} статей
           </div>
         </button>
 
@@ -873,7 +976,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('categories')}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'categories'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -883,31 +986,19 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'categories'
-                  ? isDark
-                    ? 'bg-[#253A30] text-[#5B8A78]'
-                    : 'bg-[#D2E2D8] text-[#2B4A3D]'
-                  : isDark
-                    ? 'bg-[#18231E] text-[#5B8A78]'
-                    : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}
-            >
-              <FolderTree className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className={activeTab === 'categories' ? 'text-[#5B8A78] dark:text-[#7DA295]' : 'text-[#7DA295] dark:text-[#5B8A78]'}>
+              <FolderTree className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Категории
+            </span>
             {activeTab === 'categories' && (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             )}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Категории
-            </div>
-            <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              {categories.length} {categories.length === 1 ? 'раздел' : categories.length > 4 ? 'разделов' : 'раздела'}
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            {categories.length} разделов
           </div>
         </button>
 
@@ -915,7 +1006,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('gaps')}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'gaps'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -925,43 +1016,27 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'gaps'
-                  ? isDark
-                    ? 'bg-[#2E2413] text-[#D4A359]'
-                    : 'bg-[#FFF0D4] text-[#9E6E24]'
-                  : isDark
-                    ? 'bg-[#2E2413] text-[#D4A359]'
-                    : 'bg-[#FFF6E5] text-[#9E6E24]'
-              }`}
-            >
-              <AlertTriangle className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className="text-[#D4A359]">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Актуальность
+            </span>
             {contentGaps.length > 0 ? (
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                isDark
-                  ? 'bg-[#2E2413] text-[#D4A359] border-[#47361C]'
-                  : 'bg-[#FFF6E5] text-[#9E6E24] border-[#F0D5A8]'
-              }`}>
+              <span className="px-1 py-0.2 text-[8px] font-bold rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0 ml-auto leading-none">
                 {contentGaps.length}
               </span>
             ) : activeTab === 'gaps' ? (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             ) : null}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Актуальность
-            </div>
-            <div className={`text-[10px] mt-0.5 ${
-              contentGaps.length > 0
-                ? isDark ? 'text-[#D4A359]' : 'text-[#9E6E24]'
-                : isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'
-            }`}>
-              {contentGaps.length} {contentGaps.length === 1 ? 'тема <70%' : 'тем <70%'}
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${
+            contentGaps.length > 0
+              ? isDark ? 'text-[#D4A359]' : 'text-[#9E6E24]'
+              : isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'
+          }`}>
+            {contentGaps.length > 0 ? `${contentGaps.length} тем <70%` : 'Обновлено'}
           </div>
         </button>
 
@@ -969,7 +1044,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('escalations')}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'escalations'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -979,45 +1054,29 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'escalations'
-                  ? isDark
-                    ? 'bg-[#31181C] text-[#E06D79]'
-                    : 'bg-[#FFDEE3] text-[#B83244]'
-                  : isDark
-                    ? 'bg-[#31181C] text-[#E06D79]'
-                    : 'bg-[#FFEBEF] text-[#B83244]'
-              }`}
-            >
-              <ShieldAlert className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className="text-[#E06D79]">
+              <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Эскалации
+            </span>
             {escalations.filter(e => e.status === 'open').length > 0 ? (
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
-                isDark
-                  ? 'bg-[#31181C] text-[#E06D79] border-[#442227]'
-                  : 'bg-[#FFEBEF] text-[#B83244] border-[#F2C2CB]'
-              }`}>
+              <span className="px-1 py-0.2 text-[8px] font-bold rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0 ml-auto leading-none">
                 {escalations.filter(e => e.status === 'open').length}
               </span>
             ) : activeTab === 'escalations' ? (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             ) : null}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Эскалации
-            </div>
-            <div className={`text-[10px] mt-0.5 ${
-              escalations.filter(e => e.status === 'open').length > 0
-                ? isDark ? 'text-[#E06D79]' : 'text-[#B83244]'
-                : isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'
-            }`}>
-              {escalations.filter(e => e.status === 'open').length > 0
-                ? `${escalations.filter(e => e.status === 'open').length} требуют ответа`
-                : 'Все решены'}
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${
+            escalations.filter(e => e.status === 'open').length > 0
+              ? isDark ? 'text-[#E06D79]' : 'text-[#B83244]'
+              : isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'
+          }`}>
+            {escalations.filter(e => e.status === 'open').length > 0
+              ? `${escalations.filter(e => e.status === 'open').length} новые`
+              : 'Решены'}
           </div>
         </button>
 
@@ -1028,7 +1087,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             setActiveTab('clients');
             fetchClients();
           }}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'clients'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1038,31 +1097,19 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'clients'
-                  ? isDark
-                    ? 'bg-[#253A30] text-[#7DA295]'
-                    : 'bg-[#D2E2D8] text-[#2B4A3D]'
-                  : isDark
-                    ? 'bg-[#18231E] text-[#7DA295]'
-                    : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}
-            >
-              <Users className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className={activeTab === 'clients' ? 'text-[#5B8A78] dark:text-[#7DA295]' : 'text-[#7DA295] dark:text-[#5B8A78]'}>
+              <Users className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Клиенты & Роли
+            </span>
             {activeTab === 'clients' && (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             )}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Клиенты и роли
-            </div>
-            <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              {clients.length} {clients.length === 1 ? 'подопечный' : clients.length > 4 ? 'подопечных' : 'подопечных'}
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            {clients.length} подопечных
           </div>
         </button>
 
@@ -1073,7 +1120,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             setActiveTab('analytics');
             fetchAnalytics();
           }}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'analytics'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1083,31 +1130,19 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'analytics'
-                  ? isDark
-                    ? 'bg-[#253A30] text-[#7DA295]'
-                    : 'bg-[#D2E2D8] text-[#2B4A3D]'
-                  : isDark
-                    ? 'bg-[#18231E] text-[#7DA295]'
-                    : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className={activeTab === 'analytics' ? 'text-[#5B8A78] dark:text-[#7DA295]' : 'text-[#7DA295] dark:text-[#5B8A78]'}>
+              <BarChart3 className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Аналитика
+            </span>
             {activeTab === 'analytics' && (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             )}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Аналитика
-            </div>
-            <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Интенты и темы
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            Темы & Интенты
           </div>
         </button>
 
@@ -1115,7 +1150,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         <button
           type="button"
           onClick={() => setActiveTab('deploy')}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'deploy'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1125,31 +1160,19 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'deploy'
-                  ? isDark
-                    ? 'bg-[#253A30] text-[#7DA295]'
-                    : 'bg-[#D2E2D8] text-[#2B4A3D]'
-                  : isDark
-                    ? 'bg-[#18231E] text-[#7DA295]'
-                    : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}
-            >
-              <Package className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className={activeTab === 'deploy' ? 'text-[#5B8A78] dark:text-[#7DA295]' : 'text-[#7DA295] dark:text-[#5B8A78]'}>
+              <Package className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Тарифы & Бэкапы
+            </span>
             {activeTab === 'deploy' && (
-              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="w-1.2 h-1.2 rounded-full bg-[#22C55E] shrink-0 ml-auto" />
             )}
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Скачать архивы
-            </div>
-            <div className={`text-[10px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Экспорт и бэкапы
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+            Цены и бэкапы
           </div>
         </button>
 
@@ -1161,7 +1184,7 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             fetchLlmStatus();
             fetchSecrets();
           }}
-          className={`p-3 rounded-xl border transition-all text-left flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+          className={`p-1.5 rounded-xl border transition-all text-left flex flex-col justify-center cursor-pointer select-none active:scale-[0.98] ${
             activeTab === 'llm'
               ? isDark
                 ? 'bg-[#182B22] border-[#5B8A78] shadow-sm ring-1 ring-[#5B8A78]/40'
@@ -1171,37 +1194,25 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                 : 'bg-white border-[#D8E0DB] hover:border-[#B5C4BC] hover:bg-[#F9FAF9]'
           }`}
         >
-          <div className="flex items-center justify-between gap-1">
-            <div
-              className={`p-1.5 rounded-lg ${
-                activeTab === 'llm'
-                  ? isDark
-                    ? 'bg-[#253A30] text-[#7DA295]'
-                    : 'bg-[#D2E2D8] text-[#2B4A3D]'
-                  : isDark
-                    ? 'bg-[#18231E] text-[#7DA295]'
-                    : 'bg-[#EBF0EC] text-[#2B4A3D]'
-              }`}
-            >
-              <Database className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 min-w-0 w-full">
+            <div className={activeTab === 'llm' ? 'text-[#5B8A78] dark:text-[#7DA295]' : 'text-[#7DA295] dark:text-[#5B8A78]'}>
+              <Database className="w-3.5 h-3.5 shrink-0" />
             </div>
+            <span className={`font-semibold text-[10px] leading-none truncate ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
+              Подключения & БД
+            </span>
             <span
-              className={`w-2 h-2 rounded-full ${
+              className={`w-1.2 h-1.2 rounded-full shrink-0 ml-auto ${
                 secretsStatus?.database_connected ? 'bg-[#22C55E]' : 'bg-[#E06D79]'
               }`}
             />
           </div>
-          <div className="mt-2.5">
-            <div className={`font-semibold text-xs leading-tight ${isDark ? 'text-[#E8ECE9]' : 'text-[#141F1A]'}`}>
-              Подключения & БД
-            </div>
-            <div className={`text-[10px] mt-0.5 ${
-              secretsStatus?.database_connected
-                ? 'text-[#22C55E]'
-                : isDark ? 'text-[#E06D79]' : 'text-[#B83244]'
-            }`}>
-              {secretsStatus?.database_connected ? 'PostgreSQL онлайн' : 'Проверить БД'}
-            </div>
+          <div className={`text-[9px] mt-0.5 truncate ${
+            secretsStatus?.database_connected
+              ? 'text-[#22C55E]'
+              : isDark ? 'text-[#E06D79]' : 'text-[#B83244]'
+          }`}>
+            {secretsStatus?.database_connected ? 'Подключено' : 'Нет связи'}
           </div>
         </button>
       </div>
@@ -1818,180 +1829,198 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
                   if (clientFilterStatus === 'admin') return !!c.is_admin;
                   return true;
                 })
-                .map((c, cIdx) => (
-                  <div
-                    key={`client-${c.id}-${c.telegram_user_id || cIdx}-${cIdx}`}
-                    className={`border rounded-xl p-3.5 space-y-2.5 text-xs transition relative ${
-                      isDark
-                        ? 'bg-[#18231E] border-[#1F2E27]'
-                        : 'bg-[#F4F6F4] border-[#D8E0DB]'
-                    }`}
-                  >
-                    {/* Header: Name & Role Badge with SVG */}
-                    <div className="flex justify-between items-center gap-2">
-                      <span className="font-semibold text-sm text-inherit truncate">{c.name}</span>
-                      {c.is_admin ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
-                          <Star className="w-3 h-3 fill-amber-400/30 text-amber-400" />
-                          Администратор
-                        </span>
-                      ) : c.is_vip ? (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 ${
-                            isDark
-                              ? 'bg-[#182820] text-[#7DA295] border-[#253A30]'
-                              : 'bg-[#EBF0EC] text-[#2B4A3D] border-[#D8E0DB]'
-                          }`}
-                        >
-                          <Crown className="w-3 h-3 text-[#7DA295]" />
-                          VIP (Ведение)
-                        </span>
-                      ) : (
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${
-                            isDark
-                              ? 'bg-[#121B17] text-[#8E9E96] border-[#1F2E27]'
-                              : 'bg-white text-[#7E9187] border-[#D8E0DB]'
-                          }`}
-                        >
-                          <UserCheck className="w-3 h-3 text-[#8E9E96]" />
-                          Подписчик
-                        </span>
-                      )}
-                    </div>
-
-                    {/* ID line: Database ID, Telegram ID & Username */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-[#8E9E96]">
-                      <span className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-black/20">ID: #{c.id}</span>
-                      <span>•</span>
-                      <span>TG ID: {c.telegram_user_id || 'Не привязан'}</span>
-                      {(c.telegram_username || c.profile?.telegram_username) && (
-                        <>
-                          <span>•</span>
-                          <span className="text-sky-400 font-medium">@{c.telegram_username || c.profile?.telegram_username}</span>
-                        </>
-                      )}
-                      {c.messages_count !== undefined && (
-                        <>
-                          <span>•</span>
-                          <span>Вопросов: {c.messages_count}</span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Brief Profile Params */}
-                    <div className="space-y-1">
-                      <p className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>
-                        Цель: <span className="text-inherit font-medium">{c.profile?.goal || 'Не указана'}</span>
-                      </p>
-                      {c.profile?.restrictions && (
-                        <p className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3 shrink-0" />
-                          <span>Травмы/Ограничения: {c.profile.restrictions}</span>
-                        </p>
-                      )}
-                      {c.profile?.active_topic && (
-                        <p className={`text-[10px] ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`}>
-                          Активный фокус: {c.profile.active_topic}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Quick Action Buttons: Dossier & Telegram */}
-                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed border-inherit">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenClientDossier(c)}
-                        className={`py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                          isDark
-                            ? 'bg-[#121B17] hover:bg-[#1E2B24] border-[#1F2E27] text-[#7DA295]'
-                            : 'bg-white hover:bg-[#EAF0EB] border-[#D8E0DB] text-[#2B4A3D]'
-                        }`}
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Досье & Чат</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOpenTelegramChat(c.telegram_user_id, c.telegram_username || c.profile?.telegram_username)}
-                        className="py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 text-sky-400"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>В Telegram</span>
-                      </button>
-                    </div>
-
-                    {/* Role Management Buttons */}
-                    <div className="pt-2 border-t border-dashed border-inherit space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[10px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                          Сменить статус:
-                        </span>
-                        <button
-                          onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
-                          className={`py-0.5 px-2 rounded border text-[10px] font-semibold transition ${
-                            c.is_vip
-                              ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
-                              : isDark
-                                ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
-                                : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
-                          }`}
-                        >
-                          {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
-                        </button>
+                .map((c, cIdx) => {
+                  const isExpanded = !!expandedClients[c.id];
+                  return (
+                    <div
+                      key={`client-${c.id}-${c.telegram_user_id || cIdx}-${cIdx}`}
+                      className={`border rounded-xl p-3.5 space-y-2.5 text-xs transition relative ${
+                        isDark
+                          ? 'bg-[#18231E] border-[#1F2E27]'
+                          : 'bg-[#F4F6F4] border-[#D8E0DB]'
+                      }`}
+                    >
+                      {/* Header: Name & Role Badge with SVG */}
+                      <div className="flex justify-between items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-semibold text-sm text-inherit truncate">
+                            {c.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleClientExpanded(c.id)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition cursor-pointer active:scale-95 shrink-0 ${
+                              isExpanded
+                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                : 'bg-[#5B8A78]/15 text-[#5B8A78] border-[#5B8A78]/30'
+                            }`}
+                          >
+                            {isExpanded ? 'Скрыть' : 'Раскрыть'}
+                          </button>
+                        </div>
+                        {c.is_admin ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                            <Star className="w-3 h-3 fill-amber-400/30 text-amber-400" />
+                            Администратор
+                          </span>
+                        ) : c.is_vip ? (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0 bg-amber-500/10 text-amber-400 border-amber-500/40`}
+                          >
+                            <Crown className="w-3 h-3 text-amber-400 fill-amber-400/10" />
+                            VIP (Ведение)
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border shrink-0 ${
+                              isDark
+                                ? 'bg-[#121B17] text-[#8E9E96] border-[#1F2E27]'
+                                : 'bg-white text-[#7E9187] border-[#D8E0DB]'
+                            }`}
+                          >
+                            <UserCheck className="w-3 h-3 text-[#8E9E96]" />
+                            Подписчик
+                          </span>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          onClick={() => handleSetClientRole(c.id, 'subscriber')}
-                          className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
-                            !c.is_vip && !c.is_admin
-                              ? isDark
-                                ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]'
-                                : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
-                              : isDark
-                                ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                                : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-                          }`}
-                        >
-                          <UserCheck className="w-2.5 h-2.5" />
-                          <span>Подписчик</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleSetClientRole(c.id, 'vip')}
-                          className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
-                            c.is_vip && !c.is_admin
-                              ? isDark
-                                ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]'
-                                : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
-                              : isDark
-                                ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                                : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-                          }`}
-                        >
-                          <Crown className="w-2.5 h-2.5" />
-                          <span>VIP</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleSetClientRole(c.id, 'admin')}
-                          className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
-                            c.is_admin
-                              ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                              : isDark
-                                ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
-                                : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
-                          }`}
-                        >
-                          <Star className="w-2.5 h-2.5 fill-amber-400/20" />
-                          <span>Админ</span>
-                        </button>
+                      {/* ID line: Database ID, Telegram ID & Username */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono text-[#8E9E96]">
+                        <span className="px-1.5 py-0.5 rounded bg-black/10 dark:bg-black/20">ID: #{c.id}</span>
+                        <span>•</span>
+                        <span>TG ID: {c.telegram_user_id || 'Не привязан'}</span>
+                        {(c.telegram_username || c.profile?.telegram_username) && (
+                          <>
+                            <span>•</span>
+                            <span className="text-sky-400 font-medium">@{c.telegram_username || c.profile?.telegram_username}</span>
+                          </>
+                        )}
                       </div>
+
+                      {/* Expanded Section */}
+                      {isExpanded && (
+                        <div className="space-y-3 pt-2 animate-fade-in">
+                          {/* Brief Profile Params */}
+                          <div className="space-y-1 bg-black/5 dark:bg-black/15 p-2 rounded-lg">
+                            <p className={isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}>
+                              Цель: <span className="text-inherit font-medium">{c.profile?.goal || 'Не указана'}</span>
+                            </p>
+                            {c.profile?.restrictions && (
+                              <p className="text-[11px] text-amber-400 font-medium flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                <span>Травмы/Ограничения: {c.profile.restrictions}</span>
+                              </p>
+                            )}
+                            {c.profile?.active_topic && (
+                              <p className={`text-[10px] ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`}>
+                                Активный фокус: {c.profile.active_topic}
+                              </p>
+                            )}
+                            {c.messages_count !== undefined && (
+                              <p className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                                Всего вопросов к ИИ: <span className="font-semibold text-inherit">{c.messages_count}</span>
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Quick Action Buttons: Dossier & Telegram */}
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenClientDossier(c)}
+                              className={`py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                                isDark
+                                  ? 'bg-[#121B17] hover:bg-[#1E2B24] border-[#1F2E27] text-[#7DA295]'
+                                  : 'bg-white hover:bg-[#EAF0EB] border-[#D8E0DB] text-[#2B4A3D]'
+                              }`}
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>Досье & Чат</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTelegramChat(c.telegram_user_id, c.telegram_username || c.profile?.telegram_username)}
+                              className="py-1.5 px-2.5 rounded-lg border text-xs font-semibold flex items-center justify-center gap-1.5 transition bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30 text-sky-400"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              <span>В Telegram</span>
+                            </button>
+                          </div>
+
+                          {/* Role Management Buttons */}
+                          <div className="pt-2 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[10px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                                Сменить статус:
+                              </span>
+                              <button
+                                onClick={() => handleToggleClientVip(c.id, !!c.is_vip)}
+                                className={`py-0.5 px-2 rounded border text-[10px] font-semibold transition ${
+                                  c.is_vip
+                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
+                                    : isDark
+                                      ? 'bg-[#5B8A78]/10 border-[#5B8A78]/20 text-[#7DA295] hover:bg-[#5B8A78]/20'
+                                      : 'bg-[#2B4A3D]/10 border-[#2B4A3D]/20 text-[#2B4A3D] hover:bg-[#2B4A3D]/20'
+                                }`}
+                              >
+                                {c.is_vip ? 'Отменить VIP' : 'Активировать VIP'}
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-1.5">
+                              <button
+                                onClick={() => handleSetClientRole(c.id, 'subscriber')}
+                                className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                                  !c.is_vip && !c.is_admin
+                                    ? isDark
+                                      ? 'bg-[#18231E] border-[#5B8A78] text-[#7DA295]'
+                                      : 'bg-[#F4F7F5] border-[#2B4A3D] text-[#2B4A3D]'
+                                    : isDark
+                                      ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                                      : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                                }`}
+                              >
+                                <UserCheck className="w-2.5 h-2.5" />
+                                <span>Подписчик</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSetClientRole(c.id, 'vip')}
+                                className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                                  c.is_vip && !c.is_admin
+                                    ? isDark
+                                      ? 'bg-[#182820] border-[#7DA295] text-[#7DA295]'
+                                      : 'bg-[#EBF0EC] border-[#2B4A3D] text-[#2B4A3D]'
+                                    : isDark
+                                      ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                                      : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                                }`}
+                              >
+                                <Crown className="w-2.5 h-2.5" />
+                                <span>VIP</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleSetClientRole(c.id, 'admin')}
+                                className={`py-1 px-1.5 rounded-lg border text-[10px] font-semibold flex items-center justify-center gap-1 transition ${
+                                  c.is_admin
+                                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                    : isDark
+                                      ? 'bg-transparent border-[#1F2E27] text-[#8E9E96] hover:bg-[#18231E]'
+                                      : 'bg-transparent border-[#E0E8E3] text-[#7E9187] hover:bg-[#F4F7F5]'
+                                }`}
+                              >
+                                <Star className="w-2.5 h-2.5 fill-amber-400/20" />
+                                <span>Админ</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           )}
 
@@ -2375,145 +2404,249 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
         </div>
       )}
 
-      {/* TAB 6: DEPLOYMENT & ARCHIVES */}
+      {/* TAB 6: TARIFFS & BACKUPS */}
       {activeTab === 'deploy' && (
-        <div className="space-y-4">
-          <div
-            className={`p-4 rounded-xl border space-y-3 ${
-              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Package className={`w-5 h-5 ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`} />
-              <h3 className="font-semibold text-sm text-inherit">Размещение приложения и скачивание архивов</h3>
-            </div>
-            <p className={`text-xs leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-              Архивы генерируются и отдаются через бинарный поток данных (Blob API), гарантируя 100% сохранность и предотвращая ошибки 404.
-            </p>
+        <div className="space-y-4 animate-fade-in">
+          {/* Accordion 1: Tariff prices and statistics */}
+          <div className={`rounded-xl border overflow-hidden ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setIsTariffsAccordionOpen(!isTariffsAccordionOpen)}
+              className="w-full flex items-center justify-between p-4 focus:outline-none cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Crown className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+                <h3 className="font-semibold text-sm text-inherit text-left">Настройка тарифов и статистика</h3>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition cursor-pointer active:scale-[0.95] shrink-0 ${
+                isTariffsAccordionOpen
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-[#5B8A78]/15 text-[#5B8A78] border-[#5B8A78]/30'
+              }`}>
+                {isTariffsAccordionOpen ? 'Скрыть' : 'Раскрыть'}
+              </span>
+            </button>
+
+            {isTariffsAccordionOpen && (
+              <div className="p-4 space-y-4">
+                <p className={`text-xs leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Управляйте стоимостью доступа к ИИ-Библиотекарю и VIP-ведению. Изменения сохраняются в конфигурационном файле <code className="font-mono text-[10px]">.env</code>.
+                </p>
+
+                {tariffSaveToast && (
+                  <div className="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5 font-medium animate-fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{tariffSaveToast}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Sub price setting */}
+                  <div className={`p-3 rounded-xl border space-y-2 ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                    <label className="block text-xs font-semibold">Цена подписки на ИИ (в месяц)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={subscriberPriceSetting}
+                        onChange={e => setSubscriberPriceSetting(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                        className={`w-full text-xs py-2 px-3 rounded-xl border font-mono outline-none ${
+                          isDark ? 'bg-[#121B17] border-[#1F2E27] text-white focus:border-[#5B8A78]' : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                        }`}
+                      />
+                      <span className="text-xs font-semibold">₽</span>
+                    </div>
+                  </div>
+
+                  {/* VIP price setting */}
+                  <div className={`p-3 rounded-xl border space-y-2 ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                    <label className="block text-xs font-semibold">Цена VIP-ведения (в месяц)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={vipPriceSetting}
+                        onChange={e => setVipPriceSetting(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                        className={`w-full text-xs py-2 px-3 rounded-xl border font-mono outline-none ${
+                          isDark ? 'bg-[#121B17] border-[#1F2E27] text-white focus:border-[#5B8A78]' : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                        }`}
+                      />
+                      <span className="text-xs font-semibold">₽</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    disabled={savingTariffPrices}
+                    onClick={() => handleSaveTariffPrices(subscriberPriceSetting, vipPriceSetting)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                      isDark ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]' : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+                    }`}
+                  >
+                    {savingTariffPrices && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Сохранить стоимость тарифов</span>
+                  </button>
+                </div>
+
+                {/* Revenue stats card */}
+                <div className={`p-4 rounded-xl border space-y-2.5 ${
+                  isDark ? 'bg-[#15231D] border-[#253A30]' : 'bg-[#EDF2EE] border-[#C8D6CF]'
+                }`}>
+                  <h4 className="font-semibold text-xs uppercase tracking-wider text-inherit">Текущая статистика по тарифам</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="space-y-0.5">
+                      <span className="opacity-75 block">Подписчики:</span>
+                      <span className="font-bold text-sm font-mono">
+                        {clients.filter(c => !c.is_vip && !c.is_admin).length} чел.
+                      </span>
+                      <span className="text-[10px] opacity-60 block">
+                        Потенциал: {clients.filter(c => !c.is_vip && !c.is_admin).length * subscriberPriceSetting} ₽/мес
+                      </span>
+                    </div>
+                    <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-inherit/40 pt-2 sm:pt-0 sm:pl-3">
+                      <span className="opacity-75 block">VIP-клиенты:</span>
+                      <span className="font-bold text-sm font-mono text-amber-400">
+                        {clients.filter(c => c.is_vip && !c.is_admin).length} чел.
+                      </span>
+                      <span className="text-[10px] opacity-60 block">
+                        Потенциал: {clients.filter(c => c.is_vip && !c.is_admin).length * vipPriceSetting} ₽/мес
+                      </span>
+                    </div>
+                    <div className="space-y-0.5 border-t sm:border-t-0 sm:border-l border-inherit/40 pt-2 sm:pt-0 sm:pl-3">
+                      <span className="opacity-75 block font-semibold text-emerald-400">Общая выручка (Прогноз):</span>
+                      <span className="font-bold text-base font-mono text-emerald-400">
+                        {clients.filter(c => !c.is_vip && !c.is_admin).length * subscriberPriceSetting +
+                          clients.filter(c => c.is_vip && !c.is_admin).length * vipPriceSetting} ₽/мес
+                      </span>
+                      <span className="text-[10px] opacity-60 block">На основе активной базы в СУБД</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Archive 1: Client dist */}
-            <div
-              className={`p-4 rounded-xl border space-y-3.5 flex flex-col justify-between ${
-                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-              }`}
+          {/* Accordion 2: Backups and exports */}
+          <div className={`rounded-xl border overflow-hidden ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setIsBackupsAccordionOpen(!isBackupsAccordionOpen)}
+              className="w-full flex items-center justify-between p-4 focus:outline-none cursor-pointer"
             >
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 font-medium text-xs">
-                  <Package className="w-4 h-4 text-[#5B8A78]" />
-                  <span>Сборка статики (dist.zip)</span>
-                </div>
-                <p className={`text-[11px] leading-normal ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Содержит скомпилированные клиентские файлы (index.html, JS/CSS бандлы, PWA манифест). Идеально для быстрой публикации на хостинге (FTP, cPanel, Nginx/Apache).
+              <div className="flex items-center gap-2">
+                <Package className={`w-5 h-5 ${isDark ? 'text-[#7DA295]' : 'text-[#2B4A3D]'}`} />
+                <h3 className="font-semibold text-sm text-inherit text-left">Резервное копирование и архивы</h3>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition cursor-pointer active:scale-[0.95] shrink-0 ${
+                isBackupsAccordionOpen
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-[#5B8A78]/15 text-[#5B8A78] border-[#5B8A78]/30'
+              }`}>
+                {isBackupsAccordionOpen ? 'Скрыть' : 'Раскрыть'}
+              </span>
+            </button>
+
+            {isBackupsAccordionOpen && (
+              <div className="p-4 space-y-4">
+                <p className={`text-xs leading-relaxed ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Скачивайте полные бэкапы проекта и скомпилированные клиентские статические файлы прямо на устройство.
                 </p>
-              </div>
 
-              <div className="space-y-2 pt-2 border-t border-dashed border-opacity-30">
-                <button
-                  onClick={() => handleDownloadFile('/dist.zip', 'dist.zip')}
-                  disabled={downloadingFile === 'dist.zip'}
-                  className={`w-full py-2 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center gap-2 ${
-                    isDark
-                      ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
-                      : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
-                  }`}
-                >
-                  {downloadingFile === 'dist.zip' ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Формирование архива...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Скачать dist.zip</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleCopyLink('/dist.zip')}
-                  className={`w-full py-1.5 px-3 rounded-xl border text-xs transition flex items-center justify-center gap-1.5 ${
-                    isDark
-                      ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:bg-[#1F2E27]'
-                      : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#141F1A] hover:bg-[#EBF0EC]'
-                  }`}
-                >
-                  {copiedLink === '/dist.zip' ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>Ссылка скопирована!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Скопировать ссылку на dist.zip</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Archive 1: Client dist */}
+                  <div className={`p-4 rounded-xl border space-y-3 flex flex-col justify-between ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 font-semibold text-xs">
+                        <Package className="w-4 h-4 text-[#5B8A78]" />
+                        <span>Сборка статики (dist.zip)</span>
+                      </div>
+                      <p className={`text-[11px] leading-normal ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                        Содержит скомпилированные клиентские файлы (index.html, JS/CSS, манифест). Готов к заливке на FTP.
+                      </p>
+                    </div>
 
-            {/* Archive 2: Full Project */}
-            <div
-              className={`p-4 rounded-xl border space-y-3.5 flex flex-col justify-between ${
-                isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-              }`}
-            >
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 font-medium text-xs">
-                  <Server className="w-4 h-4 text-[#5B8A78]" />
-                  <span>Полный проект с сервером (project-full.zip)</span>
+                    <div className="space-y-2 pt-2">
+                      <button
+                        onClick={() => handleDownloadFile('/dist.zip', 'dist.zip')}
+                        disabled={downloadingFile === 'dist.zip'}
+                        className={`w-full py-2 px-3 rounded-lg font-bold text-[11px] transition flex items-center justify-center gap-1.5 ${
+                          isDark ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]' : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+                        }`}
+                      >
+                        {downloadingFile === 'dist.zip' ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Формирование архива...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Скачать dist.zip</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleCopyLink('/dist.zip')}
+                        className={`w-full py-1.5 px-3 rounded-lg border text-[11px] transition flex items-center justify-center gap-1.5 ${
+                          isDark ? 'bg-[#121B17] border-[#1F2E27] text-white hover:bg-[#1E2E26]' : 'bg-white border-[#D8E0DB] text-[#141F1A] hover:bg-[#F4F6F4]'
+                        }`}
+                      >
+                        {copiedLink === '/dist.zip' ? '✓ Ссылка скопирована!' : 'Скопировать ссылку на dist.zip'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Archive 2: Full Project */}
+                  <div className={`p-4 rounded-xl border space-y-3 flex flex-col justify-between ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F7F5] border-[#E2E8E4]'}`}>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 font-semibold text-xs">
+                        <Server className="w-4 h-4 text-[#5B8A78]" />
+                        <span>Полный бэкап проекта (project-full.zip)</span>
+                      </div>
+                      <p className={`text-[11px] leading-normal ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                        Весь исходный код с Express сервером. Готов к развертыванию на Render.com или VPS.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2 pt-2">
+                      <button
+                        onClick={() => handleDownloadFile('/project-full.zip', 'project-full.zip')}
+                        disabled={downloadingFile === 'project-full.zip'}
+                        className={`w-full py-2 px-3 rounded-lg font-bold text-[11px] transition flex items-center justify-center gap-1.5 ${
+                          isDark ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]' : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+                        }`}
+                      >
+                        {downloadingFile === 'project-full.zip' ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Формирование архива...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Скачать project-full.zip</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleCopyLink('/project-full.zip')}
+                        className={`w-full py-1.5 px-3 rounded-lg border text-[11px] transition flex items-center justify-center gap-1.5 ${
+                          isDark ? 'bg-[#121B17] border-[#1F2E27] text-white hover:bg-[#1E2E26]' : 'bg-white border-[#D8E0DB] text-[#141F1A] hover:bg-[#F4F6F4]'
+                        }`}
+                      >
+                        {copiedLink === '/project-full.zip' ? '✓ Ссылка скопирована!' : 'Скопировать ссылку на project-full.zip'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <p className={`text-[11px] leading-normal ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Полный исходный код с Node.js Express сервером (server.ts, package.json). Готов к деплою на облачные сервисы (Render.com, VPS, Docker).
-                </p>
               </div>
-
-              <div className="space-y-2 pt-2 border-t border-dashed border-opacity-30">
-                <button
-                  onClick={() => handleDownloadFile('/project-full.zip', 'project-full.zip')}
-                  disabled={downloadingFile === 'project-full.zip'}
-                  className={`w-full py-2 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center gap-2 ${
-                    isDark
-                      ? 'bg-[#1F2E27] text-[#E8ECE9] border border-[#253A30] hover:bg-[#283C33]'
-                      : 'bg-white text-[#141F1A] border border-[#C8D6CF] hover:bg-[#F4F6F4]'
-                  }`}
-                >
-                  {downloadingFile === 'project-full.zip' ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Формирование архива...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Скачать project-full.zip</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleCopyLink('/project-full.zip')}
-                  className={`w-full py-1.5 px-3 rounded-xl border text-xs transition flex items-center justify-center gap-1.5 ${
-                    isDark
-                      ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:bg-[#1F2E27]'
-                      : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#141F1A] hover:bg-[#EBF0EC]'
-                  }`}
-                >
-                  {copiedLink === '/project-full.zip' ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>Ссылка скопирована!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Скопировать ссылку на project-full.zip</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -2521,404 +2654,538 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       {/* TAB 7: LLM PROVIDER & DIAGNOSTICS */}
       {activeTab === 'llm' && (
         <div className="space-y-4">
-          {/* Header Card */}
-          <div
-            className={`p-4 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${
-              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-            }`}
-          >
-            <div>
-              <h3 className="font-semibold text-sm flex items-center gap-2 text-inherit">
-                <Server className="w-4 h-4 text-[#5B8A78]" />
-                <span>AI Tunnel — Единый ИИ-Провайдер</span>
-              </h3>
-              <p className={`text-xs mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                Бот работает через единый шлюз AI Tunnel (api.aitunnel.ru). Выберите рабочую модель нейросети и проверьте генерацию.
-              </p>
-            </div>
-
+          {/* RATE LIMIT CONTROL CARD FOR TRAINER */}
+          <div className={`rounded-xl border overflow-hidden ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+          }`}>
             <button
-              onClick={fetchLlmStatus}
-              disabled={loadingLlmStatus}
-              className={`text-xs py-1.5 px-3 rounded-lg border font-medium flex items-center gap-1.5 transition self-start sm:self-auto ${
-                isDark
-                  ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:bg-[#1F2E27]'
-                  : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#141F1A] hover:bg-[#EBF0EC]'
-              }`}
+              type="button"
+              onClick={() => setIsLlmLimitsOpen(!isLlmLimitsOpen)}
+              className="w-full flex items-center justify-between p-4 focus:outline-none cursor-pointer"
             >
-              <Loader2 className={`w-3.5 h-3.5 ${loadingLlmStatus ? 'animate-spin' : ''}`} />
-              <span>Обновить статус</span>
-            </button>
-          </div>
-
-          {/* Status Alert Banner */}
-          <div
-            className={`p-3.5 rounded-xl border flex items-start gap-3 ${
-              llmStatus?.is_ready
-                ? isDark
-                  ? 'bg-[#15271F] border-[#254637] text-[#A3E0C1]'
-                  : 'bg-[#EDF7F2] border-[#B7DEC8] text-[#1B5738]'
-                : isDark
-                  ? 'bg-[#2E2413] border-[#4D3A1B] text-[#E8BF74]'
-                  : 'bg-[#FFF8E6] border-[#F0D597] text-[#8C6212]'
-            }`}
-          >
-            <div className="mt-0.5">
-              {llmStatus?.is_ready ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-              )}
-            </div>
-            <div className="text-xs space-y-1">
-              <div className="font-semibold">
-                {llmStatus?.is_ready ? 'AI Tunnel подключен и готов к работе' : 'Внимание: AITUNNEL_API_KEY не обнаружен'}
-              </div>
-              <div className="opacity-90 leading-relaxed">
-                Шлюз: <code className="font-mono text-[11px]">https://api.aitunnel.ru/v1/</code> | Активная модель:{' '}
-                <span className="font-mono font-bold text-[#5B8A78] dark:text-[#7DA295]">
-                  {llmStatus?.effective_model || 'gpt-6-luna-pro'}
-                </span>
-                {llmStatus?.status_message && (
-                  <span className="block mt-0.5 opacity-80 text-[11px] font-sans">
-                    {llmStatus.status_message}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Environment Secrets & API Keys Form */}
-          <div
-            className={`p-4 rounded-xl border space-y-3.5 ${
-              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b pb-2.5 border-inherit">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-[#5B8A78]" />
-                <h4 className="font-semibold text-xs text-inherit">Настройка ключей GitHub, AI Tunnel и Базы Данных PostgreSQL (.env)</h4>
+                <Clock className={`w-5 h-5 ${isDark ? 'text-[#5B8A78]' : 'text-[#2B4A3D]'}`} />
+                <h3 className="font-semibold text-sm text-inherit text-left">Лимиты сообщений для роли «Пользователь»</h3>
               </div>
-              {secretsSuccess && (
-                <span className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Ключи сохранены в .env!
-                </span>
-              )}
-            </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition cursor-pointer active:scale-95 shrink-0 ${
+                isLlmLimitsOpen
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-[#5B8A78]/15 text-[#5B8A78] border-[#5B8A78]/30'
+              }`}>
+                {isLlmLimitsOpen ? 'Скрыть' : 'Раскрыть'}
+              </span>
+            </button>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] mb-3">
-              <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
-                <span className="font-medium block text-[#5B8A78]">GitHub API Token:</span>
-                <code className="text-[11px] font-mono">{secretsStatus?.github_token?.masked || 'Не настроен'}</code>
+            {isLlmLimitsOpen && (
+              <div className="p-4 space-y-3.5 animate-in fade-in">
+                <p className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Установите доступное количество бесплатных вопросов к ИИ-Библиотекарю в час для роли «Пользователь». Подписчики и VIP получают доступ без ограничений.
+                </p>
+
+                {rateLimitSaveToast && (
+                  <div className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5 font-medium animate-fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{rateLimitSaveToast}</span>
+                  </div>
+                )}
+
+                {/* Presets and Custom Input */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {[1, 3, 5, 10, 15, 20, 0].map(val => {
+                    const isSelected = hourlyRateLimitSetting === val;
+                    const label = val === 0 ? 'Без лимита (0)' : `${val} зап/час`;
+                    return (
+                      <button
+                        key={val}
+                        disabled={savingRateLimit}
+                        onClick={() => handleSaveRateLimitSetting(val)}
+                        className={`text-xs py-1.5 px-3 rounded-lg border font-medium transition flex items-center gap-1.5 ${
+                          isSelected
+                            ? 'bg-[#5B8A78] text-white border-[#5B8A78] shadow-sm font-semibold'
+                            : isDark
+                              ? 'bg-[#18231E] border-[#253A30] text-[#D0D7D3] hover:bg-[#1F2E27]'
+                              : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#2C3B34] hover:bg-[#E2E9E4]'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-3 pt-1">
+                  <span className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Точное значение:
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1000"
+                    value={hourlyRateLimitSetting}
+                    onChange={e => setHourlyRateLimitSetting(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                    className={`w-20 text-xs py-1 px-2.5 rounded border font-mono ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9]'
+                        : 'bg-white border-[#C8D6CF] text-[#141F1A]'
+                    }`}
+                  />
+                  <button
+                    disabled={savingRateLimit}
+                    onClick={() => handleSaveRateLimitSetting(hourlyRateLimitSetting)}
+                    className="text-xs py-1 px-3 rounded bg-[#5B8A78] hover:bg-[#4A7364] text-white font-medium transition flex items-center gap-1.5"
+                  >
+                    {savingRateLimit && <Loader2 className="w-3 h-3 animate-spin" />}
+                    <span>Сохранить лимит</span>
+                  </button>
+                </div>
               </div>
-              <div className={`p-2.5 rounded-lg border ${isDark ? 'bg-[#18231E] border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
-                <span className="font-medium block text-[#5B8A78]">AITunnel API Key:</span>
-                <code className="text-[11px] font-mono">{secretsStatus?.aitunnel_api_key?.masked || 'Не настроен'}</code>
+            )}
+          </div>
+
+          {/* CONNECTIONS & DATABASE ACCORDION */}
+          <div className={`rounded-xl border overflow-hidden ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setIsLlmConnectionsOpen(!isLlmConnectionsOpen)}
+              className="w-full flex items-center justify-between p-4 focus:outline-none cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Database className={`w-5 h-5 ${isDark ? 'text-[#5B8A78]' : 'text-[#2B4A3D]'}`} />
+                <h3 className="font-semibold text-sm text-inherit text-left">Подключения & База Данных</h3>
               </div>
-              <div
-                onClick={() => !isCheckingDb && fetchSecrets(true)}
-                role="button"
-                tabIndex={0}
-                className={`p-2.5 rounded-lg border transition cursor-pointer select-none ${
-                  isDark
-                    ? 'bg-[#18231E] border-[#253A30] hover:border-[#5B8A78] hover:bg-[#1E2E26]'
-                    : 'bg-[#F4F6F4] border-[#E1E8E4] hover:border-[#2B4A3D] hover:bg-[#EDF2EE]'
-                }`}
-                title="Нажмите в любое место этой карточки для проверки подключения к БД"
-              >
-                <div className="flex items-center justify-between pointer-events-none">
-                  <span className="font-medium text-[#5B8A78]">PostgreSQL БД:</span>
-                  <div className="flex items-center gap-1.5">
-                    {isCheckingDb ? (
-                      <span className="text-[10px] text-[#5B8A78] font-medium flex items-center gap-1">
-                        <Loader2 className="w-3 h-3 animate-spin" /> Проверка...
-                      </span>
-                    ) : secretsStatus?.database_connected ? (
-                      <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-0.5">● Подключено</span>
-                    ) : (
-                      <span className="text-[10px] text-amber-500 font-medium flex items-center gap-1">
-                        ○ Не активна
-                        <RefreshCw className="w-2.5 h-2.5 opacity-70" />
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition cursor-pointer active:scale-95 shrink-0 ${
+                isLlmConnectionsOpen
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-[#5B8A78]/15 text-[#5B8A78] border-[#5B8A78]/30'
+              }`}>
+                {isLlmConnectionsOpen ? 'Скрыть' : 'Раскрыть'}
+              </span>
+            </button>
+
+            {isLlmConnectionsOpen && (
+              <div className="p-4 space-y-4 animate-in fade-in">
+                {/* Status Alert Banner */}
+                <div
+                  className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                    llmStatus?.is_ready
+                      ? isDark
+                        ? 'bg-[#15271F]/40 border-[#254637] text-[#A3E0C1]'
+                        : 'bg-[#EDF7F2] border-[#B7DEC8] text-[#1B5738]'
+                      : isDark
+                        ? 'bg-[#2E2413]/40 border-[#4D3A1B] text-[#E8BF74]'
+                        : 'bg-[#FFF8E6] border-[#F0D597] text-[#8C6212]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5">
+                      {llmStatus?.is_ready ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                      )}
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <div className="font-bold text-sm">
+                        {llmStatus?.is_ready ? 'AI Tunnel подключен и готов к работе' : 'Внимание: AITUNNEL_API_KEY не обнаружен'}
+                      </div>
+                      <div className="opacity-90 leading-relaxed text-[11px]">
+                        Шлюз: <code className="font-mono bg-black/10 dark:bg-black/20 px-1 py-0.5 rounded text-[10px]">https://api.aitunnel.ru/v1/</code> | Активная модель:{' '}
+                        <span className="font-mono font-bold text-[#5B8A78] dark:text-[#7DA295]">
+                          {llmStatus?.effective_model || 'gpt-4o-mini'}
+                        </span>
+                        {llmStatus?.status_message && (
+                          <span className="block mt-0.5 opacity-80 font-sans">
+                            {llmStatus.status_message}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={fetchLlmStatus}
+                    disabled={loadingLlmStatus}
+                    className={`text-xs py-1.5 px-3 rounded-lg border font-medium flex items-center gap-1.5 transition self-start md:self-auto ${
+                      isDark
+                        ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:bg-[#1F2E27]'
+                        : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#141F1A] hover:bg-[#EBF0EC]'
+                    }`}
+                  >
+                    <Loader2 className={`w-3.5 h-3.5 ${loadingLlmStatus ? 'animate-spin' : ''}`} />
+                    <span>Обновить статус</span>
+                  </button>
+                </div>
+
+                {/* Connection Matrix STATUS */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-[#5B8A78]" />
+                      <h4 className="font-semibold text-xs text-inherit uppercase tracking-wider">Матрица подключений & Соединение БД</h4>
+                    </div>
+                    {secretsSuccess && (
+                      <span className="text-[11px] text-emerald-500 font-medium flex items-center gap-1 animate-pulse">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Изменения сохранены!
                       </span>
                     )}
                   </div>
-                </div>
-                <code className="text-[11px] font-mono block mt-0.5 pointer-events-none">{secretsStatus?.database_url?.masked || 'Не настроен'}</code>
-              </div>
-            </div>
 
-            {secretsStatus?.database_error && !secretsStatus?.database_connected && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs space-y-1 mb-3">
-                <div className="font-medium flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                  <span>Статус подключения к PostgreSQL:</span>
-                </div>
-                <div className="font-mono text-[11px] opacity-90 pl-5">{secretsStatus.database_error}</div>
-              </div>
-            )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
+                    {/* GitHub */}
+                    <div className={`p-3 rounded-xl border flex flex-col justify-between space-y-1.5 ${isDark ? 'bg-[#18231E]/60 border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
+                      <div className="flex items-center gap-1.5 text-[#5B8A78] font-bold">
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>GitHub Token</span>
+                      </div>
+                      <code className="text-[11px] font-mono break-all opacity-95">{secretsStatus?.github_token?.masked || 'Не настроен'}</code>
+                    </div>
 
-            <div className="pt-1 flex flex-col sm:flex-row items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fetchSecrets(true)}
-                disabled={isCheckingDb}
-                className={`w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-semibold border transition flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none active:scale-[0.99] ${
-                  isDark
-                    ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:border-[#5B8A78] hover:bg-[#1E2E26]'
-                    : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] hover:border-[#2B4A3D] hover:bg-[#EBEFEA]'
-                } ${isCheckingDb ? 'opacity-70 cursor-wait' : ''}`}
-              >
-                {isCheckingDb ? (
-                  <div className="flex items-center gap-2 pointer-events-none">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#5B8A78]" />
-                    <span className="font-medium text-[#5B8A78] dark:text-[#7DA295]">Проверка подключения к PostgreSQL...</span>
+                    {/* AI Tunnel Key card with connection indicator based on llmStatus.is_ready */}
+                    <div className={`p-3 rounded-xl border flex flex-col justify-between space-y-1.5 ${isDark ? 'bg-[#18231E]/60 border-[#253A30]' : 'bg-[#F4F6F4] border-[#E1E8E4]'}`}>
+                      <div className="flex items-center justify-between font-bold">
+                        <div className="flex items-center gap-1.5 text-[#5B8A78] font-bold">
+                          <Server className="w-3.5 h-3.5" />
+                          <span>AI Tunnel Key</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {llmStatus?.is_ready ? (
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Подключено" />
+                          ) : (
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" title="Ошибка" />
+                          )}
+                        </div>
+                      </div>
+                      <code className="text-[11px] font-mono break-all opacity-95">{secretsStatus?.aitunnel_api_key?.masked || 'Не настроен'}</code>
+                    </div>
+
+                    {/* Database */}
+                    <div
+                      onClick={() => !isCheckingDb && fetchSecrets(true)}
+                      role="button"
+                      tabIndex={0}
+                      className={`p-3 rounded-xl border flex flex-col justify-between space-y-1.5 transition cursor-pointer select-none ${
+                        isDark
+                          ? 'bg-[#18231E]/80 border-[#253A30] hover:border-[#5B8A78] hover:bg-[#1E2E26]'
+                          : 'bg-[#F4F6F4] border-[#E1E8E4] hover:border-[#2B4A3D] hover:bg-[#EDF2EE]'
+                      }`}
+                      title="Нажмите для проверки подключения"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[#5B8A78] font-bold">
+                          <Database className="w-3.5 h-3.5" />
+                          <span>PostgreSQL</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {isCheckingDb ? (
+                            <Loader2 className="w-3 h-3 animate-spin text-[#5B8A78]" />
+                          ) : secretsStatus?.database_connected ? (
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" title="Подключено" />
+                          ) : (
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" title="Ошибка" />
+                          )}
+                        </div>
+                      </div>
+                      <code className="text-[11px] font-mono break-all opacity-95 block mt-0.5">{secretsStatus?.database_url?.masked || 'Не настроен'}</code>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 pointer-events-none">
-                    <RefreshCw className="w-3.5 h-3.5 text-[#5B8A78]" />
-                    <span>Проверить статус подключения к БД из .env</span>
-                  </div>
-                )}
-              </button>
-            </div>
 
-            {dbCheckMessage && (
-              <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2.5 mt-2 animate-in fade-in slide-in-from-top-1 ${
-                dbCheckMessage.type === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                  : dbCheckMessage.type === 'warning'
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {dbCheckMessage.type === 'success' ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  {secretsStatus?.database_error && !secretsStatus?.database_connected && (
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs space-y-1">
+                      <div className="font-medium flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                        <span>Статус подключения к PostgreSQL:</span>
+                      </div>
+                      <div className="font-mono text-[11px] opacity-90 pl-5">{secretsStatus.database_error}</div>
+                    </div>
                   )}
-                  <span>{dbCheckMessage.text}</span>
+
+                  <div className="pt-1 flex flex-col sm:flex-row items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fetchSecrets(true)}
+                      disabled={isCheckingDb}
+                      className={`w-full sm:w-auto py-2 px-4 rounded-xl text-xs font-semibold border transition flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none active:scale-[0.99] ${
+                        isDark
+                          ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:border-[#5B8A78] hover:bg-[#1E2E26]'
+                          : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] hover:border-[#2B4A3D] hover:bg-[#EBEFEA]'
+                      } ${isCheckingDb ? 'opacity-70 cursor-wait' : ''}`}
+                    >
+                      {isCheckingDb ? (
+                        <div className="flex items-center gap-2 pointer-events-none">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#5B8A78]" />
+                          <span className="font-medium text-[#5B8A78] dark:text-[#7DA295]">Проверка подключения к PostgreSQL...</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 pointer-events-none">
+                          <RefreshCw className="w-3.5 h-3.5 text-[#5B8A78]" />
+                          <span>Проверить статус подключения к БД из .env</span>
+                        </div>
+                      )}
+                    </button>
+                  </div>
+
+                  {dbCheckMessage && (
+                    <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2.5 mt-2 animate-in fade-in slide-in-from-top-1 ${
+                      dbCheckMessage.type === 'success'
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : dbCheckMessage.type === 'warning'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                          : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {dbCheckMessage.type === 'success' ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        )}
+                        <span>{dbCheckMessage.text}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDbCheckMessage(null)}
+                        className="p-1 rounded hover:bg-white/10 opacity-70 hover:opacity-100"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDbCheckMessage(null)}
-                  className="p-1 rounded hover:bg-white/10 opacity-70 hover:opacity-100"
+
+                {/* Mobile-Friendly Raw .env Editor */}
+                <div
+                  className={`p-4 rounded-xl border space-y-3 ${
+                    isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                  <div className="flex items-center justify-between pb-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#5B8A78]" />
+                      <div>
+                        <h4 className="font-semibold text-xs text-inherit">Редактор файла .env (для мобильных устройств)</h4>
+                        <p className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                          Прямое редактирование переменных окружения на сервере без необходимости в дереве файлов
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!showEnvEditor) fetchEnvRaw();
+                        setShowEnvEditor(!showEnvEditor);
+                      }}
+                      className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+                        isDark
+                          ? 'bg-[#18231E] border-[#253A30] text-[#7DA295] hover:text-[#E8ECE9]'
+                          : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#2B4A3D] hover:text-[#141F1A]'
+                      }`}
+                    >
+                      <span>{showEnvEditor ? 'Свернуть' : 'Открыть редактор .env'}</span>
+                    </button>
+                  </div>
+
+                  {showEnvEditor && (
+                    <div className="space-y-3 pt-1 animate-in fade-in">
+                      <p className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                        Отредактируйте параметры ниже и нажмите <strong>«Сохранить .env на сервере»</strong>:
+                      </p>
+                      <textarea
+                        value={envContent}
+                        onChange={e => setEnvContent(e.target.value)}
+                        rows={10}
+                        spellCheck={false}
+                        className={`w-full font-mono text-xs p-3 rounded-xl border outline-none transition ${
+                          isDark
+                            ? 'bg-[#0D1411] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                            : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                        }`}
+                        placeholder="Вставьте содержимое .env файла..."
+                      />
+
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveEnvRaw}
+                            disabled={savingEnv}
+                            className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer ${
+                              savingEnv
+                                ? 'bg-[#5B8A78]/50 cursor-wait'
+                                : 'bg-[#2B4A3D] hover:bg-[#3D6B58]'
+                            }`}
+                          >
+                            {savingEnv ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Сохранение...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Сохранить .env на сервере</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(envContent);
+                              setEnvSavedMessage('Текст .env скопирован в буфер обмена!');
+                              setTimeout(() => setEnvSavedMessage(null), 3000);
+                            }}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer ${
+                              isDark
+                                ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:border-[#5B8A78]'
+                                : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] hover:border-[#2B4A3D]'
+                            }`}
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Скопировать</span>
+                          </button>
+                        </div>
+                        {envSavedMessage && (
+                          <span className="text-xs font-medium text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            {envSavedMessage}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Mobile-Friendly Raw .env Editor */}
-          <div
-            className={`p-4 rounded-xl border space-y-3 ${
-              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b pb-2.5 border-inherit">
+          {/* MODEL SELECTOR ACCORDION */}
+          <div className={`rounded-xl border overflow-hidden ${
+            isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setIsLlmModelOpen(!isLlmModelOpen)}
+              className="w-full flex items-center justify-between p-4 focus:outline-none cursor-pointer"
+            >
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#5B8A78]" />
-                <div>
-                  <h4 className="font-semibold text-xs text-inherit">Редактор файла .env (для мобильных устройств)</h4>
-                  <p className={`text-[10px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                    Прямое редактирование переменных окружения на сервере без необходимости в дереве файлов
-                  </p>
-                </div>
+                <Settings className={`w-5 h-5 ${isDark ? 'text-[#5B8A78]' : 'text-[#2B4A3D]'}`} />
+                <h3 className="font-semibold text-sm text-inherit text-left">Выбор рабочей модели нейросети</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!showEnvEditor) fetchEnvRaw();
-                  setShowEnvEditor(!showEnvEditor);
-                }}
-                className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
-                  isDark
-                    ? 'bg-[#18231E] border-[#253A30] text-[#7DA295] hover:text-[#E8ECE9]'
-                    : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#2B4A3D] hover:text-[#141F1A]'
-                }`}
-              >
-                <span>{showEnvEditor ? 'Свернуть' : 'Открыть редактор .env'}</span>
-              </button>
-            </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition cursor-pointer active:scale-95 shrink-0 ${
+                isLlmModelOpen
+                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  : 'bg-[#5B8A78]/15 text-[#5B8A78] border-[#5B8A78]/30'
+              }`}>
+                {isLlmModelOpen ? 'Скрыть' : 'Раскрыть'}
+              </span>
+            </button>
 
-            {showEnvEditor && (
-              <div className="space-y-3 pt-1 animate-in fade-in">
-                <p className={`text-[11px] ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Отредактируйте параметры ниже и нажмите <strong>«Сохранить .env на сервере»</strong>:
+            {isLlmModelOpen && (
+              <div className="p-4 space-y-3.5 animate-in fade-in">
+                <p className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                  Выберите модель нейросети по умолчанию для ответов ассистента в чате. В перспективе будут доступны и другие AI провайдеры.
                 </p>
-                <textarea
-                  value={envContent}
-                  onChange={e => setEnvContent(e.target.value)}
-                  rows={10}
-                  spellCheck={false}
-                  className={`w-full font-mono text-xs p-3 rounded-xl border outline-none transition ${
-                    isDark
-                      ? 'bg-[#0D1411] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
-                      : 'bg-white border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
-                  }`}
-                  placeholder="Вставьте содержимое .env файла..."
-                />
 
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                {configSuccess && (
+                  <div className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5 font-medium animate-fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Модель успешно сохранена!</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveRuntimeConfig} className="space-y-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Model Selector */}
+                    <div>
+                      <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                        Модель нейросети (AI Tunnel)
+                      </label>
+                      <select
+                        value={selectedModel}
+                        onChange={e => setSelectedModel(e.target.value)}
+                        className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                          isDark
+                            ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                            : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                        }`}
+                      >
+                        <option value="gpt-6-luna-pro">gpt-6-luna-pro (По умолчанию — быстрый и точный)</option>
+                        <option value="gpt-4o-mini">gpt-4o-mini (OpenAI GPT-4o Mini)</option>
+                        <option value="gpt-4o">gpt-4o (OpenAI GPT-4o)</option>
+                        <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet (Claude 3.5 Sonnet)</option>
+                        <option value="deepseek-chat">deepseek-chat (DeepSeek V3)</option>
+                        <option value="gemini-1.5-pro">gemini-1.5-pro (Google Gemini 1.5 Pro)</option>
+                        <option value="gemini-2.0-flash">gemini-2.0-flash (Google Gemini 2.0 Flash)</option>
+                        <option value="custom">Другая модель (ввести вручную...)</option>
+                      </select>
+                    </div>
+
+                    {/* API Key (Optional update) */}
+                    <div>
+                      <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                        AITUNNEL_API_KEY (необязательно, если задан в .env)
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Вставьте новый ключ для обновления..."
+                        value={inputApiKey}
+                        onChange={e => setInputApiKey(e.target.value)}
+                        className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                          isDark
+                            ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                            : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Model Input if selected */}
+                  {selectedModel === 'custom' && (
+                    <div>
+                      <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                        Название модели в AI Tunnel:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Например: claude-3-opus, llama-3.3-70b-instruct..."
+                        value={customModel}
+                        onChange={e => setCustomModel(e.target.value)}
+                        className={`w-full border rounded-xl p-2.5 outline-none transition ${
+                          isDark
+                            ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
+                            : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
+                        }`}
+                      />
+                    </div>
+                  )}
+
+                  <div className="pt-1">
                     <button
-                      type="button"
-                      onClick={handleSaveEnvRaw}
-                      disabled={savingEnv}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold text-white transition flex items-center gap-1.5 cursor-pointer ${
-                        savingEnv
-                          ? 'bg-[#5B8A78]/50 cursor-wait'
-                          : 'bg-[#2B4A3D] hover:bg-[#3D6B58]'
-                      }`}
+                      type="submit"
+                      disabled={savingConfig}
+                      className={`w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
+                        isDark
+                          ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
+                          : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
+                      } ${savingConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {savingEnv ? (
+                      {savingConfig ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Сохранение...</span>
+                          <span>Применение настроек...</span>
                         </>
                       ) : (
                         <>
                           <Check className="w-3.5 h-3.5" />
-                          <span>Сохранить .env на сервере</span>
+                          <span>Сохранить модель AI Tunnel</span>
                         </>
                       )}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(envContent);
-                        setEnvSavedMessage('Текст .env скопирован в буфер обмена!');
-                        setTimeout(() => setEnvSavedMessage(null), 3000);
-                      }}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer ${
-                        isDark
-                          ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9] hover:border-[#5B8A78]'
-                          : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] hover:border-[#2B4A3D]'
-                      }`}
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Скопировать</span>
-                    </button>
                   </div>
-                  {envSavedMessage && (
-                    <span className="text-xs font-medium text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                      {envSavedMessage}
-                    </span>
-                  )}
-                </div>
+                </form>
               </div>
             )}
-          </div>
-
-          {/* AI Tunnel Configuration Form */}
-          <div
-            className={`p-4 rounded-xl border space-y-3.5 ${
-              isDark ? 'bg-[#121B17] border-[#1F2E27]' : 'bg-white border-[#D8E0DB]'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b pb-2.5 border-inherit">
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4 text-[#5B8A78]" />
-                <h4 className="font-semibold text-xs text-inherit">Выбор модели и ключ AI Tunnel</h4>
-              </div>
-              {configSuccess && (
-                <span className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Модель успешно сохранена!
-                </span>
-              )}
-            </div>
-
-            <form onSubmit={handleSaveRuntimeConfig} className="space-y-3 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Model Selector */}
-                <div>
-                  <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                    Модель нейросети (AI Tunnel)
-                  </label>
-                  <select
-                    value={selectedModel}
-                    onChange={e => setSelectedModel(e.target.value)}
-                    className={`w-full border rounded-xl p-2.5 outline-none transition ${
-                      isDark
-                        ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
-                        : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
-                    }`}
-                  >
-                    <option value="gpt-6-luna-pro">gpt-6-luna-pro (По умолчанию — быстрый и точный)</option>
-                    <option value="gpt-4o-mini">gpt-4o-mini (OpenAI GPT-4o Mini)</option>
-                    <option value="gpt-4o">gpt-4o (OpenAI GPT-4o)</option>
-                    <option value="claude-3-5-sonnet-20241022">claude-3-5-sonnet (Claude 3.5 Sonnet)</option>
-                    <option value="deepseek-chat">deepseek-chat (DeepSeek V3)</option>
-                    <option value="gemini-1.5-pro">gemini-1.5-pro (Google Gemini 1.5 Pro)</option>
-                    <option value="gemini-2.0-flash">gemini-2.0-flash (Google Gemini 2.0 Flash)</option>
-                    <option value="custom">Другая модель (ввести вручную...)</option>
-                  </select>
-                </div>
-
-                {/* API Key (Optional update) */}
-                <div>
-                  <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                    AITUNNEL_API_KEY (необязательно, если задан в .env)
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="Вставьте новый ключ для обновления..."
-                    value={inputApiKey}
-                    onChange={e => setInputApiKey(e.target.value)}
-                    className={`w-full border rounded-xl p-2.5 outline-none transition ${
-                      isDark
-                        ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
-                        : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Custom Model Input if selected */}
-              {selectedModel === 'custom' && (
-                <div>
-                  <label className={`block mb-1 text-[11px] font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                    Название модели в AI Tunnel:
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Например: claude-3-opus, llama-3.3-70b-instruct..."
-                    value={customModel}
-                    onChange={e => setCustomModel(e.target.value)}
-                    className={`w-full border rounded-xl p-2.5 outline-none transition ${
-                      isDark
-                        ? 'bg-[#18231E] border-[#1F2E27] text-[#E8ECE9] focus:border-[#5B8A78]'
-                        : 'bg-[#F4F6F4] border-[#D8E0DB] text-[#141F1A] focus:border-[#2B4A3D]'
-                    }`}
-                  />
-                </div>
-              )}
-
-              <div className="pt-1">
-                <button
-                  type="submit"
-                  disabled={savingConfig}
-                  className={`w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 shadow-sm ${
-                    isDark
-                      ? 'bg-[#5B8A78] text-[#0A100D] hover:bg-[#7DA295]'
-                      : 'bg-[#2B4A3D] text-white hover:bg-[#3C6150]'
-                  } ${savingConfig ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {savingConfig ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Применение настроек...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Сохранить модель AI Tunnel</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
           </div>
 
           {/* Interactive Test Console */}

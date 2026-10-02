@@ -1248,7 +1248,7 @@ if (TARGET_BOT_URL) {
   console.log(`[Proxy] Python Bot upstream target configured: ${TARGET_BOT_URL}`);
 
   app.use('/api', async (req: Request, res: Response, next) => {
-    // Admin, secrets, llm configuration and status endpoints MUST be handled locally by Node.js
+    // Admin, secrets, llm configuration, trainer settings and status endpoints MUST be handled locally by Node.js
     const localOnlyPaths = [
       '/api/admin',
       '/api/secrets',
@@ -1258,7 +1258,8 @@ if (TARGET_BOT_URL) {
       '/api/llm/config',
       '/api/stats',
       '/api/client/status/update',
-      '/api/client/vip/toggle'
+      '/api/client/vip/toggle',
+      '/api/trainer/settings'
     ];
 
     if (localOnlyPaths.some(p => req.path.startsWith(p) || req.originalUrl.startsWith(p))) {
@@ -1268,10 +1269,11 @@ if (TARGET_BOT_URL) {
     const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
 
     try {
+      const forbiddenHeaders = ['host', 'content-length', 'connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'accept-encoding'];
       const headers: Record<string, string> = {};
       for (const [key, value] of Object.entries(req.headers)) {
         const lowerKey = key.toLowerCase();
-        if (lowerKey !== 'host' && lowerKey !== 'content-length' && typeof value === 'string') {
+        if (!forbiddenHeaders.includes(lowerKey) && typeof value === 'string') {
           headers[key] = value;
         }
       }
@@ -1960,6 +1962,100 @@ app.post(['/api/client/:id/messages/clear', '/api/client/messages/clear', '/api/
   res.json({ ok: true, message: 'История сообщений успешно очищена' });
 });
 
+// Helper function to send Telegram notifications to all trainers
+async function sendTelegramAlertToTrainers(text: string) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    console.log('[Telegram Alert] TELEGRAM_BOT_TOKEN is not configured. Alert text:', text);
+    return;
+  }
+
+  const trainers = [
+    '747600306',
+    '435297513',
+    ...(process.env.TELEGRAM_ADMIN_CHAT_ID || '').split(','),
+    ...(process.env.ADMIN_TELEGRAM_IDS || '').split(','),
+    ...(process.env.ADMIN_IDS || '').split(','),
+    ...(process.env.ADMIN_ID || '').split(','),
+    ...(process.env.TRAINER_TELEGRAM_ID || '').split(',')
+  ].map(s => s.trim()).filter(Boolean);
+
+  // De-duplicate trainer IDs
+  const uniqueTrainers = Array.from(new Set(trainers));
+
+  for (const trainerId of uniqueTrainers) {
+    try {
+      const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: trainerId,
+          text: text,
+          parse_mode: 'HTML'
+        })
+      });
+      if (!res.ok) {
+        console.warn(`[Telegram Alert] Failed to send alert to trainer ${trainerId}: ${res.statusText}`);
+      }
+    } catch (err) {
+      console.error(`[Telegram Alert] Error sending alert to trainer ${trainerId}:`, err);
+    }
+  }
+}
+
+// Rate Limiting settings endpoints
+app.get('/api/trainer/settings', (req: Request, res: Response) => {
+  const hourlyLimit = parseInt(process.env.HOURLY_RATE_LIMIT || '5', 10);
+  const subscriberPrice = parseInt(process.env.SUBSCRIBER_PRICE || '490', 10);
+  const vipPrice = parseInt(process.env.VIP_PRICE || '4990', 10);
+  res.json({
+    ok: true,
+    hourly_rate_limit: isNaN(hourlyLimit) ? 5 : hourlyLimit,
+    subscriber_price: isNaN(subscriberPrice) ? 490 : subscriberPrice,
+    vip_price: isNaN(vipPrice) ? 4990 : vipPrice
+  });
+});
+
+app.post('/api/trainer/settings', (req: Request, res: Response) => {
+  const { hourly_rate_limit, subscriber_price, vip_price } = req.body;
+  const updates: Record<string, string> = {};
+
+  if (hourly_rate_limit !== undefined) {
+    const numLimit = parseInt(String(hourly_rate_limit), 10);
+    if (!isNaN(numLimit) && numLimit >= 0) {
+      updates.HOURLY_RATE_LIMIT = String(numLimit);
+    }
+  }
+
+  if (subscriber_price !== undefined) {
+    const sPrice = parseInt(String(subscriber_price), 10);
+    if (!isNaN(sPrice) && sPrice >= 0) {
+      updates.SUBSCRIBER_PRICE = String(sPrice);
+    }
+  }
+
+  if (vip_price !== undefined) {
+    const vPrice = parseInt(String(vip_price), 10);
+    if (!isNaN(vPrice) && vPrice >= 0) {
+      updates.VIP_PRICE = String(vPrice);
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    saveToEnvFile(updates);
+    return res.json({
+      ok: true,
+      success: true,
+      hourly_rate_limit: updates.HOURLY_RATE_LIMIT ? parseInt(updates.HOURLY_RATE_LIMIT, 10) : undefined,
+      subscriber_price: updates.SUBSCRIBER_PRICE ? parseInt(updates.SUBSCRIBER_PRICE, 10) : undefined,
+      vip_price: updates.VIP_PRICE ? parseInt(updates.VIP_PRICE, 10) : undefined,
+      message: 'Настройки успешно сохранены!'
+    });
+  }
+  res.status(400).json({ error: 'Некорректное значение лимита' });
+});
+
 // Interactive Chat API
 app.post('/api/chat', async (req: Request, res: Response) => {
   const { client_id, message_text, category_id } = req.body;
@@ -1967,16 +2063,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
 
   let client = db.clients.find(c => c.id === Number(client_id)) || db.clients[0];
 
-  // Rate Limiting: 5 user messages per 1 hour for non-VIP clients
-  if (!client.is_vip) {
+  // Dynamic Rate Limiting for non-VIP, non-Admin, and non-Subscriber clients
+  const hourlyLimit = parseInt(process.env.HOURLY_RATE_LIMIT || '5', 10);
+  if (!client.is_vip && !client.is_admin && client.profile?.role !== 'subscriber' && hourlyLimit > 0) {
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
     const recentMessages = db.messages.filter(m => 
       m.client_id === client.id && 
       m.role === 'user' && 
       m.created_at >= oneHourAgo
     );
-    if (recentMessages.length >= 5) {
-      const limitExceededText = "Превышен лимит бесплатных запросов (5 запросов в час). Перейдите в раздел Профиль и активируйте VIP-доступ без ограничений!";
+    if (recentMessages.length >= hourlyLimit) {
+      const limitExceededText = `Превышен лимит бесплатных запросов (${hourlyLimit} запросов в час). Перейдите в раздел Профиль и активируйте подписку или VIP-доступ без ограничений!`;
       
       const assistantMsg: Message = {
         id: db.nextMessageId++,
@@ -2058,6 +2155,17 @@ app.post('/api/chat', async (req: Request, res: Response) => {
       created_at: new Date().toISOString()
     };
     db.escalations.push(escalationItem);
+
+    // Send Telegram alert to trainers about client confusion / escalation
+    const clientUsername = client.telegram_username || client.profile?.telegram_username ? `@${client.telegram_username || client.profile?.telegram_username}` : 'нет username';
+    const alertText = 
+      `⚠️ <b>Сигнал о замешательстве подопечного!</b>\n\n` +
+      `👤 <b>Подопечный</b>: ${client.name} (${clientUsername})\n` +
+      `❓ <b>Вопрос</b>: <i>«${cleanUserText}»</i>\n` +
+      `🚨 <b>Причина</b>: ${result.escalation_reason || 'Сложный вопрос / запутался'}\n\n` +
+      `💡 <i>Рекомендация: предложить персональное ведение тренером (VIP).</i>`;
+
+    sendTelegramAlertToTrainers(alertText);
   }
 
   const asstMsg: Message = {

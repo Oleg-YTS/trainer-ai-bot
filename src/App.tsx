@@ -13,6 +13,7 @@ interface CurrentUser {
   name: string;
   is_admin: boolean;
   is_vip: boolean;
+  role?: string;
 }
 
 export const App: React.FC = () => {
@@ -130,43 +131,40 @@ export const App: React.FC = () => {
         } catch {}
       }
 
-      // 4. URL query parameters (?tg_id=... or ?telegram_user_id=...)
-      if (!tgId && typeof window !== 'undefined' && window.location.search) {
+      // 4. URL query parameters (?tg_id=..., ?as=user, ?as=admin)
+      if (typeof window !== 'undefined' && window.location.search) {
         try {
           const searchParams = new URLSearchParams(window.location.search);
-          const rawId = searchParams.get('tg_id') || searchParams.get('user_id') || searchParams.get('telegram_user_id');
-          if (rawId && Number(rawId)) {
-            tgId = Number(rawId);
-          }
-          if (searchParams.get('name')) {
-            tgName = searchParams.get('name') || '';
-          }
-          if (searchParams.get('username')) {
-            tgUsername = searchParams.get('username') || '';
+          const asRole = searchParams.get('as') || searchParams.get('role');
+          if (asRole === 'user' || asRole === 'subscriber') {
+            tgId = 999000111;
+            tgName = 'Тестовый Подопечный';
+          } else if (asRole === 'admin') {
+            tgId = 747600306;
+            tgName = 'Robert (Администратор)';
+          } else {
+            const rawId = searchParams.get('tg_id') || searchParams.get('user_id') || searchParams.get('telegram_user_id');
+            if (rawId && Number(rawId)) {
+              tgId = Number(rawId);
+            }
+            if (searchParams.get('name')) {
+              tgName = searchParams.get('name') || '';
+            }
+            if (searchParams.get('username')) {
+              tgUsername = searchParams.get('username') || '';
+            }
           }
         } catch {}
       }
 
-      // 5. Local Device Fallback for Telegram ID (Default to Admin Oleg 747600306 in Sandbox / Browser preview)
+      // 5. Local Device Fallback for Telegram ID (Default to Admin Robert 747600306 in Sandbox / Browser preview)
       if (!tgId) {
+        tgId = 747600306; // Default to Admin Robert for Sandbox Preview
+        tgName = 'Robert (Администратор)';
         try {
-          const savedTgId = localStorage.getItem('trainer_user_tg_id');
-          if (savedTgId && Number(savedTgId)) {
-            tgId = Number(savedTgId);
-          } else {
-            tgId = 747600306; // Default to Admin Oleg for sandbox preview
-            localStorage.setItem('trainer_user_tg_id', String(tgId));
-          }
-          const savedName = localStorage.getItem('trainer_user_tg_name');
-          if (savedName && !tgName) {
-            tgName = savedName;
-          } else if (!tgName) {
-            tgName = 'Олег (Администратор)';
-          }
-        } catch {
-          tgId = 747600306;
-          tgName = 'Олег (Администратор)';
-        }
+          localStorage.setItem('trainer_user_tg_id', String(tgId));
+          localStorage.setItem('trainer_user_tg_name', tgName);
+        } catch {}
       }
 
       if (tgId) {
@@ -190,27 +188,25 @@ export const App: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         if (data && data.id) {
-          const roleOverride = localStorage.getItem('trainer_user_role_override');
-          let finalAdmin = Boolean(data.is_admin);
-          let finalVip = Boolean(data.is_vip);
+          const isHardcodedAdmin = (tgId === 747600306 || tgId === 435297513);
+          const finalAdmin = Boolean(data.is_admin || isHardcodedAdmin);
+          const finalVip = Boolean(data.is_vip || isHardcodedAdmin);
 
-          if (roleOverride === 'admin') {
-            finalAdmin = true;
-            finalVip = true;
-          } else if (roleOverride === 'vip') {
-            finalAdmin = false;
-            finalVip = true;
-          } else if (roleOverride === 'subscriber') {
-            finalAdmin = false;
-            finalVip = false;
-          }
+          let finalRole = 'user';
+          if (finalAdmin) finalRole = 'admin';
+          else if (finalVip) finalRole = 'vip';
+          else if (data.profile?.role === 'subscriber') finalRole = 'subscriber';
+
+          const savedOverride = localStorage.getItem('trainer_user_role_override');
+          const activeRole = savedOverride || finalRole;
 
           setCurrentUser({
             id: data.id,
             telegram_user_id: data.telegram_user_id || tgId || null,
-            name: data.name || tgName || (finalAdmin ? 'Администратор' : 'Пользователь'),
-            is_admin: finalAdmin,
-            is_vip: finalVip
+            name: data.name || tgName || (activeRole === 'admin' ? 'Robert (Администратор)' : 'Пользователь'),
+            is_admin: activeRole === 'admin',
+            is_vip: activeRole === 'admin' || activeRole === 'vip',
+            role: activeRole
           });
         }
       }
@@ -268,7 +264,7 @@ export const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
-  const setUserRole = async (role: 'admin' | 'vip' | 'subscriber') => {
+  const setUserRole = async (role: 'admin' | 'vip' | 'subscriber' | 'user') => {
     const targetId = currentUser.id;
     if (!targetId) return;
     const isAdminVal = role === 'admin';
@@ -278,7 +274,8 @@ export const App: React.FC = () => {
     setCurrentUser(prev => ({
       ...prev,
       is_admin: isAdminVal,
-      is_vip: isVipVal
+      is_vip: isVipVal,
+      role: role
     }));
 
     // 2. Save override in localStorage
@@ -314,6 +311,8 @@ export const App: React.FC = () => {
 
       if (role === 'admin') {
         setActiveTab('trainer');
+      } else if (activeTab === 'trainer') {
+        setActiveTab('profile');
       }
     } catch (err) {
       console.error('Failed to update role via API:', err);
@@ -384,6 +383,54 @@ export const App: React.FC = () => {
           </div>
         </header>
 
+        {/* Sandbox Role Selector - ONLY in Sandbox Preview / localhost */}
+        {(() => {
+          const isSandbox = typeof window !== 'undefined' && (
+            window.location.hostname.includes('ais-') || 
+            window.location.hostname.includes('localhost') || 
+            window.location.hostname.includes('127.0.0.1')
+          );
+          const activeRole = currentUser.role || (currentUser.is_admin ? 'admin' : (currentUser.is_vip ? 'vip' : 'user'));
+
+          if (!isSandbox) return null;
+
+          return (
+            <div className={`shrink-0 px-4 py-2 border-b flex items-center justify-between gap-1.5 ${
+              isDark ? 'bg-[#18231E]/95 border-[#253A30]' : 'bg-[#EDF2EE]/95 border-[#C8D6CF]'
+            }`}>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-[#8E9E96]' : 'text-[#4A5E52]'}`}>
+                Тест Роли:
+              </span>
+              <div className="flex items-center gap-1">
+                {(['user', 'subscriber', 'vip', 'admin'] as const).map(role => {
+                  const isSelected = activeRole === role;
+                  const labels: Record<string, string> = {
+                    user: 'User',
+                    subscriber: 'Sub',
+                    vip: 'VIP',
+                    admin: 'Admin'
+                  };
+                  return (
+                    <button
+                      key={role}
+                      onClick={() => setUserRole(role)}
+                      className={`text-[10px] py-1 px-2.5 rounded font-bold transition-all duration-150 ${
+                        isSelected
+                          ? 'bg-[#5B8A78] text-white shadow-sm'
+                          : isDark
+                            ? 'bg-[#121B17] text-[#8E9E96] border border-[#1F2E27] hover:bg-[#1C2C24]'
+                            : 'bg-white text-[#4A5E52] border border-[#D8E0DB] hover:bg-[#F4F6F4]'
+                      }`}
+                    >
+                      {labels[role]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Scrollable Viewport / Content Screen */}
         <main
           className="flex-1 overflow-y-auto px-4 pt-3.5 pb-28 overscroll-y-contain relative focus:outline-none"
@@ -421,8 +468,8 @@ export const App: React.FC = () => {
               telegramUserId={currentUser.telegram_user_id}
               isAdmin={currentUser.is_admin}
               isVip={currentUser.is_vip}
+              role={currentUser.role}
               onRefreshUser={resolveCurrentUser}
-              onSetUserRole={setUserRole}
               onUpdateAdminState={(adminState) => {
                 setCurrentUser(prev => ({
                   ...prev,
