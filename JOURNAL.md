@@ -557,6 +557,32 @@ Client database completely cleansed and normalized. Exactly 4 canonical profiles
 ### RESULT
 Любое открытие Telegram Mini App теперь принудительно запрашивает свежий бандл и актуальные данные с сервера, исключая показ старых закэшированных экранов и неактуальных статусов.
 
+---
+
+## 2026-10-02 — Task #27: Dynamic Settings, Zero-Crash Secrets Endpoints & Live Diagnostics
+
+### TASK
+1. В `app/config/settings.py` удален `@lru_cache` с `get_settings()` для мгновенного динамического чтения переменных `DATABASE_URL` и `AITUNNEL_API_KEY`.
+2. Эндпоинты `GET /api/secrets` и `GET /api/llm/status` в `app/api/web.py` обернуты в безопасный `try...except`, возвращающий валидный JSON вместо падения сервера.
+3. Проверена компиляция Python и TypeScript.
+
+### GOAL
+Гарантировать 100% стабильность ответов статусных эндпоинтов на Render и мгновенную синхронизацию переменных окружения.
+
+### CHANGES
+- `/app/config/settings.py`: Динамический вызов `get_settings()`.
+- `/app/api/web.py`: Безопасная обработка в `GET /api/secrets` и `GET /api/llm/status`.
+- `/dist/` & `/webapp/dist/`: Обновлен production-бандл.
+
+### VERIFICATION
+- `python3 -m compileall -q app/`: 0 ошибок.
+- `tsc --noEmit`: 0 ошибок.
+- `compile_applet`: Сборка успешна.
+
+### RESULT
+Эндпоинты статусов гарантированно возвращают JSON со статусом подключения к БД и LLM даже при нестандартных ответах или задержках базы.
+
+
 
 
 

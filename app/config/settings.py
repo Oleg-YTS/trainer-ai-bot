@@ -66,6 +66,5 @@ class Settings(BaseSettings):
         return base.rstrip("/") + self.webhook_path
 
 
-@lru_cache
 def get_settings() -> Settings:
     return Settings()

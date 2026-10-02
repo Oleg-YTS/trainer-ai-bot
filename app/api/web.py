@@ -914,24 +914,36 @@ async def get_secrets_endpoint():
     """
     Returns environment secrets status (masked) and PostgreSQL connection health.
     """
-    settings = get_settings()
-    github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_API_KEY")
-    aitunnel_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
-    db_url = os.getenv("DATABASE_URL") or settings.database_url
-    base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
-    model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
+    try:
+        settings = get_settings()
+        github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GITHUB_API_KEY")
+        aitunnel_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
+        db_url = os.getenv("DATABASE_URL") or settings.database_url
+        base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
+        model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
 
-    db_check = await check_db_connection()
+        db_check = await check_db_connection()
 
-    return {
-        "github_token": mask_secret(github_token),
-        "aitunnel_api_key": mask_secret(aitunnel_key),
-        "database_url": mask_secret(db_url),
-        "database_connected": db_check["connected"],
-        "database_error": db_check["error"],
-        "aitunnel_base_url": base_url,
-        "aitunnel_model": model
-    }
+        return {
+            "github_token": mask_secret(github_token),
+            "aitunnel_api_key": mask_secret(aitunnel_key),
+            "database_url": mask_secret(db_url),
+            "database_connected": bool(db_check.get("connected", False)),
+            "database_error": db_check.get("error"),
+            "aitunnel_base_url": base_url,
+            "aitunnel_model": model
+        }
+    except Exception as exc:
+        logger.error("Error in get_secrets_endpoint: %s", exc)
+        return {
+            "github_token": {"configured": False, "masked": ""},
+            "aitunnel_api_key": {"configured": False, "masked": ""},
+            "database_url": {"configured": False, "masked": ""},
+            "database_connected": False,
+            "database_error": str(exc),
+            "aitunnel_base_url": "https://api.aitunnel.ru/v1",
+            "aitunnel_model": "gpt-6-luna-pro"
+        }
 
 
 class SecretsUpdateRequest(BaseModel):
@@ -1018,31 +1030,46 @@ async def get_llm_status_endpoint():
     """
     Returns LLM status and active model for AI Tunnel with full frontend schema support.
     """
-    settings = get_settings()
-    api_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
-    base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
-    model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
-    is_ready = bool(api_key and str(api_key).strip())
+    try:
+        settings = get_settings()
+        api_key = os.getenv("AITUNNEL_API_KEY") or os.getenv("AI_TUNNEL_API_KEY") or settings.aitunnel_api_key
+        base_url = os.getenv("AITUNNEL_BASE_URL") or settings.aitunnel_base_url or "https://api.aitunnel.ru/v1"
+        model = os.getenv("AITUNNEL_MODEL") or settings.aitunnel_model or "gpt-6-luna-pro"
+        is_ready = bool(api_key and str(api_key).strip())
 
-    return {
-        "provider": "ai_tunnel",
-        "effective_provider": "AI Tunnel",
-        "effective_model": model,
-        "active_model": model,
-        "base_url": base_url,
-        "is_ready": is_ready,
-        "api_key_configured": is_ready,
-        "status_message": "AI Tunnel подключен и готов к генерации" if is_ready else "AITUNNEL_API_KEY не обнаружен в Environment",
-        "masked_api_key": mask_secret(api_key)["masked"] if api_key else "",
-        "supported_models": [
-            "gpt-6-luna-pro",
-            "gpt-5.2-omni-pro",
-            "gpt-5.1-turbo",
-            "gemini-2.5-pro",
-            "gemini-2.5-flash",
-            "claude-3-7-sonnet"
-        ]
-    }
+        return {
+            "provider": "ai_tunnel",
+            "effective_provider": "AI Tunnel",
+            "effective_model": model,
+            "active_model": model,
+            "base_url": base_url,
+            "is_ready": is_ready,
+            "api_key_configured": is_ready,
+            "status_message": "AI Tunnel подключен и готов к генерации" if is_ready else "AITUNNEL_API_KEY не обнаружен в Environment",
+            "masked_api_key": mask_secret(api_key)["masked"] if api_key else "",
+            "supported_models": [
+                "gpt-6-luna-pro",
+                "gpt-5.2-omni-pro",
+                "gpt-5.1-turbo",
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "claude-3-7-sonnet"
+            ]
+        }
+    except Exception as exc:
+        logger.error("Error in get_llm_status_endpoint: %s", exc)
+        return {
+            "provider": "ai_tunnel",
+            "effective_provider": "AI Tunnel",
+            "effective_model": "gpt-6-luna-pro",
+            "active_model": "gpt-6-luna-pro",
+            "base_url": "https://api.aitunnel.ru/v1",
+            "is_ready": False,
+            "api_key_configured": False,
+            "status_message": f"Ошибка: {exc}",
+            "masked_api_key": "",
+            "supported_models": ["gpt-6-luna-pro"]
+        }
 
 
 class LLMTestRequest(BaseModel):
