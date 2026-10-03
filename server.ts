@@ -2354,6 +2354,13 @@ async function startServer() {
   console.log(`[Server] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
   console.log(`[Server] Working directory: ${__dirname}`);
 
+  // Allow Telegram in-app WebApp iframe embedding across all Telegram web/mobile clients
+  app.use((_req: Request, res: Response, next) => {
+    res.removeHeader('X-Frame-Options');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org;");
+    next();
+  });
+
   if (isProduction) {
     app.use((req, res, next) => {
       if (!req.url.startsWith('/assets')) {

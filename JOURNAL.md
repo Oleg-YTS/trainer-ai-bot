@@ -1,5 +1,33 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-03 — Task #80: Unblocking Telegram Mini App Iframe Embedding via Frame-Ancestors CSP
+
+### TASK
+1. Устранить блокировку загрузки WebApp в iframe при клике на короткую ссылку `t.me/den4uk_ai_bot/miniapp`.
+2. Разрешить встраивание сайта `https://trainer-ai-bot.onrender.com/` во внутриприложенные контейнеры Telegram.
+
+### GOAL
+Добавить глобальный middleware в Express (`server.ts`), сняв заголовок `X-Frame-Options` и установив `Content-Security-Policy: frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org;`, разрешающий клиентам Telegram отрисовывать веб-приложение по короткой ссылке.
+
+### PLAN
+- **Обновление `server.ts`**: Внедрение Express middleware для управления заголовками безопасности фреймов.
+- **Проверка сборок**: Выполнить `compile_applet` и `lint_applet`.
+
+### CHANGES
+- `server.ts`: Добавлено промежуточное ПО с настройкой `Content-Security-Policy` (frame-ancestors) и удалением `X-Frame-Options`.
+
+### FILES
+- `server.ts`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Фрейм приложений Telegram теперь имеет официальное разрешение на встраивание сайта, устранены блокировки по короткой ссылке `t.me/den4uk_ai_bot/miniapp`.
+
+---
+
 ## 2026-10-02 — Task #79: Multi-Stage URI Decoding for Telegram Direct Mini App Links
 
 ### TASK
