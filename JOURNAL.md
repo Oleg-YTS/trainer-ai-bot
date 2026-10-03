@@ -1,5 +1,45 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-03 — Task #85: Production Git Push to GitHub Repository (main branch)
+
+### TASK
+1. Выполнить коммит и `git push` в удалённый репозиторий `https://github.com/Oleg-YTS/trainer-ai-bot.git` (ветка `main`).
+2. Доставить изменения из Задач #83 и #84:
+   - Разблокировка предпросмотра во фрейме AI Studio через CSP `frame-ancestors`;
+   - Редизайн панели лимитов тренера (активный статус «Установлен и действует», кнопки-пресеты только подставляют число, сохранение кнопкой «Сохранить лимит», защита от legacy-заглушки `1000000`).
+3. Запустить автоматический CI/CD деплой на Render.
+
+### GOAL
+Доставить протестированный и проверенный код из песочницы в боевой репозиторий проекта.
+
+### PLAN
+- Авторизовать отправку через предоставленный пользователем GitHub Access Token без записи токена в репозиторий.
+- Выполнить `git push ... main`.
+- Проверить через `git ls-remote`, что `refs/heads/main` указывает на новый коммит `278b54b`.
+
+### CHANGES
+- GitHub репозиторий `Oleg-YTS/trainer-ai-bot` обновлен: `f136252..278b54b`.
+
+### FILES
+- `server.ts`
+- `src/components/TrainerDashboard.tsx`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `git push origin main`: `f136252..278b54b main -> main` (Success).
+- `git ls-remote origin main`: `278b54baf4c84da16af6f28b7a84a54168c3cf68 refs/heads/main` (200 OK).
+
+### RESULT
+Все изменения доставлены на GitHub, на Render инициирован процесс сборки и деплоя боевого сервера.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Дождаться завершения сборки на Render и проверить работу приложения.
+
+---
+
 ## 2026-10-03 — Task #84: Redesign Rate Limits UI — Active Status Banner & Preset Fill-Only Logic
 
 ### TASK
