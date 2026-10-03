@@ -1,5 +1,41 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #78: Fundamental Frontend Hardening: React ErrorBoundary, Safe Storage & Immediate Ready Signal
+
+### TASK
+1. Устранить первопричину возникновения белого экрана в Telegram Mini App при открытии прямой ссылки `t.me/den4uk_ai_bot/miniapp`.
+2. Реализовать защиту фронтенда от необработанных исключений и сбоев доступа к `localStorage` в мобильных WebView.
+
+### GOAL
+Исключить размонтирование дерева компонентов React при ошибках, защитить утилиты работы с хранилищем от вызовов `SecurityError` в изолированном контексте Telegram WebView и гарантировать моментальное снятие оверлея загрузки Telegram за счет ранней отправки сигнала `Telegram.WebApp.ready()`.
+
+### PLAN
+- **Создание `src/components/ErrorBoundary.tsx`**: Классовый компонент-предохранитель, перехватывающий любые рендер-ошибки с выводом эстетичного интерфейса аварийного восстановления вместо белого экрана.
+- **Обертка в `src/main.tsx`**: Включение `<ErrorBoundary>` вокруг `<App />` и добавление прямого вызова `tg.ready()` / `tg.expand()`.
+- **Ранняя инициализация в `index.html`**: Вставка inline-скрипта снятия оверлея сразу после загрузки `telegram-web-app.js`.
+- **Безопасное хранилище в `src/App.tsx`**: Функция-обертка `safeGetStorage` / `safeSetStorage` / `safeRemoveStorage` с изоляцией блоков `try...catch` для защиты от `SecurityError`.
+
+### CHANGES
+- `src/components/ErrorBoundary.tsx`: Создан компонент `ErrorBoundary`.
+- `src/main.tsx`: Обертка приложения в `ErrorBoundary` и ранний вызов `tg.ready()`.
+- `index.html`: Inline-скрипт раннего информирования Telegram WebApp.
+- `src/App.tsx`: Безопасные утилиты доступа к `localStorage`.
+
+### FILES
+- `src/components/ErrorBoundary.tsx`
+- `src/main.tsx`
+- `index.html`
+- `src/App.tsx`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Фронтенд полностью застрахован от размонтирования и появления белого экрана. Любые ошибки в Telegram WebView перехватываются штатным восстановительным интерфейсом, а вызовы хранилища обезопасены от блокировок доступа.
+
+---
+
 ## 2026-10-02 — Task #77: Eliminating 404 Healthcheck Log Noise & Adding HEAD Probe Routes
 
 ### TASK

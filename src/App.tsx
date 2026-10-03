@@ -18,10 +18,30 @@ interface CurrentUser {
   role?: string;
 }
 
+const safeGetStorage = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeSetStorage = (key: string, value: string): void => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+};
+
+const safeRemoveStorage = (key: string): void => {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+};
+
 export const App: React.FC = () => {
   // Theme state: dark (Obsidian Green) or light (Mineral Light)
   const [isDark, setIsDark] = useState<boolean>(() => {
-    const saved = localStorage.getItem('trainer_theme');
+    const saved = safeGetStorage('trainer_theme');
     return saved ? saved === 'dark' : true;
   });
 
@@ -32,11 +52,7 @@ export const App: React.FC = () => {
   );
 
   const [simulateNewUser, setSimulateNewUser] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('trainer_simulate_new_user') === 'true';
-    } catch {
-      return false;
-    }
+    return safeGetStorage('trainer_simulate_new_user') === 'true';
   });
 
   // Active navigation tab: 'catalog' (База), 'chat' (Библиотекарь), 'profile' (Профиль), or 'trainer' (Панель тренера)
@@ -309,7 +325,7 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('trainer_theme', isDark ? 'dark' : 'light');
+    safeSetStorage('trainer_theme', isDark ? 'dark' : 'light');
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
