@@ -1,5 +1,42 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-03 — Task #93: Sandbox Role Selector Environment Protection (isSandbox Refactoring)
+
+### TASK
+1. Ужесточить условие отображения плашки выбора ролей (Sandbox Role Selector) в `src/App.tsx`.
+2. Гарантировать, что плашка ролей присутствует **исключительно** в среде локальной разработки или в песочнице AI Studio, и на 100% исключена при продуктовой сборке на боевых хостингах (Render, Vercel, Telegram Mini App).
+
+### GOAL
+Исключить попадание отладочного баннера переключения ролей на основной публичный хостинг проекта.
+
+### PLAN
+- **Обновление `src/App.tsx`**:
+  - Переделать вычисление флага `isSandbox`: проверка `import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (window.location.hostname.includes('ais-') && !window.location.search.includes('prod=1'))`.
+  - Указать прямой проброс флага `isSandbox` в JSX-блок рендеринга баннера ролей и в функцию определения идентификатора `resolveCurrentUser`.
+- **Проверка сборок**: `lint_applet` (SUCCESS) и `compile_applet` (SUCCESS).
+
+### CHANGES
+- `src/App.tsx`: Уточнение условий `isSandbox` и `isSandboxEnv` для разграничения Dev/Prod сред.
+
+### FILES
+- `src/App.tsx`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `lint_applet`: SUCCESS (0 ошибок).
+- `compile_applet`: SUCCESS (сборка успешна).
+
+### RESULT
+Баннер переключения ролей зафиксирован в режиме разработки и гарантированно отсекается (`return null`) при развертывании на боевом продуктовом хостинге.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать указаний пользователя по следующей задаче.
+
+---
+
 ## 2026-10-03 — Task #88: Elimination of Telegram.WebApp Protocol Error (openTelegramLink Protection)
 
 ### TASK

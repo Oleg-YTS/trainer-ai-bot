@@ -46,9 +46,10 @@ export const App: React.FC = () => {
   });
 
   const isSandbox = typeof window !== 'undefined' && (
-    window.location.hostname.includes('ais-') || 
-    window.location.hostname.includes('localhost') || 
-    window.location.hostname.includes('127.0.0.1')
+    import.meta.env.DEV || 
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    (window.location.hostname.includes('ais-') && !window.location.search.includes('prod=1'))
   );
 
   const [simulateNewUser, setSimulateNewUser] = useState<boolean>(() => {
@@ -200,13 +201,14 @@ export const App: React.FC = () => {
       }
 
       // 5. Local Device Fallback for Telegram ID (ONLY for Sandbox/Dev environments)
-      const isSandbox = typeof window !== 'undefined' && (
-        window.location.hostname.includes('ais-') || 
-        window.location.hostname.includes('localhost') || 
-        window.location.hostname.includes('127.0.0.1')
+      const isSandboxEnv = typeof window !== 'undefined' && (
+        import.meta.env.DEV || 
+        window.location.hostname === 'localhost' || 
+        window.location.hostname === '127.0.0.1' ||
+        (window.location.hostname.includes('ais-') && !window.location.search.includes('prod=1'))
       );
 
-      if (!tgId && isSandbox) {
+      if (!tgId && isSandboxEnv) {
         tgId = 747600306; // Default to Admin Robert for Sandbox Preview
         tgName = 'Robert (Администратор)';
         try {
@@ -486,14 +488,8 @@ export const App: React.FC = () => {
 
         {/* Sandbox Role Selector - ONLY in Sandbox Preview / localhost */}
         {(() => {
-          const isSandbox = typeof window !== 'undefined' && (
-            window.location.hostname.includes('ais-') || 
-            window.location.hostname.includes('localhost') || 
-            window.location.hostname.includes('127.0.0.1')
-          );
-          const activeRole = currentUser.role || (currentUser.is_admin ? 'admin' : (currentUser.is_vip ? 'vip' : 'user'));
-
           if (!isSandbox) return null;
+          const activeRole = currentUser.role || (currentUser.is_admin ? 'admin' : (currentUser.is_vip ? 'vip' : 'user'));
 
           return (
             <div className={`shrink-0 px-3 py-1 border-b flex flex-wrap items-center justify-between gap-1.5 ${
