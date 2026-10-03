@@ -11,6 +11,8 @@ import {
   Send,
   FileText,
   AlertTriangle,
+  AlertCircle,
+  ShieldCheck,
   FolderTree,
   Folder,
   BarChart3,
@@ -107,7 +109,8 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
   const [loadingAnalytics, setLoadingAnalytics] = useState<boolean>(false);
 
   // Rate Limit Settings State
-  const [hourlyRateLimitSetting, setHourlyRateLimitSetting] = useState<number>(5);
+  const [savedHourlyRateLimit, setSavedHourlyRateLimit] = useState<number>(5);
+  const [hourlyRateLimitInput, setHourlyRateLimitInput] = useState<string>('5');
   const [savingRateLimit, setSavingRateLimit] = useState<boolean>(false);
   const [rateLimitSaveToast, setRateLimitSaveToast] = useState<string | null>(null);
 
@@ -117,7 +120,10 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
       if (res.ok) {
         const data = await res.json();
         if (typeof data.hourly_rate_limit === 'number') {
-          setHourlyRateLimitSetting(data.hourly_rate_limit);
+          // Normalize legacy 1000000 stub to 5
+          const validLimit = data.hourly_rate_limit >= 100000 ? 5 : data.hourly_rate_limit;
+          setSavedHourlyRateLimit(validLimit);
+          setHourlyRateLimitInput(String(validLimit));
         }
       }
     } catch (err) {
@@ -125,20 +131,29 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     }
   };
 
-  const handleSaveRateLimitSetting = async (newLimit: number) => {
+  const handleSaveRateLimitSetting = async (customLimit?: number) => {
+    const rawVal = customLimit !== undefined ? customLimit : parseInt(hourlyRateLimitInput, 10);
+    const targetLimit = isNaN(rawVal) || rawVal < 0 ? 0 : Math.min(1000, rawVal);
+
     setSavingRateLimit(true);
     setRateLimitSaveToast(null);
     try {
       const res = await apiFetch('/api/trainer/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hourly_rate_limit: newLimit })
+        body: JSON.stringify({ hourly_rate_limit: targetLimit })
       });
       if (res.ok) {
         const data = await res.json();
-        setHourlyRateLimitSetting(data.hourly_rate_limit);
-        setRateLimitSaveToast(data.message || 'Настройка лимитов успешно сохранена!');
-        setTimeout(() => setRateLimitSaveToast(null), 3000);
+        const finalActive = typeof data.hourly_rate_limit === 'number' ? data.hourly_rate_limit : targetLimit;
+        setSavedHourlyRateLimit(finalActive);
+        setHourlyRateLimitInput(String(finalActive));
+        setRateLimitSaveToast(
+          finalActive === 0
+            ? 'Лимит отключен: для группы «Пользователь» установлен безлимитный доступ.'
+            : `Лимит успешно сохранён: ${finalActive} зап/час для группы «Пользователь».`
+        );
+        setTimeout(() => setRateLimitSaveToast(null), 4000);
       }
     } catch (err) {
       console.error('Failed to save rate limit setting:', err);
@@ -2677,65 +2692,117 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
             </button>
 
             {isLlmLimitsOpen && (
-              <div className="p-4 space-y-3.5 animate-in fade-in">
-                <p className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                  Установите доступное количество бесплатных вопросов к ИИ-Библиотекарю в час для роли «Пользователь». Подписка и VIP получают доступ без ограничений.
-                </p>
+              <div className="p-4 space-y-4 animate-in fade-in">
+                {/* 1. Clear Active Status Card */}
+                <div className={`p-3.5 rounded-lg border flex items-center justify-between ${
+                  isDark ? 'bg-[#0E1613] border-[#1F2E27]' : 'bg-[#F4F7F5] border-[#D0DDD5]'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#5B8A78]/15 text-[#5B8A78] flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-inherit">
+                          {savedHourlyRateLimit === 0 ? 'Без ограничений (0)' : `${savedHourlyRateLimit} зап/час`}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          Установлен и действует
+                        </span>
+                      </div>
+                      <p className={`text-[11px] mt-0.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#62756B]'}`}>
+                        Применяется к группе «Пользователь». Подписка и VIP не ограничены.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
+                {/* Toast feedback */}
                 {rateLimitSaveToast && (
-                  <div className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-1.5 font-medium animate-fade-in">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="text-xs px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center gap-2 font-medium animate-fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                     <span>{rateLimitSaveToast}</span>
                   </div>
                 )}
 
-                {/* Presets and Custom Input */}
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {[1, 3, 5, 10, 15, 20, 0].map(val => {
-                    const isSelected = hourlyRateLimitSetting === val;
-                    const label = val === 0 ? 'Без лимита (0)' : `${val} зап/час`;
-                    return (
-                      <button
-                        key={val}
-                        disabled={savingRateLimit}
-                        onClick={() => handleSaveRateLimitSetting(val)}
-                        className={`text-xs py-1.5 px-3 rounded-lg border font-medium transition flex items-center gap-1.5 ${
-                          isSelected
-                            ? 'bg-[#5B8A78] text-white border-[#5B8A78] shadow-sm font-semibold'
-                            : isDark
-                              ? 'bg-[#18231E] border-[#253A30] text-[#D0D7D3] hover:bg-[#1F2E27]'
-                              : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#2C3B34] hover:bg-[#E2E9E4]'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3.5 h-3.5" />}
-                        <span>{label}</span>
-                      </button>
-                    );
-                  })}
+                {/* Unsaved Draft Indicator */}
+                {parseInt(hourlyRateLimitInput, 10) !== savedHourlyRateLimit && (
+                  <div className="text-xs px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center gap-2 font-medium animate-fade-in">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>
+                      Выбрано новое значение: <strong>{hourlyRateLimitInput || '0'}</strong>. Нажмите кнопку «Сохранить лимит» для применения.
+                    </span>
+                  </div>
+                )}
+
+                {/* 2. Preset Buttons: ONLY Fill Input (No direct save) */}
+                <div>
+                  <span className={`text-[11px] font-medium block mb-1.5 ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                    Быстрая подстановка цифр:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {[5, 10, 0].map(val => {
+                      const isSelectedInInput = parseInt(hourlyRateLimitInput, 10) === val;
+                      const isCurrentActive = savedHourlyRateLimit === val;
+                      const label = val === 0 ? 'Без лимита (0)' : `${val} зап/час`;
+                      return (
+                        <button
+                          key={val}
+                          type="button"
+                          disabled={savingRateLimit}
+                          onClick={() => setHourlyRateLimitInput(String(val))}
+                          className={`text-xs py-1.5 px-3 rounded-lg border font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                            isSelectedInInput
+                              ? 'bg-[#5B8A78] text-white border-[#5B8A78] shadow-sm font-semibold'
+                              : isDark
+                                ? 'bg-[#18231E] border-[#253A30] text-[#D0D7D3] hover:bg-[#1F2E27]'
+                                : 'bg-[#F4F6F4] border-[#C8D6CF] text-[#2C3B34] hover:bg-[#E2E9E4]'
+                          }`}
+                        >
+                          {isSelectedInInput && <Check className="w-3.5 h-3.5" />}
+                          <span>{label}</span>
+                          {isCurrentActive && (
+                            <span className="text-[9px] opacity-75 font-normal ml-0.5">
+                              (активно)
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
+                {/* 3. Custom Input & Save Button */}
                 <div className="flex items-center gap-3 pt-1">
-                  <span className={`text-xs ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
-                    Точное значение:
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="1000"
-                    value={hourlyRateLimitSetting}
-                    onChange={e => setHourlyRateLimitSetting(Math.max(0, parseInt(e.target.value || '0', 10)))}
-                    className={`w-20 text-xs py-1 px-2.5 rounded border font-mono ${
-                      isDark
-                        ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9]'
-                        : 'bg-white border-[#C8D6CF] text-[#141F1A]'
-                    }`}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${isDark ? 'text-[#8E9E96]' : 'text-[#53665C]'}`}>
+                      Значение лимита:
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      placeholder="0"
+                      value={hourlyRateLimitInput}
+                      onChange={e => setHourlyRateLimitInput(e.target.value)}
+                      className={`w-20 text-xs py-1.5 px-2.5 rounded border font-mono ${
+                        isDark
+                          ? 'bg-[#18231E] border-[#253A30] text-[#E8ECE9]'
+                          : 'bg-white border-[#C8D6CF] text-[#141F1A]'
+                      }`}
+                    />
+                  </div>
+
                   <button
                     disabled={savingRateLimit}
-                    onClick={() => handleSaveRateLimitSetting(hourlyRateLimitSetting)}
-                    className="text-xs py-1 px-3 rounded bg-[#5B8A78] hover:bg-[#4A7364] text-white font-medium transition flex items-center gap-1.5"
+                    onClick={() => handleSaveRateLimitSetting()}
+                    className={`text-xs py-1.5 px-3.5 rounded font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                      parseInt(hourlyRateLimitInput, 10) !== savedHourlyRateLimit
+                        ? 'bg-amber-600 hover:bg-amber-500 text-white shadow ring-2 ring-amber-500/30 font-semibold'
+                        : 'bg-[#5B8A78] hover:bg-[#4A7364] text-white'
+                    }`}
                   >
-                    {savingRateLimit && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {savingRateLimit && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>Сохранить лимит</span>
                   </button>
                 </div>

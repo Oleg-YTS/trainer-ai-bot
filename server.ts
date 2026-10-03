@@ -1662,10 +1662,6 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
   const isAdmin = adminIds.includes(String(tg_id));
   const displayName = name ? String(name) : (isAdmin ? 'Администратор' : `Пользователь ${tg_id}`);
 
-  // DEALS: Unlimited VIP status for everyone by default
-  const effectiveIsAdmin = isAdmin;
-  const effectiveIsVip = true;
-
   // Check if client already exists in PostgreSQL
   let existingClient = await pgService.getClientById(tg_id);
   
@@ -1715,7 +1711,7 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
     const finalAdmin = Boolean(existingClient.client.is_admin || isHardcodedAdmin);
     // Respect the real VIP and role status of the user!
     const isVip = Boolean(existingClient.client.is_vip || existingClient.client.profile?.is_vip || finalAdmin);
-    const role = existingClient.client.profile?.role || (finalAdmin ? 'admin' : (isVip ? 'vip' : 'subscriber'));
+    const role = existingClient.client.profile?.role || (finalAdmin ? 'admin' : (isVip ? 'vip' : 'user'));
 
     return res.json({
         ok: true,
@@ -1741,8 +1737,8 @@ app.all('/api/client/resolve', async (req: Request, res: Response) => {
     id: tg_id,
     telegram_user_id: tg_id,
     name: displayName,
-    is_admin: effectiveIsAdmin,
-    is_vip: true
+    is_admin: isAdmin,
+    is_vip: false
   });
 });
 
@@ -1989,12 +1985,15 @@ async function sendTelegramAlertToTrainers(text: string) {
 
 // Rate Limiting settings endpoints
 app.get('/api/trainer/settings', (req: Request, res: Response) => {
-  const hourlyLimit = parseInt(process.env.HOURLY_RATE_LIMIT || '5', 10);
+  let hourlyLimit = parseInt(process.env.HOURLY_RATE_LIMIT || '5', 10);
+  if (isNaN(hourlyLimit) || hourlyLimit >= 100000) {
+    hourlyLimit = 5;
+  }
   const subscriberPrice = parseInt(process.env.SUBSCRIBER_PRICE || '490', 10);
   const vipPrice = parseInt(process.env.VIP_PRICE || '4990', 10);
   res.json({
     ok: true,
-    hourly_rate_limit: 1000000,
+    hourly_rate_limit: hourlyLimit,
     subscriber_price: isNaN(subscriberPrice) ? 490 : subscriberPrice,
     vip_price: isNaN(vipPrice) ? 4990 : vipPrice
   });
@@ -2354,10 +2353,19 @@ async function startServer() {
   console.log(`[Server] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
   console.log(`[Server] Working directory: ${__dirname}`);
 
-  // Allow Telegram in-app WebApp iframe embedding across all Telegram web/mobile clients
+  // Allow Telegram in-app WebApp iframe embedding AND AI Studio preview iframe embedding
   app.use((_req: Request, res: Response, next) => {
     res.removeHeader('X-Frame-Options');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org;");
+    if (!isProduction) {
+      // In development / AI Studio preview, allow embedding in any iframe
+      res.setHeader('Content-Security-Policy', "frame-ancestors *;");
+    } else {
+      // In production, allow Telegram clients as well as Google AI Studio / Cloud Run
+      res.setHeader(
+        'Content-Security-Policy',
+        "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org https://*.google.com https://aistudio.google.com https://*.run.app;"
+      );
+    }
     next();
   });
 
@@ -2386,6 +2394,7 @@ async function startServer() {
     '/api/stats',
     '/api/client/status/update',
     '/api/client/vip/toggle',
+    '/api/client/resolve',
     '/api/trainer/settings',
     '/api/knowledge',
     '/api/categories',
@@ -2393,7 +2402,8 @@ async function startServer() {
     '/api/clients',
     '/api/escalations',
     '/api/client/profile',
-    '/api/chat/clear'
+    '/api/chat/clear',
+    '/api/chat'
   ];
 
   // Static Assets Priority (Only in Production)
