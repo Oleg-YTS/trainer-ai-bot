@@ -735,68 +735,83 @@ export const TrainerDashboard: React.FC<TrainerDashboardProps> = ({ isDark = tru
     const cleanUser = username?.replace(/^@/, '').trim();
     const tgApp = (window as any).Telegram?.WebApp;
 
-    // 1. Valid Username -> tgApp.openTelegramLink('https://t.me/username')
+    // 1. Valid Username -> https://t.me/username (Opens direct chat thread)
     if (cleanUser && /^[a-zA-Z0-9_]{3,}$/.test(cleanUser)) {
       const tmeUrl = `https://t.me/${cleanUser}`;
+
       try {
         if (navigator.clipboard) {
           navigator.clipboard.writeText(`@${cleanUser}`);
         }
       } catch (e) {}
 
+      let opened = false;
+
+      // Native Telegram WebApp SDK handler
       if (tgApp?.openTelegramLink) {
         try {
           tgApp.openTelegramLink(tmeUrl);
+          opened = true;
         } catch (e) {
-          if (tgApp?.openLink) {
-            try { tgApp.openLink(tmeUrl); } catch (e2) {}
-          } else {
-            try { window.open(tmeUrl, '_blank', 'noopener,noreferrer'); } catch (e2) {}
-          }
+          console.warn('openTelegramLink failed:', e);
         }
-      } else if (tgApp?.openLink) {
-        try { tgApp.openLink(tmeUrl); } catch (e) {}
-      } else {
-        try {
-          const win = window.open(tmeUrl, '_blank', 'noopener,noreferrer');
-          if (!win) {
+      }
+
+      // Standalone web browser / iframe fallback
+      if (!opened) {
+        if (tgApp?.openLink) {
+          try {
+            tgApp.openLink(tmeUrl);
+            opened = true;
+          } catch (e) {}
+        }
+        if (!opened) {
+          try {
+            const win = window.open(tmeUrl, '_blank', 'noopener,noreferrer');
+            if (!win) {
+              window.location.href = tmeUrl;
+            }
+          } catch (e) {
             window.location.href = tmeUrl;
           }
-        } catch (e) {
-          window.location.href = tmeUrl;
         }
       }
 
       setTgActionToast({
-        message: `Открываем диалог с @${cleanUser}`,
-        sub: `Ссылка t.me/${cleanUser} открыта (юзернейм скопирован в буфер)`
+        message: `Открываем сообщения с @${cleanUser}`,
+        sub: `Переход в личный чат Telegram (@${cleanUser} скопирован в буфер)`
       });
       setTimeout(() => setTgActionToast(null), 4000);
       return;
     }
 
-    // 2. Numeric Telegram User ID -> Copy link and open protocol directly
+    // 2. Numeric Telegram User ID -> Deep Link tg://user?id=ID (Native Telegram App protocol)
     if (telegramUserId) {
-      const tgProtocolUrl = `tg://user?id=${telegramUserId}`;
+      const tgUserProtocol = `tg://user?id=${telegramUserId}`;
 
       try {
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(tgProtocolUrl);
+          navigator.clipboard.writeText(String(telegramUserId));
         }
       } catch (e) {}
 
+      // Direct system protocol handler (DO NOT pass tg:// to Telegram.WebApp web methods)
       try {
-        const win = window.open(tgProtocolUrl, '_blank');
+        const win = window.open(tgUserProtocol, '_blank');
         if (!win) {
-          window.location.href = tgProtocolUrl;
+          window.location.href = tgUserProtocol;
         }
       } catch (e) {
-        try { window.location.href = tgProtocolUrl; } catch (e2) {}
+        try {
+          window.location.href = tgUserProtocol;
+        } catch (e2) {
+          console.warn('Protocol navigation failed:', e2);
+        }
       }
 
       setTgActionToast({
-        message: `Диалог в Telegram: ID #${telegramUserId}`,
-        sub: `Ссылка скопирована в буфер: ${tgProtocolUrl}`
+        message: `Чат в Telegram: ID #${telegramUserId}`,
+        sub: `Открываем контакт #${telegramUserId} в приложении Telegram (ID скопирован)`
       });
       setTimeout(() => setTgActionToast(null), 4000);
       return;

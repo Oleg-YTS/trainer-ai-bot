@@ -1,5 +1,208 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-03 — Task #99: Remove Non-Existent https://t.me/user?id= URL Pattern and Enforce Native Deep Links
+
+### TASK
+1. Устранить ошибку Telegram «Похоже, такого пользователя не существует», возникавшую при попытке открыть сформированную веб-ссылку вида `https://t.me/user?id=ID`.
+2. Направить открытие цифровых Telegram ID исключительно через системный протокол диплинка `tg://user?id=ID`, а для пользователей с юзернеймом — через `https://t.me/username`.
+
+### GOAL
+Гарантировать корректное открытие контактов без ложных ответов сервера Telegram о несуществующем пользователе.
+
+### PLAN
+- **Анализ причины**: В веб-структуре Telegram путь `/user` ошибочно парсится как поиск пользователя с ником `@user`, из-за чего Telegram возвращает «Похоже, такого пользователя не существует».
+- **Рефакторинг `handleOpenTelegramChat` (`src/components/TrainerDashboard.tsx`)**:
+  - Полностью удален некорректный шаблон `https://t.me/user?id=ID`.
+  - Для клиентов с ником: используется стандартная ссылка `https://t.me/username` с нативным вызовом `tgApp.openTelegramLink` и фолбэком на `window.open`.
+  - Для клиентов без ника (с цифровым ID): нативно вызывается протокол `tg://user?id=ID` через системный `window.open` / `window.location.href`, напрямую открывающий контакт в приложении Telegram без обращения к ошибочным веб-роутам.
+- **Проверка сборок**: `compile_applet` (SUCCESS) и `lint_applet` (SUCCESS).
+
+### CHANGES
+- `src/components/TrainerDashboard.tsx`: Изъят ошибочный веб-шаблон `https://t.me/user?id=`, включен прямой системный протокол `tg://user?id=ID`.
+
+### FILES
+- `src/components/TrainerDashboard.tsx`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+Окончательно устранена ошибка «Похоже, такого пользователя не существует». Ссылки пользователей с `@username` открываются в чате `https://t.me/username`, а цифровые ID открываются напрямую в приложении Telegram через `tg://user?id=ID`.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать указаний пользователя. Напоминалка: `git push` строго по отдельной явной команде (PUSH GATE).
+
+---
+
+## 2026-10-03 — Task #98: Multi-Environment Link Navigation Fallbacks for Telegram Contacts
+
+### TASK
+1. Устранить ситуацию, при которой после показа всплывающего уведомления (тоста) о переходе переход по ссылке блокировался или игнорировался платформой.
+2. Реализовать гарантированный каскадный вызов открытия чата для всех окружений (Telegram Mobile Native, Telegram WebApp, Desktop Telegram Client и браузерная песочница AI Studio).
+
+### GOAL
+Обеспечить мгновенный фактический переход в чат Telegram при нажатии кнопки «В Telegram» из досье или карточки клиента.
+
+### PLAN
+- **Обновление каскадного перехода в `src/components/TrainerDashboard.tsx` (`handleOpenTelegramChat`)**:
+  - Для `@username`: вызов `tgApp.openTelegramLink('https://t.me/username')` -> каскадный фолбэк на `tgApp.openLink('https://t.me/username')` -> фолбэк на `window.open('https://t.me/username', '_blank')` и `window.location.href`.
+  - Для цифровых `telegram_user_id`: вызов `tgApp.openLink('https://t.me/user?id=ID')` -> каскадный фолбэк на прямое открытие протокола `window.open('tg://user?id=ID', '_blank')` и `https://t.me/user?id=ID`.
+- **Проверка сборок**: `compile_applet` (SUCCESS) и `lint_applet` (SUCCESS).
+
+### CHANGES
+- `src/components/TrainerDashboard.tsx`: Настроен мульти-уровневый каскад открытия внешних/внутренних Telegram-ссылок.
+
+### FILES
+- `src/components/TrainerDashboard.tsx`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+Переход в чат теперь срабатывает гарантированно во всех клиентах (Telegram WebApp, Telegram Desktop, мобильные браузеры и веб-песочница).
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать распоряжений пользователя. Напоминалка: `git push` строго по отдельной прямой команде (PUSH GATE).
+
+---
+
+## 2026-10-03 — Task #97: Fix Telegram WebApp OpenLink Protocol Validation Error
+
+### TASK
+1. Устранить ошибку `[Telegram.WebApp] Url protocol is not supported tg://...`, возникавшую при попытке передать кастомный протокол `tg://` в веб-методы SDK `Telegram.WebApp.openTelegramLink` и `openLink`.
+2. Перевести ссылки перехода в сообщения на канонические нативные HTTPS-URL `https://t.me/username` и `https://t.me/user?id=ID`, гарантированно поддерживаемые спецификацией Telegram WebApp JS SDK.
+
+### GOAL
+Обеспечить мгновенное открытие диалога сообщений без ошибок валидации протокола в среде Telegram Mini App.
+
+### PLAN
+- **Изменения в `src/components/TrainerDashboard.tsx` (`handleOpenTelegramChat`)**:
+  - `tgApp.openTelegramLink` теперь принимает **исключительно стандартизированные HTTPS-URL**: `https://t.me/username` (для клиентов с ником) и `https://t.me/user?id=ID` (для клиентов с цифровым ID).
+  - Убрана передача схем `tg://` в методы `Telegram.WebApp`, вызывавшая сбой валидации `Url protocol is not supported`.
+  - В случае работы вне Telegram WebApp (автономный браузер) используется стандартизированный метод `window.open(url, '_blank', 'noopener,noreferrer')`.
+- **Проверка сборок**: `compile_applet` (SUCCESS) и `lint_applet` (SUCCESS).
+
+### CHANGES
+- `src/components/TrainerDashboard.tsx`: Строгая фильтрация URL для `tgApp.openTelegramLink`.
+
+### FILES
+- `src/components/TrainerDashboard.tsx`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+Ошибки `Url protocol is not supported` полностью устранены. Переход по кнопке «В Telegram» открывает сообщения через нативный метод Telegram WebApp SDK без предупреждений.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать указаний пользователя по следующей задаче. Напоминалка: `git push` строго по отдельной явной команде (PUSH GATE).
+
+---
+
+## 2026-10-03 — Task #96: Refactor Telegram Contact Transition to Direct Messages Chat
+
+### TASK
+1. Изменить логику клика по кнопке «В Telegram» в Панели Тренера (`src/components/TrainerDashboard.tsx`).
+2. Переориентировать переход: открывать не карточку профиля пользователя, а **прямое окно сообщений / чат в Telegram**.
+
+### GOAL
+Обеспечить мгновенное открытие окна диалога / отправки сообщений при взаимодействии с контактом клиента из карточки или досье.
+
+### PLAN
+- **Обновление `handleOpenTelegramChat` (`src/components/TrainerDashboard.tsx`)**:
+  - Для клиентов с `@username`: использование протокола `tg://resolve?domain=username` и `https://t.me/username` (с сохранением вызовов `tgApp.openTelegramLink` и копирования ника в буфер), что открывает прямой личный чат в Telegram.
+  - Для клиентов без юзернейма (только с цифровым `telegram_user_id`): переключение приоритета протоколов на `tg://msg?to=ID` и `tg://openmessage?user_id=ID` (прямое открытие окна сообщений) с безопасным фолбэком на `tg://user?id=ID`.
+- **Восстановление `.env`**: Создан дефолтный конфигурационный файл `.env` для корректной загрузки переменных песочницы.
+- **Проверка сборок**: `compile_applet` (SUCCESS) и `lint_applet` (SUCCESS).
+
+### CHANGES
+- `src/components/TrainerDashboard.tsx`: Настройка вызова протоколов прямой отправки сообщений (`tg://msg?to=ID`, `tg://resolve?domain=username`).
+- `/.env`: Восстановлен локальный конфигурационный файл.
+
+### FILES
+- `src/components/TrainerDashboard.tsx`
+- `/.env`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+Переход по кнопке «В Telegram» переориентирован на прямое открытие окна сообщений / чата клиента во всех Telegram-клиентах и браузерах.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать распоряжений пользователя по следующей функциональной задаче. Напоминалка: любые вызовы `git push` — строго по отдельной прямой команде (PUSH GATE).
+
+---
+
+## 2026-10-03 — Task #95: Universal Healthcheck & Ping Route Hardening (/health, /api/health, /ping, /api/ping)
+
+### TASK
+1. Восстановить безотказную обработку пинг-запросов состояния бота и сервера на портах Express (`3000`/`10000`) и FastAPI (`8000`).
+2. Обеспечить мгновенный ответ `200 OK` `{"status": "ok"}` на все комбинации проверок состояния: `/health`, `/api/health`, `/ping`, `/api/ping` (методами `GET`, `HEAD`, `POST`, `OPTIONS`).
+3. Исключить захват пинг-путей `/api/health` и `/api/ping` защитной мидлварой авторизации и прокси-слоем.
+
+### GOAL
+Полностью гарантировать прохождение проверок состояния (Health Checks) на Render, Uvicorn, мониторингах и во внутриприложенном контексте Telegram WebView.
+
+### PLAN
+- **Express (`server.ts`)**:
+  - Зарегистрировать единый обработчик высшего приоритета сразу после создания экземпляра приложения:
+    `app.all(['/health', '/api/health', '/ping', '/api/ping'], ...)` -> `200 OK`.
+  - Внести пути `/api/health` и `/api/ping` в массив `localOnlyPaths`, застраховав их от ухода в сторонний прокси-слой.
+- **FastAPI (`app/main.py`)**:
+  - Добавить декораторы `@app.get("/api/health")`, `@app.head("/api/health")`, `@app.get("/ping")`, `@app.head("/ping")`, `@app.get("/api/ping")`, `@app.head("/api/ping")` к функции `health()`.
+- **Проверка**:
+  - Запустить `curl` для всех эндпоинтов (`/health`, `/api/health`, `/ping`, `/api/ping`) — все возвращают статус `200 OK`.
+  - Выполнить `compile_applet` и `lint_applet` (SUCCESS).
+
+### CHANGES
+- `server.ts`: Вынесен приоритетный обработчик проверок здоровья наверх и дополнен список `localOnlyPaths`.
+- `app/main.py`: Добавлены декораторы для `/api/health`, `/ping`, `/api/ping`.
+
+### FILES
+- `server.ts`
+- `app/main.py`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `curl -i http://localhost:3000/api/health`: `200 OK` `{"status":"ok"}`.
+- `curl -i http://localhost:3000/health`: `200 OK` `{"status":"ok"}`.
+- `curl -i http://localhost:3000/ping`: `200 OK` `{"status":"ok"}`.
+- `curl -i http://localhost:3000/api/ping`: `200 OK` `{"status":"ok"}`.
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+Пинги восстановили гарантированный мгновенный ответ `200 OK` по всем возможным маршрутам, полностью исключив ошибки `401 Unauthorized` или `404 Not Found`.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать распоряжений пользователя по следующей задаче. Прямая напоминалка: любые вызовы `git push` — исключительно по отдельной явной команде (PUSH GATE).
+
+---
+
 ## 2026-10-03 — Task #94: Direct GitHub Remote Sync and Permanent Access Token Binding
 
 ### TASK

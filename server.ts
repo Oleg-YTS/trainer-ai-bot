@@ -1243,6 +1243,11 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Immediate Health Check Handler (Top priority for Render / Telegram Mini App monitors)
+app.all(['/health', '/api/health', '/ping', '/api/ping'], (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', environment: process.env.NODE_ENV === 'production' ? 'production' : 'development' });
+});
+
 // Proxy layer to Python Telegram Bot backend (PostgreSQL) when target URL is configured in environment
 const TARGET_BOT_URL = (() => {
   const urls = [
@@ -2378,13 +2383,15 @@ async function startServer() {
     });
   }
 
-  // Health Check (Fastest response)
-  app.get('/health', (_req: Request, res: Response) => {
-    res.json({ status: 'ok', environment: isProduction ? 'production' : 'development' });
+  // Health Check (Fastest response - handles /health, /api/health, /ping, /api/ping)
+  app.all(['/health', '/api/health', '/ping', '/api/ping'], (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'ok', environment: isProduction ? 'production' : 'development' });
   });
 
   // Local-only API paths handled by Node.js
   const localOnlyPaths = [
+    '/api/health',
+    '/api/ping',
     '/api/admin',
     '/api/secrets',
     '/api/env-raw',

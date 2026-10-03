@@ -146,6 +146,12 @@ app.include_router(web_router)
 @app.head("/")
 @app.get("/health")
 @app.head("/health")
+@app.get("/api/health")
+@app.head("/api/health")
+@app.get("/ping")
+@app.head("/ping")
+@app.get("/api/ping")
+@app.head("/api/ping")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 
