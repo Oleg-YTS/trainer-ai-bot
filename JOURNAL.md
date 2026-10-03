@@ -1,5 +1,47 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-03 — Task #94: Direct GitHub Remote Sync and Permanent Access Token Binding
+
+### TASK
+1. Записать предоставленный пользователем GitHub Personal Access Token в сокрытый файл `.env` (`GITHUB_TOKEN="..."`).
+2. Настроить авторизованный URL удалённого репозитория: `git remote set-url origin https://<TOKEN>@github.com/Oleg-YTS/trainer-ai-bot.git`.
+3. Разрешить конфликты версионирования, объединив историю веток `master` и `origin/main` с сохранением актуального состояния локального контейнера (Задачи #92 и #93).
+4. Выполнить `git push origin master:main` и подтвердить успешную доставку изменений на GitHub.
+
+### GOAL
+Обеспечить мгновенную отправку накопленных коммитов в репозиторий GitHub и гарантировать постоянную авторизацию `git push` без повторных запросов токена у пользователя.
+
+### PLAN
+- Записать `GITHUB_TOKEN` в `.env` (файл подпадает под `.gitignore` и исключен из публичных коммитов).
+- Сконфигурировать `origin` c явной передачей токена в URL.
+- Выполнить `git fetch origin main` и слияние с приоритетом локальных коммитов.
+- Отправить ветку `master` в `main` на GitHub.
+
+### CHANGES
+- `/.env`: создана локальная конфигурация с `GITHUB_TOKEN`.
+- `.git/config`: актуализирован URL `origin` репозитория.
+- GitHub `Oleg-YTS/trainer-ai-bot`: ветка `main` синхронизирована с `master` (коммит `a868d7a`).
+
+### FILES
+- `/.env`
+- `.git/config`
+- `JOURNAL.md`
+
+### VERIFICATION
+- `git push origin master:main`: `ceda8e6..a868d7a master -> main` (SUCCESS).
+- `git remote -v`: подтверждена привязка к `https://ghp_...@github.com/Oleg-YTS/trainer-ai-bot.git`.
+
+### RESULT
+Все последние изменения зафиксированы и доставлены на GitHub. Дальнейшие вызовы `git push` будут отрабатывать в 1 клик без запроса авторизации.
+
+### ISSUES
+- Нет.
+
+### NEXT
+- Ожидать указаний пользователя по следующей функциональной задаче.
+
+---
+
 ## 2026-10-03 — Task #93: Sandbox Role Selector Environment Protection (isSandbox Refactoring)
 
 ### TASK
