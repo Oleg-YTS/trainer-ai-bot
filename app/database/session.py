@@ -43,7 +43,11 @@ def get_engine() -> AsyncEngine:
     # Enable SSL for asyncpg when connecting to Render or remote PostgreSQL
     connect_args = {}
     if "render.com" in async_url or "dpg-" in async_url or "ssl=require" in async_url or "sslmode=" in url:
-        connect_args["ssl"] = True
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        connect_args["ssl"] = ssl_context
 
     return create_async_engine(async_url, pool_pre_ping=True, pool_recycle=300, connect_args=connect_args)
 

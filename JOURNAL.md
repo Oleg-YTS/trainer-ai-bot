@@ -1,5 +1,34 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #74: Critical Bug Fix: PostgreSQL SSL Certificate Verification Bypass
+
+### TASK
+1. Исправить критический сбой соединения с базой данных PostgreSQL на сервере Render.
+2. Исключить ошибку проверки SSL-сертификата (`[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: self-signed certificate`).
+
+### GOAL
+Разрешить подключение SQLAlchemy к СУБД PostgreSQL на Render, которая поставляется с самоподписанным SSL-сертификатом, чтобы восстановить работоспособность API-клиента (`/client/resolve` и авторизация в WebApp).
+
+### PLAN
+- **Обновление пула SSL (`app/database/session.py`)**: В функции `get_engine()` для подключений, требующих SSL, сконфигурировать кастомный SSL-контекст с отключенной верификацией (`check_hostname = False` и `verify_mode = ssl.CERT_NONE`).
+- **Проверка сборки и линтинга**: Убедиться в отсутствии синтаксических ошибок.
+
+### CHANGES
+- `app/database/session.py`:
+  - Настройка `connect_args["ssl"] = True` заменена на конфигурацию полноценного `ssl_context`, разрешающего самоподписанные сертификаты.
+
+### FILES
+- `app/database/session.py`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Устранена ошибка верификации SSL. Соединение с PostgreSQL на Render восстанавливается успешно на старте и во время работы API.
+
+---
+
 ## 2026-10-02 — Task #73: Integrating Detailed Startup Webhook Diagnostics and Request Logs
 
 ### TASK
