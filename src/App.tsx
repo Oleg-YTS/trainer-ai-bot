@@ -133,14 +133,18 @@ export const App: React.FC = () => {
       // 2. Parse Telegram initData query string
       if (!tgId && tg?.initData) {
         try {
-          const params = new URLSearchParams(tg.initData);
-          const rawUser = params.get('user');
+          const rawInit = typeof tg.initData === 'string' ? tg.initData : String(tg.initData);
+          const params = new URLSearchParams(rawInit);
+          let rawUser = params.get('user');
           if (rawUser) {
-            const parsed = JSON.parse(rawUser);
-            tgUser = parsed;
-            tgId = Number(parsed.id);
-            tgName = [parsed.first_name, parsed.last_name].filter(Boolean).join(' ') || parsed.username || '';
-            tgUsername = parsed.username || '';
+            try { rawUser = decodeURIComponent(rawUser); } catch {}
+            const parsed = typeof rawUser === 'string' ? JSON.parse(rawUser) : rawUser;
+            if (parsed && parsed.id) {
+              tgUser = parsed;
+              tgId = Number(parsed.id);
+              tgName = [parsed.first_name, parsed.last_name].filter(Boolean).join(' ') || parsed.username || '';
+              tgUsername = parsed.username || '';
+            }
           }
         } catch {}
       }
@@ -148,17 +152,22 @@ export const App: React.FC = () => {
       // 3. Telegram WebApp location hash (#tgWebAppData=...)
       if (!tgId && typeof window !== 'undefined' && window.location.hash) {
         try {
-          const hashStr = window.location.hash.replace(/^#/, '');
+          let hashStr = window.location.hash.replace(/^#/, '');
+          try { hashStr = decodeURIComponent(hashStr); } catch {}
           const hashParams = new URLSearchParams(hashStr);
-          const tgData = hashParams.get('tgWebAppData');
+          let tgData = hashParams.get('tgWebAppData') || hashParams.get('tgData') || hashStr;
           if (tgData) {
+            try { tgData = decodeURIComponent(tgData); } catch {}
             const dataParams = new URLSearchParams(tgData);
-            const userJson = dataParams.get('user');
+            let userJson = dataParams.get('user');
             if (userJson) {
-              const parsed = JSON.parse(userJson);
-              tgId = Number(parsed.id);
-              tgName = [parsed.first_name, parsed.last_name].filter(Boolean).join(' ') || parsed.username || '';
-              tgUsername = parsed.username || '';
+              try { userJson = decodeURIComponent(userJson); } catch {}
+              const parsed = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
+              if (parsed && parsed.id) {
+                tgId = Number(parsed.id);
+                tgName = [parsed.first_name, parsed.last_name].filter(Boolean).join(' ') || parsed.username || '';
+                tgUsername = parsed.username || '';
+              }
             }
           }
         } catch {}
