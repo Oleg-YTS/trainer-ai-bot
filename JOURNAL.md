@@ -1,5 +1,33 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #77: Eliminating 404 Healthcheck Log Noise & Adding HEAD Probe Routes
+
+### TASK
+1. Устранить ошибку `404 Not Found` на служебный запрос `HEAD /` в логах Python-бэкенда (Uvicorn).
+2. Обеспечить корректную работу предзагрузки в Telegram WebView и встроенных проверок состояния на Render.
+
+### GOAL
+Гарантировать, что любые системные пинги (`HEAD /`, `GET /`, `HEAD /health`, `GET /health`) на порт Python-бэкенда (`8000`) мгновенно возвращают статус `200 OK`, исключая отказы WebView в Telegram при предзагрузке интерфейса для новых пользователей.
+
+### PLAN
+- **Добавление обработчиков в `app/main.py`**: Сконфигурировать декораторы `@app.get("/")`, `@app.head("/")`, `@app.get("/health")`, `@app.head("/health")` для единой асинхронной функции `health()`.
+- **Проверка сборки и линтинга**: Выполнить `compile_applet` и `lint_applet`.
+
+### CHANGES
+- `app/main.py`: Добавлены декораторы `@app.get("/")`, `@app.head("/")`, `@app.head("/health")` к функции `health()`.
+
+### FILES
+- `app/main.py`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Сервис теперь мгновенно отвечает `200 OK` на все служебные пинги `HEAD /` и `GET /`, устраняя фоновый шум `404 Not Found` и обеспечивая беспрепятственное открытие Telegram Mini App на любых мобильных устройствах.
+
+---
+
 ## 2026-10-02 — Task #76: Final Fix: Resolving 'Not Found' and White Screen on Render
 
 ### TASK

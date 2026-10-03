@@ -142,7 +142,10 @@ app.add_middleware(
 
 app.include_router(web_router)
 
+@app.get("/")
+@app.head("/")
 @app.get("/health")
+@app.head("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}
 
