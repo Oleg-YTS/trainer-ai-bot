@@ -1,5 +1,35 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #73: Integrating Detailed Startup Webhook Diagnostics and Request Logs
+
+### TASK
+1. Внедрить детальный диагностический сборщик данных вебхука Telegram на этапе инициализации Python-приложения.
+2. Добавить логирование всех транзитных запросов прокси-сервера Express на `/telegram` и `/api` для трассировки маршрутизации на стороне Render.
+
+### GOAL
+Выявить причину, по которой вебхуки Telegram не доставляются до приложения на Render (проверить статус вебхука через API Telegram, наличие ошибок доставки и статус очереди).
+
+### PLAN
+- **Инструментация Python (`app/main.py`)**: Сделать асинхронный вызов `bot.get_webhook_info()` сразу после успешной настройки вебхука и залогировать все параметры (URL, количество зависших апдейтов, дата и текст последней ошибки от Telegram).
+- **Логирование Express (`server.ts`)**: Добавить консольные метки `[Proxy] Routing Webhook ...` и `[Proxy] Routing ...` на каждый входящий транзитный запрос в роутере прокси.
+
+### CHANGES
+- `app/main.py`: Добавлена логика получения и логирования детального `WebhookInfo` от Telegram на старте.
+- `server.ts`: Добавлены маркеры трассировки запросов в роутерах `/api` и `/telegram`.
+
+### FILES
+- `app/main.py`
+- `server.ts`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Приложение готово вывести исчерпывающую отладочную информацию по статусу доставки вебхуков от серверов Telegram напрямую в логи Render.
+
+---
+
 ## 2026-10-02 — Task #72: Critical Bug Fix: Resolving Self-Proxy Loop and Local Routing
 
 ### TASK

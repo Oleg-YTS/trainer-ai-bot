@@ -100,6 +100,17 @@ async def lifespan(app: FastAPI):
             drop_pending_updates=False,
         )
         await setup_bot_menu(bot)
+        try:
+            info = await bot.get_webhook_info()
+            logger.info(
+                "[Telegram Webhook Status]: URL=%s, Pending Updates=%s, Last Error Date=%s, Last Error Message=%s",
+                info.url,
+                info.pending_update_count,
+                info.last_error_date,
+                info.last_error_message
+            )
+        except Exception as exc:
+            logger.warning("Could not retrieve Telegram Webhook Info: %s", exc)
 
     yield
     await bot.session.close()

@@ -2412,6 +2412,7 @@ async function startServer() {
       }
 
       const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
+      console.log(`[Proxy] Routing ${req.method} ${req.originalUrl} -> ${targetUrl}`);
       try {
         const forbiddenHeaders = ['host', 'content-length', 'connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'accept-encoding'];
         const headers: Record<string, string> = {};
@@ -2459,6 +2460,7 @@ async function startServer() {
 
     app.use('/telegram', async (req: Request, res: Response, next) => {
       const targetUrl = `${TARGET_BOT_URL}${req.originalUrl}`;
+      console.log(`[Proxy] Routing Webhook ${req.method} ${req.originalUrl} -> ${targetUrl}`);
       try {
         const forbiddenHeaders = ['host', 'content-length', 'connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'accept-encoding'];
         const headers: Record<string, string> = {};
