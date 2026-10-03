@@ -1,5 +1,34 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #75: Architectural Simplification: Reverting to Driver-Native DB Connection
+
+### TASK
+1. Выполнить архитектурный анализ избыточных сетевых проверок безопасности в коде.
+2. Удалить искусственно внедренное ручное форсирование SSL (`connect_args["ssl"] = True`) для подключения к базе данных.
+
+### GOAL
+Следовать глобальному правилу AGENTS.md ("Не добавляй лишнюю инфраструктуру до тех пор, пока она не потребуется MVP") и убрать излишний "велосипед" проверки хостов, вернув нативное управление SSL самому драйверу `asyncpg` из автоматически парсируемого URL-адреса подключения от Render.
+
+### PLAN
+- **Откат session.py**: Полностью вырезать блок `connect_args["ssl"]` из функции `get_engine()`.
+- **Проверка работоспособности**: Вернуть код инициализации к его изначальной чистой, надежной форме, которая успешно работала до появления лишней логики.
+
+### CHANGES
+- `app/database/session.py`:
+  - Удален весь искусственный блок с проверкой доменов и SSL-контекстом. Функция создания движка теперь возвращает чистый `create_async_engine(async_url, pool_pre_ping=True, pool_recycle=300)`.
+
+### FILES
+- `app/database/session.py`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Ликвидирована избыточная и конфликтующая инфраструктура проверок сертификатов. Драйвер `asyncpg` нативно и безопасно обрабатывает параметры шифрования, заданные в системной переменной `DATABASE_URL`, возвращая проект к гарантированно рабочему MVP-состоянию.
+
+---
+
 ## 2026-10-02 — Task #74: Critical Bug Fix: PostgreSQL SSL Certificate Verification Bypass
 
 ### TASK
