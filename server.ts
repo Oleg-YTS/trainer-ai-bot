@@ -2379,7 +2379,6 @@ async function startServer() {
     '/api/stats',
     '/api/client/status/update',
     '/api/client/vip/toggle',
-    '/api/client/resolve',
     '/api/trainer/settings',
     '/api/knowledge',
     '/api/categories',

@@ -142,38 +142,6 @@ app.add_middleware(
 
 app.include_router(web_router)
 
-# Serve compiled React frontend (webapp/dist) in production if present
-dist_path = Path("webapp/dist")
-if not dist_path.exists():
-    dist_path = Path("dist")
-
-NO_CACHE_HEADERS = {
-    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-    "Pragma": "no-cache",
-    "Expires": "0"
-}
-
-if dist_path.exists():
-    logger.info("Mounting webapp static files from %s", dist_path.resolve())
-    assets_dir = dist_path / "assets"
-    if assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        if full_path.startswith("api/") or full_path.startswith("telegram/") or full_path == "health":
-            raise HTTPException(status_code=404, detail="Not Found")
-        file_path = dist_path / full_path
-        if file_path.exists() and file_path.is_file():
-            if full_path.endswith(".html"):
-                return FileResponse(file_path, headers=NO_CACHE_HEADERS)
-            return FileResponse(file_path)
-        index_file = dist_path / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file, headers=NO_CACHE_HEADERS)
-        raise HTTPException(status_code=404, detail="index.html not found")
-
-
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok"}

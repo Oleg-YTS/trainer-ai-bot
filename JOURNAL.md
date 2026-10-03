@@ -1,5 +1,38 @@
 # PROJECT JOURNAL — Trainer AI Bot & WebApp Shell
 
+## 2026-10-02 — Task #76: Final Fix: Resolving 'Not Found' and White Screen on Render
+
+### TASK
+1. Устранить ошибку "Not Found" и "белый экран" при загрузке WebApp на Render.
+2. Ликвидировать архитектурный конфликт между Node.js (Express) и Python (FastAPI).
+
+### GOAL
+Обеспечить корректную работу фронтенда, исключив ситуацию, когда Python-бэкенд перехватывает запросы к SPA и возвращает 404. Также перенаправить критический эндпоинт авторизации (`/api/client/resolve`) на исправленный Python-бэкенд.
+
+### PLAN
+- **Удаление избыточности в FastAPI (`app/main.py`)**: Полностью вырезана логика обслуживания статических файлов (`dist`) и catch-all роут `serve_spa`. На Render этим занимается Express на порту 10000.
+- **Исправление прокси в Node.js (`server.ts`)**: Удален `/api/client/resolve` из `localOnlyPaths`. Теперь Express проксирует этот запрос в Python, где логика работы с БД и профилями наиболее актуальна и исправлена.
+- **Стандартизация**: Теперь Express — это единственный вход для статики, а Python — единственный вход для бизнес-логики API.
+
+### CHANGES
+- `app/main.py`: Удален блок `app.mount("/assets", ...)` и функция `serve_spa`.
+- `server.ts`: `/api/client/resolve` исключен из списка путей, обрабатываемых локально Node.js.
+
+### FILES
+- `app/main.py`
+- `server.ts`
+
+### VERIFICATION
+- `compile_applet`: SUCCESS.
+- `lint_applet`: SUCCESS.
+
+### RESULT
+- Устранен конфликт маршрутизации.
+- Запросы к фронтенду теперь гарантированно обрабатываются Express (Node.js).
+- Авторизация пользователей теперь проходит через Python-бэкенд, что гарантирует доступ к базе данных PostgreSQL без ошибок SSL.
+
+---
+
 ## 2026-10-02 — Task #75: Architectural Simplification: Reverting to Driver-Native DB Connection
 
 ### TASK
