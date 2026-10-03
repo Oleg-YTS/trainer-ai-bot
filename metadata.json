@@ -1,0 +1,8 @@
+{
+  "name": "AI Consultant Hub",
+  "description": "AI Consultant bot with integrated web application shell and audit tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,97 @@
+// Centralized API Helper for connecting the Web App interface to backend
+// Relative paths ('') work seamlessly on both local dev and single-service production (Render)
+const RENDER_EXTERNAL_API = 'https://trainer-ai-bot.onrender.com';
+const rawEnvUrl = ((import.meta as any).env?.VITE_API_BASE_URL as string) || RENDER_EXTERNAL_API;
+
+const API_BASE_URL = (() => {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    // In AI Studio sandbox preview (ais-dev-... or ais-pre-...),
+    // connect directly to the live Render backend database and AI Tunnel
+    if (hostname.includes('ais-') || hostname.includes('run.app')) {
+      return RENDER_EXTERNAL_API;
+    }
+    
+    // Use relative paths if we are on the same origin (standard for Render and AI Studio proxy)
+    // or if we want to hit the local server that proxies to the real backend.
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    
+    if (isLocal) {
+      return rawEnvUrl.replace(/\/$/, '');
+    }
+    
+    // In production Render, use relative paths to ensure single-service efficiency
+    return '';
+  }
+  return rawEnvUrl.replace(/\/$/, '');
+})();
+
+export function getApiUrl(endpoint: string): string {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${API_BASE_URL}${cleanEndpoint}`;
+}
+
+export async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const method = (options.method || 'GET').toUpperCase();
+  // Append anti-cache timestamp query parameter to GET requests
+  let cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  if (method === 'GET') {
+    const separator = cleanEndpoint.includes('?') ? '&' : '?';
+    cleanEndpoint = `${cleanEndpoint}${separator}_t=${Date.now()}`;
+  }
+
+  const url = `${API_BASE_URL}${cleanEndpoint}`;
+  const relativeUrl = cleanEndpoint;
+  
+  const initData = (window as any).Telegram?.WebApp?.initData || '';
+  const defaultHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  };
+  if (initData) {
+    defaultHeaders['X-Telegram-Init-Data'] = initData;
+  }
+
+  const mergedHeaders = {
+    ...defaultHeaders,
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  const fetchOptions: RequestInit = {
+    ...options,
+    headers: mergedHeaders,
+    cache: 'no-store'
+  };
+
+  try {
+    const res = await fetch(url, fetchOptions);
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('text/html') && url !== relativeUrl) {
+      console.warn(`[apiFetch] Endpoint "${url}" returned HTML instead of JSON. Trying local fallback...`);
+      const fallbackRes = await fetch(relativeUrl, fetchOptions);
+      return fallbackRes;
+    }
+    return res;
+  } catch (err) {
+    console.warn(`[apiFetch] Primary fetch to "${url}" failed:`, err);
+
+    if (url !== relativeUrl) {
+      try {
+        console.warn(`[apiFetch] Retrying fetch on local relative endpoint "${relativeUrl}"...`);
+        const fallbackRes = await fetch(relativeUrl, fetchOptions);
+        return fallbackRes;
+      } catch (fallbackErr) {
+        console.error(`[apiFetch] Fallback fetch to "${relativeUrl}" also failed:`, fallbackErr);
+      }
+    }
+
+    return new Response(JSON.stringify({ error: 'Network error', message: 'Failed to connect to server' }), {
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}

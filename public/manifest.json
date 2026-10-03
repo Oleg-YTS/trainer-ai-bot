@@ -1,0 +1,20 @@
+{
+  "name": "AI Библиотекарь",
+  "short_name": "Библиотекарь",
+  "description": "Авторитетный AI-ассистент тренера и база знаний по фитнесу и питанию",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0A100D",
+  "background_color": "#0A100D",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
+
